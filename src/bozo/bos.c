@@ -32,6 +32,10 @@
 #include <afs/afsint.h>
 #include <afs/volser.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 static int IStatServer(struct cmd_syndesc *as, int int32p);
 static int DoStat(char *aname, struct rx_connection *aconn,
 		  int aint32p, int firstTime);
@@ -83,8 +87,9 @@ DateOf(time_t atime)
  */
 static struct rx_connection *
 GetConn(struct cmd_syndesc *as, int aencrypt)
-{
-    struct hostent *th;
+{    
+    struct addrinfo hints, *res, *p;
+    int status;
     char *hostname;
     char *cellname = NULL;
     const char *confdir;
@@ -97,58 +102,71 @@ GetConn(struct cmd_syndesc *as, int aencrypt)
     afs_int32 scIndex;
 
     hostname = as->parms[0].items->data;
-    th = hostutil_GetHostByName(hostname);
-    if (!th) {
-	printf("bos: can't find address for host '%s'\n", hostname);
-	exit(1);
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = 0;
+    
+    if(status = getaddrinfo(hostname, NULL, &hints, &res) != 0) {
+        printf("bos: %s\n", gai_strerror(status));
+        exit(1);
     }
-    memcpy(&addr, th->h_addr, sizeof(afs_int32));
+    
+    for(p = res; p != NULL; p = p->ai_next) {
+        if (p->ai_family == AF_INET) {
+            addr = (afs_int32)(((struct sockaddr_in*)p->ai_addr)->sin_addr.s_addr);
+            break;
+        } else {
+            printf("bos: IPv6 is not supported (yet)\n");
+            exit(1);
+        }
+    }
 
     if (aencrypt)
-	secFlags = AFSCONF_SECOPTS_ALWAYSENCRYPT;
+        secFlags = AFSCONF_SECOPTS_ALWAYSENCRYPT;
     else
-	secFlags = AFSCONF_SECOPTS_FALLBACK_NULL;
-
+        secFlags = AFSCONF_SECOPTS_FALLBACK_NULL;
 
     if (as->parms[ADDPARMOFFSET + 2].items) { /* -localauth */
-	secFlags |= AFSCONF_SECOPTS_LOCALAUTH;
-	confdir = AFSDIR_SERVER_ETC_DIRPATH;
+        secFlags |= AFSCONF_SECOPTS_LOCALAUTH;
+        confdir = AFSDIR_SERVER_ETC_DIRPATH;
     } else {
-	confdir = AFSDIR_CLIENT_ETC_DIRPATH;
+        confdir = AFSDIR_CLIENT_ETC_DIRPATH;
     }
 
     if (as->parms[ADDPARMOFFSET + 1].items) { /* -noauth */
-	secFlags |= AFSCONF_SECOPTS_NOAUTH;
+        secFlags |= AFSCONF_SECOPTS_NOAUTH;
     } else {
-	/* If we're running with -noauth, we don't need a configuration
-	 * directory */
-	tdir = afsconf_Open(confdir);
-	if (tdir == NULL) {
-	    printf("bos: can't open cell database (%s)\n", confdir);
-	    exit(1);
-	}
+    /* If we're running with -noauth, we don't need a configuration
+     * directory */
+        tdir = afsconf_Open(confdir);
+        if (tdir == NULL) {
+            printf("bos: can't open cell database (%s)\n", confdir);
+            exit(1);
+        }
     }
 
     if (as->parms[ADDPARMOFFSET].items) /* -cell */
         cellname = as->parms[ADDPARMOFFSET].items->data;
 
-    code = afsconf_PickClientSecObj(tdir, secFlags, NULL, cellname,
-				    &sc, &scIndex, NULL);
+    code = afsconf_PickClientSecObj(tdir, secFlags, NULL, cellname, &sc, &scIndex, NULL);
+
     if (code) {
-	afs_com_err("bos", code, "(configuring connection security)");
-	exit(1);
+        afs_com_err("bos", code, "(configuring connection security)");
+        exit(1);
     }
 
     if (scIndex == RX_SECIDX_NULL)
-	fprintf(stderr, "bos: running unauthenticated\n");
+        fprintf(stderr, "bos: running unauthenticated\n");
 
-    tconn =
-	rx_NewConnection(addr, htons(AFSCONF_NANNYPORT), 1, sc, scIndex);
+    tconn = rx_NewConnection(addr, htons(AFSCONF_NANNYPORT), 1, sc, scIndex);
+
     if (!tconn) {
-	fprintf(stderr, "bos: could not create rx connection\n");
-	exit(1);
+        fprintf(stderr, "bos: could not create rx connection\n");
+        exit(1);
     }
+    
     rxs_Release(sc);
+    freeaddrinfo(res);
 
     return tconn;
 }

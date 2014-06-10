@@ -224,6 +224,117 @@ rxi_GetHostUDPSocket(u_int ahost, u_short port)
 }
 
 osi_socket
+rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port)
+{
+    int binds, code = 0;
+    int socketFd = OSI_NULLSOCKET;
+    struct sockaddr_in *taddr4;
+    struct sockaddr_in6 *taddr6;
+    char *name = "rxi_GetUDPSocket: ";
+    unsigned int IS_IPV6 = 0;
+
+#ifdef AFS_LINUX22_ENV
+#if defined(AFS_ADAPT_PMTU)
+    int pmtu = IP_PMTUDISC_WANT;
+#else
+    int pmtu = IP_PMTUDISC_DONT;
+#endif
+#endif
+
+    /* include some code here (mtu) */
+
+    /* linux */
+    if(ntohs(port) >= IPPORT_RESERVED && ntohs(port) < IPPORT_USERRESERVED) {
+        printf("%s*WARNING* port number %d is not a reserved port number.  Use port numbers above %d\n", name, port, IPPORT_USERRESERVED);
+        return OSI_NULLSOCKET;
+    }
+
+    if(ntohs(port) > 0 && ntohs(port) < IPPORT_RESERVED && geteuid() != 0) {
+        printf("%sport number %d is a reserved port number which may only be used by root. Use port numbers above %d\n", name, ntohs(port), IPPORT_USERRESERVED);
+        return OSI_NULLSOCKET;
+    }
+    /* end */
+
+    socketFd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+
+    if(socketFd == OSI_NULLSOCKET) {    
+        perror("socket"); 
+        close(socketFd);
+        return OSI_NULLSOCKET; 
+    }
+
+    if(ahost.ss_family == AF_INET) {
+        taddr4 = (struct sockaddr_in *)&ahost;
+        taddr4->sin_port = (u_short)port;
+    } else {
+        taddr6 = (struct sockaddr_in6 *)&ahost;
+        taddr6->sin6_port = (u_int16_t)port;
+        IS_IPV6 = 1;
+    }
+
+    #define MAX_RX_BINDS 10
+    for(binds = 0; binds < MAX_RX_BINDS; binds++) {
+        if(binds) rxi_Delay(10);
+
+        if(!IS_IPV6) {
+            code = bind(socketFd, (struct sockaddr *)taddr4, sizeof(struct sockaddr_in));
+        } else {
+            code = bind(socketFd, (struct sockaddr *)taddr6, sizeof(struct sockaddr_in6));
+        }
+        break;
+    }
+
+    if(code) {
+        printf("%sbind failed\n", name);
+        close(socketFd); /* LINUX */
+        return OSI_NULLSOCKET;
+    }
+
+    {
+        int greedy = 0;
+        int len1, len2;
+
+        len1 = 32766;
+        len2 = rx_UdpBufSize;
+
+        while (!greedy && len2 > len1) {
+            greedy = (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (char *)&len2, sizeof(len2)) >= 0);
+
+            if (!greedy)
+                len2 /= 2;
+        }
+
+        if (len2 < len1)
+            len2 = len1;
+
+        if (len1 < len2)
+            len1 = len2;
+
+        greedy = (setsockopt(socketFd, SOL_SOCKET, SO_SNDBUF, (char *)&len1, sizeof(len1)) >= 0)
+                 && (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (char *)&len2, sizeof(len2)) >= 0);
+
+        if (!greedy)
+           printf("%s*WARNING* Unable to increase buffering on socket\n", name);
+        
+        if (rx_stats_active)
+            rx_atomic_set(&rx_stats.socketGreedy, greedy);
+    }
+    
+    if(!IS_IPV6) // LINUX
+        setsockopt(socketFd, SOL_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+    else // LINUX
+        setsockopt(socketFd, SOL_IP, IPV6_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+    
+    if (rxi_Listen(socketFd) < 0) {
+        perror("rxi_Listen");
+        close(socketFd); // LINUX 
+        return OSI_NULLSOCKET;
+    }
+    
+    return socketFd;
+}
+
+osi_socket
 rxi_GetUDPSocket(u_short port)
 {
     return rxi_GetHostUDPSocket(htonl(INADDR_ANY), port);

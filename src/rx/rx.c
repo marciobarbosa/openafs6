@@ -488,8 +488,8 @@ rx_InitHost(u_int host, u_int port)
     struct timeval tv;
 #endif /* KERNEL */
     char *htable, *ptable;
-    struct sockaddr_storage mAddr;
-    struct sockaddr_in6 *mAddr6;
+    struct sockaddr_storage mAddr; /* MARCIO: test */
+    struct sockaddr_in6 *mAddr6; /* MARCIO: test */
 
     SPLVAR;
 
@@ -516,14 +516,23 @@ rx_InitHost(u_int host, u_int port)
     /* Allocate and initialize a socket for client and perhaps server
      * connections. */
 
-    memset(&mAddr, 0, sizeof(struct sockaddr_storage));
+    memset(&mAddr, 0, sizeof(struct sockaddr_storage)); /* MARCIO: test */
 
-    mAddr6 = (struct sockaddr_in6 *)&mAddr;
-    mAddr6->sin6_family = AF_INET6;
-    mAddr6->sin6_addr = in6addr_any;
+    mAddr6 = (struct sockaddr_in6 *)&mAddr; /* MARCIO: test */
+    mAddr6->sin6_family = AF_INET6; /* MARCIO: test */
+    mAddr6->sin6_addr = in6addr_any; /* MARCIO: test */
 
-    //rx_socket = rxi_GetHostUDPSocket(host, (u_short) port);
+#ifndef KERNEL
     rx_socket = rxi6_GetHostUDPSocket(mAddr, (u_short) port);
+
+    if (rx_socket == OSI_NULLSOCKET) {
+       rx_socket = rxi_GetHostUDPSocket(host, (u_short) port);
+    }
+#endif
+    
+#ifdef KERNEL
+    rx_socket = rxi_GetHostUDPSocket(host, (u_short) port);
+#endif
 
     if (rx_socket == OSI_NULLSOCKET) {
 	   return RX_ADDRINUSE;
@@ -594,23 +603,34 @@ rx_InitHost(u_int host, u_int port)
 #endif
     if (port) {
 	   rx_port = port;
-    } else {
+    } else { /* MARCIO: I still need to test this part */
 #if defined(KERNEL) && !defined(UKERNEL)
 	   /* Really, this should never happen in a real kernel */
 	   rx_port = 0;
 #else
-	   struct sockaddr_in addr;
+       struct sockaddr_storage addr;
+	   struct sockaddr_in *addr4;
+       struct sockaddr_in6 *addr6;
 #ifdef AFS_NT40_ENV
        int addrlen = sizeof(addr);
 #else
 	   socklen_t addrlen = sizeof(addr);
 #endif
+       memset(&addr, 0, sizeof(addr));
+
 	   if (getsockname((intptr_t)rx_socket, (struct sockaddr *)&addr, &addrlen)) {
 	       rx_Finalize();
 	       osi_Free(htable, rx_hashTableSize * sizeof(struct rx_connection *));
 	       return -1;
 	   }
-	   rx_port = addr.sin_port;
+
+       if(addr.ss_family == AF_INET) {
+           addr4 = (struct sockaddr_in *)&addr;
+           rx_port = addr4->sin_port;
+       } else {
+           addr6 = (struct sockaddr_in6 *)&addr;
+           rx_port = addr6->sin6_port;
+       }	   
 #endif
     }
     rx_stats.minRtt.sec = 9999999;
@@ -650,6 +670,7 @@ rx_InitHost(u_int host, u_int port)
 
     USERPRI;
     rx_atomic_clear_bit(&rxinit_status, 0);
+
     return 0;
 }
 

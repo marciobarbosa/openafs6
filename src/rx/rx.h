@@ -204,7 +204,6 @@ osi_socket rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port);
 osi_socket rxi_GetUDPSocket(u_short port);
 #endif /* KERNEL */
 
-
 int ntoh_syserr_conv(int error);
 
 #define	RX_WAIT	    1

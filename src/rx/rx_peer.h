@@ -24,6 +24,7 @@ struct rx_peer {
     afs_kmutex_t peer_lock;	/* Lock peer */
 #endif				/* RX_ENABLE_LOCKS */
     afs_uint32 host;		/* Remote IP address, in net byte order */
+    struct sockaddr_storage addr;        /* Remote IP address (IPv4 or IPv6) */
     u_short port;		/* Remote UDP port, in net byte order */
 
     /* interface mtu probably used for this host  -  includes RX Header */

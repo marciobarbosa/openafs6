@@ -433,6 +433,7 @@ int
 rxi_Sendmsg(osi_socket socket, struct msghdr *msg_p, int flags)
 {
     fd_set *sfds = (fd_set *) 0;
+
     while (sendmsg(socket, msg_p, flags) == -1) {
 	int err;
 

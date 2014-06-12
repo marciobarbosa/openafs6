@@ -3077,6 +3077,105 @@ rx_GetNetworkError(struct rx_connection *conn, int *err_origin, int *err_type,
     return -1;
 }
 
+unsigned int 
+rxi6_HashAddr(unsigned char addr[])
+{
+    unsigned int addr_slices[4];    
+    unsigned int aux;
+    int i, j;
+
+    for(i = 0; i < 4; i++) {
+        memset(&addr_slices[i], 0, sizeof(addr_slices[i]));
+        
+        for(j = i * 4; j <  (i * 4) + 4; j++) {
+            memset(&aux, 0, sizeof(aux));
+            aux = addr[j];
+            aux = aux << ((4 - j) * 8) - 8;
+            addr_slices[i] = addr_slices[i] ^ aux;
+        }
+    }
+
+    memset(&aux, 0, sizeof(aux));
+    aux = addr_slices[0] ^ addr_slices[1] ^ addr_slices[2] ^ addr_slices[3];
+
+    return aux;
+}
+
+/* Find the peer process represented by the supplied (host,port)
+ * combination. If there is no appropriate active peer structure, a
+ * new one will be allocated and initialized. This function works
+ * for both, IPv4 and IPv6.
+ */
+struct rx_peer *
+rxi6_FindPeer(struct sockaddr_storage host, int create)
+{
+    struct rx_peer *pp;
+    int hashIndex;
+    u_short port;
+    struct sockaddr_in *host4, *addr4;
+    struct sockaddr_in6 *host6, *addr6;
+    afs_uint32 key;
+
+    if(host.ss_family == AF_INET) {
+        host4 = (struct sockaddr_in *)&host;
+        port = (u_short)host4->sin_port;
+        key = (afs_uint32)host4->sin_addr.s_addr;
+        hashIndex = PEER_HASH(key, port);
+    } else {
+        host6 = (struct sockaddr_in6 *)&host;
+        port = (u_short)host6->sin6_port;
+        key = (afs_uint32)rxi6_HashAddr(host6->sin6_addr.s6_addr);
+        hashIndex = PEER_HASH(key, port);
+    }
+
+    MUTEX_ENTER(&rx_peerHashTable_lock);
+
+    if(host.ss_family == AF_INET) {
+        for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
+            if(pp->addr.ss_family == AF_INET) {
+                addr4 = (struct sockaddr_in *)&(pp->addr);
+
+                if(host4->sin_addr.s_addr == addr4->sin_addr.s_addr)
+                    break;
+            }
+        }
+    } else {
+        for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
+            if(pp->addr.ss_family == AF_INET6) {
+                addr6 = (struct sockaddr_in6 *)&(pp->addr);
+
+                if(strcmp(host6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr) == 0)
+                    break;
+            }
+        }
+    }
+
+    if (!pp) {
+        if (create) {
+            pp = rxi_AllocPeer();
+            memcpy(&(pp->addr), &host, sizeof(struct sockaddr_storage));
+#ifdef AFS_RXERRQ_ENV
+            rx_atomic_set(&pp->neterrs, 0);
+#endif          
+            MUTEX_INIT(&pp->peer_lock, "peer_lock", MUTEX_DEFAULT, 0);
+            opr_queue_Init(&pp->rpcStats);
+            pp->next = rx_peerHashTable[hashIndex];
+            rx_peerHashTable[hashIndex] = pp;
+            rxi_InitPeerParams(pp);
+            if (rx_stats_active)
+                rx_atomic_inc(&rx_stats.nPeerStructs);
+        }
+    }
+
+    if (pp && create) {
+        pp->refCount++;
+    }
+
+    MUTEX_EXIT(&rx_peerHashTable_lock);
+    
+    return pp;
+}
+
 /* Find the peer process represented by the supplied (host,port)
  * combination.  If there is no appropriate active peer structure, a
  * new one will be allocated and initialized

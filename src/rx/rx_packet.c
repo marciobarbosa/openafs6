@@ -1595,7 +1595,7 @@ osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec, int nvecs,
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
     msg.msg_name = addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_namelen = sizeof(struct sockaddr_in); /* MARCIO's CODE: Change to sockaddr_storage */
 
     ret = rxi_Sendmsg(socket, &msg, 0);
 

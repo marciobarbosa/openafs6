@@ -434,6 +434,22 @@ rxi_Sendmsg(osi_socket socket, struct msghdr *msg_p, int flags)
 {
     fd_set *sfds = (fd_set *) 0;
 
+#ifndef KERNEL
+    struct sockaddr_in6 *addr6;
+    char ip_readable[INET6_ADDRSTRLEN];
+    void *addr = msg_p->msg_name;
+
+    memset(ip_readable, 0, sizeof(ip_readable));
+    if(((struct sockaddr_storage *)addr)->ss_family == AF_INET6) {
+        addr6 = (struct sockaddr_in6 *)addr;
+
+        if(inet_ntop(addr6->sin6_family, (void*)&addr6->sin6_addr, ip_readable, sizeof(ip_readable)) == NULL)
+            printf("error!\n");
+        else
+            printf("SENDMSG ADDR6: %s\n", ip_readable);
+    }
+#endif
+
     while (sendmsg(socket, msg_p, flags) == -1) {
 	int err;
 

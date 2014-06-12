@@ -1595,7 +1595,11 @@ osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec, int nvecs,
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
     msg.msg_name = addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in); /* MARCIO's CODE: Change to sockaddr_storage */
+    msg.msg_namelen = sizeof(struct sockaddr_in); 
+
+#ifndef KERNEL
+    msg.msg_namelen = sizeof(struct sockaddr_storage); 
+#endif
 
     ret = rxi_Sendmsg(socket, &msg, 0);
 
@@ -2193,17 +2197,24 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
     int waslocked;
 #endif
     int code;
-    struct sockaddr_in addr;
+    struct sockaddr_storage addr;
+    //struct sockaddr_in addr;
     struct rx_peer *peer = conn->peer;
     osi_socket socket;
 #ifdef RXDEBUG
     char deliveryType = 'S';
 #endif
     /* The address we're sending the packet to */
+
+    memset(&addr, 0, sizeof(addr));
+    memcpy(&addr, &peer->addr, sizeof(struct sockaddr_storage));    
+    
+    /*
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = peer->port;
     addr.sin_addr.s_addr = peer->host;
+    */
 
     /* This stuff should be revamped, I think, so that most, if not
      * all, of the header stuff is always added here.  We could
@@ -2286,7 +2297,7 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
 #endif
 #endif
 	if ((code =
-	     osi_NetSend(socket, &addr, p->wirevec, p->niovecs,
+	     osi_NetSend(socket, &addr, p->wirevec, p->niovecs, //MARCIO's CODE: change the parameters!
 			 p->length + RX_HEADER_SIZE, istack)) != 0) {
 	    /* send failed, so let's hurry up the resend, eh? */
             if (rx_stats_active)

@@ -1128,6 +1128,98 @@ rx_NewConnection(afs_uint32 shost, u_short sport, u_short sservice,
     return conn;
 }
 
+/* Create a new client connection to the specified service, using the
+ * specified security object to implement the security model for this
+ * connection. This function works for both, IPv4 and IPv6. */
+#ifndef KERNEL
+struct rx_connection *
+rx6_NewConnection(struct sockaddr_storage shost, u_short sservice, 
+                  struct rx_securityClass *securityObject, 
+                  int serviceSecurityIndex)
+{
+    int hashindex, i;
+    afs_int32 cid;
+    struct rx_connection *conn;
+    u_short sport;
+    struct sockaddr_in *shost4;
+    struct sockaddr_in6 *shost6;
+    char ip_readable[INET6_ADDRSTRLEN];
+    afs_uint32 key;
+
+    memset(ip_readable, 0, sizeof(ip_readable));
+
+    SPLVAR;
+    clock_NewTime();
+
+    if(shost.ss_family == AF_INET) {
+        shost4 = (struct sockaddr_in *)&shost;
+        sport = shost4->sin_port;
+        key = (afs_uint32)shost4->sin_addr.s_addr;
+        if(inet_ntop(shost4->sin_family, (void*)&shost4->sin_addr, ip_readable, sizeof(ip_readable)) == NULL) {
+            printf("inet_ntop error!\n");
+        } else {
+            dpf(("rx_NewConnection(host %s, port %u, service %u, securityObject %p, ""serviceSecurityIndex %d)\n", ip_readable, ntohs(sport), sservice, securityObject, serviceSecurityIndex));
+        }
+    } else {
+        shost6 = (struct sockaddr_in6 *)&shost;
+        sport = shost6->sin6_port;
+        key = (afs_uint32)rxi6_HashAddr(shost6->sin6_addr.s6_addr);
+        if(inet_ntop(shost6->sin6_family, (void*)&shost6->sin6_addr, ip_readable, sizeof(ip_readable)) == NULL) {
+            printf("inet_ntop error!\n");
+        } else {
+            dpf(("rx_NewConnection(host %s, port %u, service %u, securityObject %p, ""serviceSecurityIndex %d)\n", ip_readable, ntohs(sport), sservice, securityObject, serviceSecurityIndex));
+        }
+    }
+
+    conn = rxi_AllocConnection();
+#ifdef  RX_ENABLE_LOCKS
+    MUTEX_INIT(&conn->conn_call_lock, "conn call lock", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&conn->conn_data_lock, "conn data lock", MUTEX_DEFAULT, 0);
+    CV_INIT(&conn->conn_call_cv, "conn call cv", CV_DEFAULT, 0);
+#endif
+    NETPRI;
+    MUTEX_ENTER(&rx_connHashTable_lock);
+    cid = (rx_nextCid += RX_MAXCALLS);
+    conn->type = RX_CLIENT_CONNECTION;
+    conn->cid = cid;
+    conn->epoch = rx_epoch;
+    conn->peer = rxi6_FindPeer(shost, 1);
+    conn->serviceId = sservice;
+    conn->securityObject = securityObject;
+    conn->securityData = (void *) 0;
+    conn->securityIndex = serviceSecurityIndex;
+    rx_SetConnDeadTime(conn, rx_connDeadTime);
+    rx_SetConnSecondsUntilNatPing(conn, 0);
+    conn->ackRate = RX_FAST_ACK_RATE;
+    conn->nSpecific = 0;
+    conn->specific = NULL;
+    conn->challengeEvent = NULL;
+    conn->delayedAbortEvent = NULL;
+    conn->abortCount = 0;
+    conn->error = 0;
+
+    for (i = 0; i < RX_MAXCALLS; i++) {
+        conn->twind[i] = rx_initSendWindow;
+        conn->rwind[i] = rx_initReceiveWindow;
+        conn->lastBusy[i] = 0;
+    }
+
+    RXS_NewConnection(securityObject, conn);
+    hashindex = CONN_HASH(key, sport, conn->cid, conn->epoch, RX_CLIENT_CONNECTION);
+
+    conn->refCount++;
+    conn->next = rx_connHashTable[hashindex];
+    rx_connHashTable[hashindex] = conn;
+
+    if (rx_stats_active)
+       rx_atomic_inc(&rx_stats.nClientConns);
+
+    MUTEX_EXIT(&rx_connHashTable_lock);
+    USERPRI;
+    
+    return conn;
+}
+#endif
 /**
  * Ensure a connection's timeout values are valid.
  *
@@ -3090,7 +3182,7 @@ rxi6_HashAddr(unsigned char addr[])
         for(j = i * 4; j <  (i * 4) + 4; j++) {
             memset(&aux, 0, sizeof(aux));
             aux = addr[j];
-            aux = aux << ((4 - j) * 8) - 8;
+            aux = aux << (((4 - j) * 8) - 8);
             addr_slices[i] = addr_slices[i] ^ aux;
         }
     }
@@ -3144,8 +3236,8 @@ rxi6_FindPeer(struct sockaddr_storage host, int create)
             if(pp->addr.ss_family == AF_INET6) {
                 addr6 = (struct sockaddr_in6 *)&(pp->addr);
 
-                if(strcmp(host6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr) == 0)
-                    break;
+                if(strncmp(host6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr, sizeof(host6->sin6_addr.s6_addr)) == 0) 
+                    break;                
             }
         }
     }
@@ -3733,10 +3825,11 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
 	}
     }
 
-    if (type == RX_SERVER_CONNECTION)
-	call = rxi_ReceiveServerCall(socket, np, conn);
-    else
-	call = rxi_ReceiveClientCall(np, conn);
+    if (type == RX_SERVER_CONNECTION) {
+	   call = rxi_ReceiveServerCall(socket, np, conn);
+    } else {
+	   call = rxi_ReceiveClientCall(np, conn);
+    }
 
     if (call == NULL) {
 	putConnection(conn);
@@ -3754,7 +3847,7 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
 	 * we transmitted packets are implicitly acknowledged. */
 	if (type == RX_CLIENT_CONNECTION && !opr_queue_IsEmpty(&call->tq))
 	    rxi_AckAllInTransmitQueue(call);
-
+    
 	np = rxi_ReceiveDataPacket(call, np, 1, socket, host, port, tnop,
 				   newcallp);
 	break;

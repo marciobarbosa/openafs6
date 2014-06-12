@@ -28,8 +28,10 @@ extern void rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host,
 extern void rxi_ProcessNetError(struct sock_extended_err *err,
                                 afs_uint32 addr, afs_uint16 port);
 #endif
+extern unsigned int rxi6_HashAddr(unsigned char addr[]);
 extern struct rx_peer *rxi_FindPeer(afs_uint32 host, u_short port,
 				    int create);
+extern struct rx_peer *rxi6_FindPeer(struct sockaddr_storage host, int create);
 extern struct rx_packet *rxi_ReceivePacket(struct rx_packet *np,
 					   osi_socket socket, afs_uint32 host,
 					   u_short port, int *tnop,

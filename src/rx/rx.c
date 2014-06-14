@@ -91,6 +91,11 @@ extern afs_int32 afs_termState;
 
 #include <afs/rxgen_consts.h>
 
+#ifndef KERNEL /* MARCIO's CODE: test */
+    #include <ifaddrs.h>
+    #include <net/if.h>
+#endif
+
 #ifndef KERNEL
 #ifdef AFS_PTHREAD_ENV
 #ifndef AFS_NT40_ENV
@@ -490,6 +495,10 @@ rx_InitHost(u_int host, u_int port)
     char *htable, *ptable;
     struct sockaddr_storage mAddr; /* MARCIO: test */
     struct sockaddr_in6 *mAddr6; /* MARCIO: test */
+    
+#ifndef KERNEL /* MARCIO: test */
+    struct ifaddrs *myaddrs, *ifa; /* MARCIO: test */
+#endif
 
     SPLVAR;
 
@@ -518,12 +527,36 @@ rx_InitHost(u_int host, u_int port)
 
     memset(&mAddr, 0, sizeof(struct sockaddr_storage)); /* MARCIO: test */
 
+#ifndef KERNEL /* MARCIO's CODE: test */
+    if(getifaddrs(&myaddrs) != 0)
+        return 0;
+
+    for(ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL) continue; 
+        if ((ifa->ifa_flags & IFF_UP) == 0) continue;
+        //if ((ifa->ifa_flags & IFF_LOOPBACK) != 0) continue;
+        if (ifa->ifa_addr->sa_family == AF_INET) continue;
+
+        if (ifa->ifa_addr->sa_family == AF_INET6)
+            break;
+    }
+
     mAddr6 = (struct sockaddr_in6 *)&mAddr; /* MARCIO: test */
     mAddr6->sin6_family = AF_INET6; /* MARCIO: test */
+
+    if(ifa == NULL)
+        mAddr6->sin6_addr = in6addr_any; /* MARCIO: test */
+    else {
+        mAddr6->sin6_addr = ((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr; /* MARCIO: test */
+    }
+#endif
+
+#ifdef KERNEL /* MARCIO: test */
     mAddr6->sin6_addr = in6addr_any; /* MARCIO: test */
+#endif
 
 #ifndef KERNEL
-    rx_socket = rxi6_GetHostUDPSocket(mAddr, (u_short) port);
+    rx_socket = rxi6_GetHostUDPSocket(*((struct sockaddr_storage *)ifa->ifa_addr), (u_short) port);
 
     if (rx_socket == OSI_NULLSOCKET) {
        rx_socket = rxi_GetHostUDPSocket(host, (u_short) port);
@@ -3419,6 +3452,138 @@ rxi_FindConnection(osi_socket socket, afs_uint32 host,
     return conn;
 }
 
+static struct rx_connection *
+rxi6_FindConnection(osi_socket socket, struct sockaddr *host, 
+                    u_short serviceId, afs_uint32 cid,
+                    afs_uint32 epoch, int type, u_int securityIndex,
+                    int *unknownService)
+{
+    int hashindex, flag, i;
+    struct rx_connection *conn;
+    int key, port;
+    struct sockaddr_in *host4, *addr4;
+    struct sockaddr_in6 *host6, *addr6;
+
+    *unknownService = 0;
+
+    if(host->sa_family == AF_INET) {
+        host4 = (struct sockaddr_in *)host;
+        key = (afs_uint32)host4->sin_addr.s_addr;
+        port = (u_short)host4->sin_port;
+    } else {
+        host6 = (struct sockaddr_in6 *)host;
+        key = (afs_uint32)rxi6_HashAddr(host6->sin6_addr.s6_addr);
+        port = (u_short)host6->sin6_port;
+    }
+
+    hashindex = CONN_HASH(key, port, cid, epoch, type);
+
+    MUTEX_ENTER(&rx_connHashTable_lock);
+
+    rxLastConn ? (conn = rxLastConn, flag = 0) : 
+                 (conn = rx_connHashTable[hashindex], flag = 1);
+
+    for (; conn;) {
+        if ((conn->type == type) && ((cid & RX_CIDMASK) == conn->cid)
+            && (epoch == conn->epoch)) {
+            struct rx_peer *pp = conn->peer;
+
+            if (securityIndex != conn->securityIndex) {
+                MUTEX_EXIT(&rx_connHashTable_lock);
+                return (struct rx_connection *)0;
+            }
+
+            if(host->sa_family == AF_INET && pp->addr.ss_family == AF_INET) {
+                addr4 = (struct sockaddr_in *)&pp->addr;
+
+                if(host4->sin_addr.s_addr == addr4->sin_addr.s_addr && host4->sin_port == addr4->sin_port)
+                    break;
+                if(type == RX_CLIENT_CONNECTION && host4->sin_port == addr4->sin_port)
+                    break;
+            } else if(host->sa_family == AF_INET6 && pp->addr.ss_family == AF_INET6) {
+                addr6 = (struct sockaddr_in6 *)&pp->addr;
+
+                if(strncmp(host6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr, sizeof(host6->sin6_addr.s6_addr)) == 0 && host6->sin6_port == addr6->sin6_port)
+                    break;
+                if(type == RX_CLIENT_CONNECTION && host6->sin6_port == addr6->sin6_port)
+                    break;
+            }
+                        
+            if ((conn->epoch & 0x80000000))
+                break;
+        }
+
+        if (!flag) {
+            flag = 1;
+            conn = rx_connHashTable[hashindex];
+        } else
+            conn = conn->next;
+    }
+
+    if (!conn) {
+        struct rx_service *service;
+
+        if (type == RX_CLIENT_CONNECTION) {
+            MUTEX_EXIT(&rx_connHashTable_lock);
+            return (struct rx_connection *)0;
+        }
+
+        service = rxi_FindService(socket, serviceId);
+
+        if (!service || (securityIndex >= service->nSecurityObjects)
+            || (service->securityObjects[securityIndex] == 0)) {
+            MUTEX_EXIT(&rx_connHashTable_lock);
+            *unknownService = 1;
+            return (struct rx_connection *)0;
+        }
+
+        conn = rxi_AllocConnection();
+        MUTEX_INIT(&conn->conn_call_lock, "conn call lock", MUTEX_DEFAULT, 0);
+        MUTEX_INIT(&conn->conn_data_lock, "conn data lock", MUTEX_DEFAULT, 0);
+        CV_INIT(&conn->conn_call_cv, "conn call cv", CV_DEFAULT, 0);
+        conn->next = rx_connHashTable[hashindex];
+        rx_connHashTable[hashindex] = conn;
+        conn->peer = rxi6_FindPeer(*((struct sockaddr_storage *)host), 1);
+        conn->type = RX_SERVER_CONNECTION;
+        conn->lastSendTime = clock_Sec();
+        conn->epoch = epoch;
+        conn->cid = cid & RX_CIDMASK;
+        conn->ackRate = RX_FAST_ACK_RATE;
+        conn->service = service;
+        conn->serviceId = serviceId;
+        conn->securityIndex = securityIndex;
+        conn->securityObject = service->securityObjects[securityIndex];
+        conn->nSpecific = 0;
+        conn->specific = NULL;
+
+        rx_SetConnDeadTime(conn, service->connDeadTime);
+
+        conn->idleDeadTime = service->idleDeadTime;
+        conn->idleDeadDetection = service->idleDeadErr ? 1 : 0;
+
+        for (i = 0; i < RX_MAXCALLS; i++) {
+            conn->twind[i] = rx_initSendWindow;
+            conn->rwind[i] = rx_initReceiveWindow;
+        }
+        
+        RXS_NewConnection(conn->securityObject, conn);
+        
+        if (service->newConnProc)
+            (*service->newConnProc) (conn);
+        if (rx_stats_active)
+            rx_atomic_inc(&rx_stats.nServerConns);
+    }
+
+    MUTEX_ENTER(&rx_refcnt_mutex);
+    conn->refCount++;
+    MUTEX_EXIT(&rx_refcnt_mutex);
+
+    rxLastConn = conn;
+    MUTEX_EXIT(&rx_connHashTable_lock);
+    
+    return conn;
+}
+
 /**
  * Timeout a call on a busy call channel if appropriate.
  *
@@ -3913,6 +4078,206 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
     call->flags &= ~RX_CALL_PEER_BUSY;
     MUTEX_EXIT(&call->lock);
     putConnection(conn);
+    return np;
+}
+
+struct rx_packet *
+rxi6_ReceivePacket( struct rx_packet *np, osi_socket socket,
+                    struct sockaddr *host, int *tnop,
+                    struct rx_call **newcallp )
+{
+    struct rx_call *call;
+    struct rx_connection *conn;
+    int type;
+    int unknownService = 0;
+    afs_uint32 host_ = 0; /* MARCIO's CODE: Fix it! */
+    u_short port = 0; /* MARCIO's CODE: Fix it! */
+#ifdef RXDEBUG
+    char *packetType;
+#endif
+    struct rx_packet *tnp;
+
+    /* RXDEBUG */
+
+    if (rx_stats_active && ((np->header.type == RX_PACKET_TYPE_VERSION) ||
+        (np->header.type == RX_PACKET_TYPE_DEBUG))) {
+        struct rx_peer *peer;
+        
+        peer = rxi6_FindPeer(*((struct sockaddr_storage *)host), 0);
+        
+        if (peer && (peer->refCount > 0)) {
+#ifdef AFS_RXERRQ_ENV
+            if (rx_atomic_read(&peer->neterrs)) {
+                rx_atomic_set(&peer->neterrs, 0);
+            }
+#endif
+            MUTEX_ENTER(&peer->peer_lock);
+            peer->bytesReceived += np->length;
+            MUTEX_EXIT(&peer->peer_lock);
+        }
+    }
+
+    if (np->header.type == RX_PACKET_TYPE_VERSION) {
+        /* MARCIO's CODE: Fix it! */
+        return rxi_ReceiveVersionPacket(np, socket, host_, port, 1);
+    }
+
+    if (np->header.type == RX_PACKET_TYPE_DEBUG) {
+        /* MARCIO's CODE: Fix it! */
+        return rxi_ReceiveDebugPacket(np, socket, host_, port, 1);
+    }
+
+    /* RXDEBUG */
+
+    type = ((np->header.flags & RX_CLIENT_INITIATED) != RX_CLIENT_INITIATED)
+    ? RX_CLIENT_CONNECTION : RX_SERVER_CONNECTION;
+
+    conn = rxi6_FindConnection(socket, host, np->header.serviceId,
+               np->header.cid, np->header.epoch, type,
+               np->header.securityIndex, &unknownService);
+
+    if (!conn) {
+        /* MARCIO's CODE: Fix it! */
+        if (unknownService && (np->header.type != RX_PACKET_TYPE_ABORT))
+            rxi_SendRawAbort(socket, host_, port, RX_INVALID_OPERATION, np, 0);
+
+        return np;
+    }
+
+#ifdef AFS_RXERRQ_ENV
+    if (rx_atomic_read(&conn->peer->neterrs)) {
+        rx_atomic_set(&conn->peer->neterrs, 0);
+    }
+#endif
+
+    if (rx_stats_active) {
+        MUTEX_ENTER(&conn->peer->peer_lock);
+        conn->peer->bytesReceived += np->length;
+        MUTEX_EXIT(&conn->peer->peer_lock);
+    }
+
+    if (conn->error) {
+        MUTEX_ENTER(&conn->conn_data_lock);
+
+        if (np->header.type != RX_PACKET_TYPE_ABORT)
+            np = rxi_SendConnectionAbort(conn, np, 1, 0);
+
+        putConnection(conn);
+        MUTEX_EXIT(&conn->conn_data_lock);
+
+        return np;
+    }
+
+    if (np->header.callNumber == 0) {
+        switch (np->header.type) {
+            case RX_PACKET_TYPE_ABORT: {
+                afs_int32 errcode = ntohl(rx_GetInt32(np, 0));
+                dpf(("rxi_ReceivePacket ABORT rx_GetInt32 = %d\n", errcode));
+                rxi_ConnectionError(conn, errcode);
+                putConnection(conn);
+
+                return np;
+            }
+            case RX_PACKET_TYPE_CHALLENGE:
+                tnp = rxi_ReceiveChallengePacket(conn, np, 1);
+                putConnection(conn);
+
+                return tnp;
+            case RX_PACKET_TYPE_RESPONSE:
+                tnp = rxi_ReceiveResponsePacket(conn, np, 1);
+                putConnection(conn);
+
+                return tnp;
+            case RX_PACKET_TYPE_PARAMS:
+            case RX_PACKET_TYPE_PARAMS + 1:
+            case RX_PACKET_TYPE_PARAMS + 2:
+                putConnection(conn);
+
+                return np;
+            default:
+                rxi_ConnectionError(conn, RX_PROTOCOL_ERROR);
+                MUTEX_ENTER(&conn->conn_data_lock);
+                tnp = rxi_SendConnectionAbort(conn, np, 1, 0);
+                putConnection(conn);
+                MUTEX_EXIT(&conn->conn_data_lock);
+
+                return tnp;
+        }
+    }
+
+    if (type == RX_SERVER_CONNECTION) {
+       call = rxi_ReceiveServerCall(socket, np, conn);
+    } else {
+       call = rxi_ReceiveClientCall(np, conn);
+    }
+
+    if (call == NULL) {
+        putConnection(conn);
+
+        return np;
+    }
+
+    MUTEX_ASSERT(&call->lock);
+    call->remoteStatus = np->header.userStatus;
+
+    switch (np->header.type) {
+        case RX_PACKET_TYPE_DATA:
+            if (type == RX_CLIENT_CONNECTION && !opr_queue_IsEmpty(&call->tq))
+                rxi_AckAllInTransmitQueue(call);
+            
+                np = rxi_ReceiveDataPacket(call, np, 1, socket, host, port, tnop, newcallp);
+        break;
+        case RX_PACKET_TYPE_ACK:
+            if (np->header.flags & RX_REQUEST_ACK) {
+                if (call->error)
+                    (void)rxi_SendCallAbort(call, 0, 1, 0);
+                else
+                    (void)rxi_SendAck(call, 0, np->header.serial, RX_ACK_PING_RESPONSE, 1);
+            }
+            np = rxi_ReceiveAckPacket(call, np, 1);
+        break;
+        case RX_PACKET_TYPE_ABORT: {
+            afs_int32 errdata = ntohl(*(afs_int32 *) rx_DataOf(np));
+
+            dpf(("rxi_ReceivePacket ABORT rx_DataOf = %d\n", errdata));
+            rxi_CallError(call, errdata);
+            MUTEX_EXIT(&call->lock);
+            putConnection(conn);
+
+            return np;
+        }
+        case RX_PACKET_TYPE_BUSY: {
+            struct clock busyTime;
+            clock_NewTime();
+            clock_GetTime(&busyTime);
+
+            MUTEX_EXIT(&call->lock);
+
+            MUTEX_ENTER(&conn->conn_call_lock);
+            MUTEX_ENTER(&call->lock);
+            conn->lastBusy[call->channel] = busyTime.sec;
+            call->flags |= RX_CALL_PEER_BUSY;
+            MUTEX_EXIT(&call->lock);
+            MUTEX_EXIT(&conn->conn_call_lock);
+            putConnection(conn);
+
+            return np;
+        }
+
+        case RX_PACKET_TYPE_ACKALL:
+            rxi_AckAllInTransmitQueue(call);
+        break;
+        default:
+            rxi_CallError(call, RX_PROTOCOL_ERROR);
+            np = rxi_SendCallAbort(call, np, 1, 0);
+        break;
+    };
+
+    call->lastReceiveTime = clock_Sec();
+    call->flags &= ~RX_CALL_PEER_BUSY;
+    MUTEX_EXIT(&call->lock);
+    putConnection(conn);
+    
     return np;
 }
 

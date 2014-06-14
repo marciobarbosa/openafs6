@@ -230,7 +230,7 @@ rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port)
     int socketFd = OSI_NULLSOCKET;
     struct sockaddr_in *taddr4;
     struct sockaddr_in6 *taddr6;
-    char *name = "rxi_GetUDPSocket: ";
+    char *name = "rxi6_GetUDPSocket: ";
     unsigned int IS_IPV6 = 0;
 
 #ifdef AFS_LINUX22_ENV
@@ -330,7 +330,7 @@ rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port)
         close(socketFd); // LINUX 
         return OSI_NULLSOCKET;
     }
-    
+
     return socketFd;
 }
 

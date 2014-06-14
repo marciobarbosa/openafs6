@@ -154,6 +154,7 @@ rxi_ListenerProc(fd_set * rfds, int *tnop, struct rx_call **newcallp)
 {
     afs_uint32 host;
     u_short port;
+    struct sockaddr_storage addr;
     struct rx_packet *p = (struct rx_packet *)0;
     osi_socket socket;
     struct clock cv;
@@ -287,20 +288,37 @@ rxi_ListenerProc(fd_set * rfds, int *tnop, struct rx_call **newcallp)
 		 p && socket <= rx_maxSocketNumber; socket++) {
 		if (!FD_ISSET(socket, rfds))
 		    continue;
-		if (rxi_ReadPacket(socket, p, &host, &port)) {
-		    p = rxi_ReceivePacket(p, socket, host, port, tnop,
-					  newcallp);
-		    if (newcallp && *newcallp) {
-			if (p) {
-			    rxi_FreePacket(p);
+			/*
+			if (rxi_ReadPacket(socket, p, &host, &port)) {
+			    p = rxi_ReceivePacket(p, socket, host, port, tnop,
+						  newcallp);
+			    if (newcallp && *newcallp) {
+				if (p) {
+				    rxi_FreePacket(p);
+				}
+				if (swapNameProgram) {
+				    (*swapNameProgram) (rx_listenerPid, name, 0);
+				    rx_listenerPid = 0;
+				}
+				return;
+			    }
 			}
-			if (swapNameProgram) {
-			    (*swapNameProgram) (rx_listenerPid, name, 0);
-			    rx_listenerPid = 0;
+			*/
+
+			if (rxi6_ReadPacket(socket, p, (struct sockaddr *)&addr)) {
+			    p = rxi6_ReceivePacket(p, socket, (struct sockaddr *)&addr, tnop, newcallp);
+
+			    if (newcallp && *newcallp) {
+					if (p) {
+					    rxi_FreePacket(p);
+					}
+					if (swapNameProgram) {
+					    (*swapNameProgram) (rx_listenerPid, name, 0);
+					    rx_listenerPid = 0;
+					}
+				return;
+			    }
 			}
-			return;
-		    }
-		}
 	    }
 #endif
 	    break;

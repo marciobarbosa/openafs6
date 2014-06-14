@@ -1511,6 +1511,90 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, afs_uint32 * host,
     }
 }
 
+int rxi6_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *host)
+{
+    int nbytes;
+    afs_int32 rlen;
+    afs_uint32 tlen, savelen;
+    struct msghdr msg;
+    rx_computelen(p, tlen);
+    rx_SetDataSize(p, tlen);
+
+    tlen += RX_HEADER_SIZE;
+    rlen = rx_maxJumboRecvSize;
+    tlen = rlen - tlen;
+
+    if (tlen > 0) {
+        tlen = rxi_AllocDataBuf(p, tlen, RX_PACKET_CLASS_SEND_CBUF);
+        
+        if (tlen > 0) {
+            tlen = rlen - tlen;
+        } else
+            tlen = rlen;
+    } else
+        tlen = rlen;
+
+    savelen = p->wirevec[p->niovecs - 1].iov_len;
+    p->wirevec[p->niovecs - 1].iov_len += RX_EXTRABUFFERSIZE;
+
+    memset(&msg, 0, sizeof(msg));
+    msg.msg_name = (char *)host;
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
+    msg.msg_iov = p->wirevec;
+    msg.msg_iovlen = p->niovecs;
+    nbytes = rxi_Recvmsg(socket, &msg, 0);
+
+    p->wirevec[p->niovecs - 1].iov_len = savelen;
+
+    p->length = (u_short)(nbytes - RX_HEADER_SIZE);
+
+    if (nbytes < 0 || (nbytes > tlen) || (p->length & 0x8000)) {
+        if (nbytes < 0 && errno == EWOULDBLOCK) {
+            if (rx_stats_active)
+                rx_atomic_inc(&rx_stats.noPacketOnRead);
+        } else if (nbytes <= 0) {
+            if (rx_stats_active) {
+                rx_atomic_inc(&rx_stats.bogusPacketOnRead);
+                //rx_stats.bogusHost = from.sin_addr.s_addr; >> Change!
+            }
+            //dpf(("B: bogus packet from [%x,%d] nb=%d\n", ntohl(from.sin_addr.s_addr),
+            //ntohs(from.sin_port), nbytes)); >> Change!
+        }
+
+        return 0;
+    }
+
+#ifdef RXDEBUG
+    else if ((rx_intentionallyDroppedOnReadPer100 > 0) && (random() % 100 < rx_intentionallyDroppedOnReadPer100)) {
+        rxi_DecodePacketHeader(p);
+
+        /*
+        dpf(("Dropped %d %s: %x.%u.%u.%u.%u.%u.%u flags %d len %d\n",
+              p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(*host), ntohs(*port), p->header.serial,
+              p->header.epoch, p->header.cid, p->header.callNumber, p->header.seq, p->header.flags,
+              p->length)); >> Change!
+        */
+#ifdef RX_TRIMDATABUFS
+        rxi_TrimDataBufs(p, 1);
+#endif
+        return 0;
+    }
+#endif
+
+    else {
+        rxi_DecodePacketHeader(p);
+
+        if (rx_stats_active && p->header.type > 0 && p->header.type < RX_N_PACKET_TYPES) {
+            rx_atomic_inc(&rx_stats.packetsRead[p->header.type - 1]);
+        }
+
+#ifdef RX_TRIMDATABUFS  
+        rxi_TrimDataBufs(p, 1);
+#endif
+        return 1;
+    }
+}
+
 #endif /* !KERNEL || UKERNEL */
 
 /* This function splits off the first packet in a jumbo packet.
@@ -2201,13 +2285,16 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
     //struct sockaddr_in addr;
     struct rx_peer *peer = conn->peer;
     osi_socket socket;
+
 #ifdef RXDEBUG
     char deliveryType = 'S';
 #endif
     /* The address we're sending the packet to */
 
+#ifndef KERNEL
     memset(&addr, 0, sizeof(addr));
-    memcpy(&addr, &peer->addr, sizeof(struct sockaddr_storage));    
+    memcpy(&addr, &peer->addr, sizeof(struct sockaddr_storage));
+#endif
     
     /*
     memset(&addr, 0, sizeof(addr));

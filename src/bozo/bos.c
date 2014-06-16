@@ -35,6 +35,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+ #include <ifaddrs.h>
+ #include <net/if.h>
 
 static int IStatServer(struct cmd_syndesc *as, int int32p);
 static int DoStat(char *aname, struct rx_connection *aconn,
@@ -90,15 +92,14 @@ GetConn(struct cmd_syndesc *as, int aencrypt)
 {    
     struct addrinfo hints, *res, *p;
     struct sockaddr_storage new_addr;
-    struct sockaddr_in *new_addr4;
-    struct sockaddr_in6 *new_addr6;
+    struct sockaddr_in *addr4;
+    struct sockaddr_in6 *addr6;
     int status;
     char *hostname;
     char *cellname = NULL;
     const char *confdir;
     afs_int32 code;
     struct rx_connection *tconn;
-    //afs_int32 addr;
     struct afsconf_dir *tdir = NULL;
     afsconf_secflags secFlags;
     struct rx_securityClass *sc;
@@ -108,7 +109,7 @@ GetConn(struct cmd_syndesc *as, int aencrypt)
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = 0;
-    
+
     if(status = getaddrinfo(hostname, NULL, &hints, &res) != 0) {
         printf("bos: %s\n", gai_strerror(status));
         exit(1);
@@ -116,15 +117,12 @@ GetConn(struct cmd_syndesc *as, int aencrypt)
     
     for(p = res; p != NULL; p = p->ai_next) {
         if (p->ai_family == AF_INET) {
-            new_addr4 = (struct sockaddr_in *)&new_addr;
-            new_addr4->sin_family = AF_INET;
-            new_addr4->sin_addr.s_addr = ((struct sockaddr_in*)p->ai_addr)->sin_addr.s_addr;
-            new_addr4->sin_port = htons(AFSCONF_NANNYPORT);
+            addr4 = (struct sockaddr_in *)p->ai_addr;
+            addr4->sin_port = htons(AFSCONF_NANNYPORT);
+            break;
         } else if(p->ai_family == AF_INET6) {
-            new_addr6 = (struct sockaddr_in6 *)&new_addr;
-            new_addr6->sin6_family = AF_INET6;
-            memcpy(new_addr6->sin6_addr.s6_addr, ((struct sockaddr_in6 *)p->ai_addr)->sin6_addr.s6_addr, sizeof(new_addr6->sin6_addr.s6_addr));
-            new_addr6->sin6_port = htons(AFSCONF_NANNYPORT);
+            addr6 = (struct sockaddr_in6 *)p->ai_addr;
+            addr6->sin6_port = htons(AFSCONF_NANNYPORT);
             break;
         }
     }
@@ -166,8 +164,7 @@ GetConn(struct cmd_syndesc *as, int aencrypt)
     if (scIndex == RX_SECIDX_NULL)
         fprintf(stderr, "bos: running unauthenticated\n");
 
-    tconn = rx6_NewConnection(new_addr, 1, sc, scIndex);
-    //tconn = rx_NewConnection(addr, htons(AFSCONF_NANNYPORT), 1, sc, scIndex);
+    tconn = rx6_NewConnection(*((struct sockaddr_storage *)p->ai_addr), 1, sc, scIndex);
     
     if (!tconn) {
         fprintf(stderr, "bos: could not create rx connection\n");

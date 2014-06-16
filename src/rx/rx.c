@@ -495,10 +495,6 @@ rx_InitHost(u_int host, u_int port)
     char *htable, *ptable;
     struct sockaddr_storage mAddr; /* MARCIO: test */
     struct sockaddr_in6 *mAddr6; /* MARCIO: test */
-    
-#ifndef KERNEL /* MARCIO: test */
-    struct ifaddrs *myaddrs, *ifa; /* MARCIO: test */
-#endif
 
     SPLVAR;
 
@@ -527,28 +523,10 @@ rx_InitHost(u_int host, u_int port)
 
     memset(&mAddr, 0, sizeof(struct sockaddr_storage)); /* MARCIO: test */
 
-#ifndef KERNEL /* MARCIO's CODE: test */
-    if(getifaddrs(&myaddrs) != 0)
-        return 0;
-
-    for(ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL) continue; 
-        if ((ifa->ifa_flags & IFF_UP) == 0) continue;
-        //if ((ifa->ifa_flags & IFF_LOOPBACK) != 0) continue;
-        if (ifa->ifa_addr->sa_family == AF_INET) continue;
-
-        if (ifa->ifa_addr->sa_family == AF_INET6)
-            break;
-    }
-
-    mAddr6 = (struct sockaddr_in6 *)&mAddr; /* MARCIO: test */
-    mAddr6->sin6_family = AF_INET6; /* MARCIO: test */
-
-    if(ifa == NULL)
-        mAddr6->sin6_addr = in6addr_any; /* MARCIO: test */
-    else {
-        mAddr6->sin6_addr = ((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr; /* MARCIO: test */
-    }
+#ifndef KERNEL /* MARCIO's CODE: test */    
+    mAddr6 = (struct sockaddr_in6 *)&mAddr;
+    mAddr6->sin6_family = AF_INET6;
+    mAddr6->sin6_addr = in6addr_any;
 #endif
 
 #ifdef KERNEL /* MARCIO: test */
@@ -556,7 +534,7 @@ rx_InitHost(u_int host, u_int port)
 #endif
 
 #ifndef KERNEL
-    rx_socket = rxi6_GetHostUDPSocket(*((struct sockaddr_storage *)ifa->ifa_addr), (u_short) port);
+    rx_socket = rxi6_GetHostUDPSocket(mAddr, (u_short) port);
 
     if (rx_socket == OSI_NULLSOCKET) {
        rx_socket = rxi_GetHostUDPSocket(host, (u_short) port);

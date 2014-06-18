@@ -224,7 +224,7 @@ rxi_GetHostUDPSocket(u_int ahost, u_short port)
 }
 
 osi_socket
-rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port)
+rxi6_GetHostUDPSocket(struct sockaddr *ahost)
 {
     int binds, code = 0;
     int socketFd = OSI_NULLSOCKET;
@@ -232,6 +232,16 @@ rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port)
     struct sockaddr_in6 *taddr6;
     char *name = "rxi6_GetUDPSocket: ";
     unsigned int IS_IPV6 = 0;
+    u_short port;
+
+    if(ahost->sa_family == AF_INET) {
+        taddr4 = (struct sockaddr_in *)ahost;
+        port = taddr4->sin_port;
+    } else {
+        taddr6 = (struct sockaddr_in6 *)ahost;
+        port = taddr6->sin6_port;
+        IS_IPV6 = 1;
+    }
 
 #ifdef AFS_LINUX22_ENV
 #if defined(AFS_ADAPT_PMTU)
@@ -255,21 +265,12 @@ rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port)
     }
     /* end */
 
-    socketFd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+    socketFd = socket(ahost->sa_family, SOCK_DGRAM, IPPROTO_UDP);
 
     if(socketFd == OSI_NULLSOCKET) {    
         perror("socket"); 
         close(socketFd);
         return OSI_NULLSOCKET; 
-    }
-
-    if(ahost.ss_family == AF_INET) {
-        taddr4 = (struct sockaddr_in *)&ahost;
-        taddr4->sin_port = (u_short)port;
-    } else {
-        taddr6 = (struct sockaddr_in6 *)&ahost;
-        taddr6->sin6_port = (u_int16_t)port;
-        IS_IPV6 = 1;
     }
 
     #define MAX_RX_BINDS 10
@@ -829,7 +830,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 	rx_rto_setPeerTimeoutSecs(pp, 3);
 	pp->ifMTU = MIN(rx_MyMaxSendSize, RX_REMOTE_PACKET_SIZE);
     }
-#ifdef AFS_ADAPT_PMTU
+#ifdef AFS_ADAPT_PMTU /* MARCIO: fix it! */
     sock=socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock != OSI_NULLSOCKET) {
         addr.sin_family = AF_INET;

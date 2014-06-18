@@ -1066,7 +1066,7 @@ main(int argc, char **argv, char **envp)
 	    AFSDIR_SERVER_NETINFO_FILEPATH) {
 	    char reason[1024];
 	    ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
-			                  ADDRSPERSITE, reason,
+			                  		  ADDRSPERSITE, reason,
 	                                  AFSDIR_SERVER_NETINFO_FILEPATH,
 	                                  AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else {
@@ -1079,7 +1079,7 @@ main(int argc, char **argv, char **envp)
 	if (rxBind) {
 	    code = rx_InitHost(host, htons(AFSCONF_NANNYPORT));
 	} else {
-	    code = rx_Init(htons(AFSCONF_NANNYPORT));
+	    code = rx6_Init(htons(AFSCONF_NANNYPORT));
 	}
 	if (code) {
 	    bozo_Log("can't initialize rx: code=%d\n", code);

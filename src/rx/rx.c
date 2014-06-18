@@ -493,21 +493,19 @@ rx_InitHost(u_int host, u_int port)
     struct timeval tv;
 #endif /* KERNEL */
     char *htable, *ptable;
-    struct sockaddr_storage mAddr; /* MARCIO: test */
-    struct sockaddr_in6 *mAddr6; /* MARCIO: test */
 
     SPLVAR;
 
     INIT_PTHREAD_LOCKS;
     if (!rx_atomic_test_and_clear_bit(&rxinit_status, 0))
-	   return 0; /* already started */
+    return 0; /* already started */
 
 #ifdef RXDEBUG
     rxi_DebugInit();
 #endif
 #ifdef AFS_NT40_ENV
     if (afs_winsockInit() < 0)
-	   return -1;
+    return -1;
 #endif
 
 #ifndef KERNEL
@@ -521,32 +519,9 @@ rx_InitHost(u_int host, u_int port)
     /* Allocate and initialize a socket for client and perhaps server
      * connections. */
 
-    memset(&mAddr, 0, sizeof(struct sockaddr_storage)); /* MARCIO: test */
-
-#ifndef KERNEL /* MARCIO's CODE: test */    
-    mAddr6 = (struct sockaddr_in6 *)&mAddr;
-    mAddr6->sin6_family = AF_INET6;
-    mAddr6->sin6_addr = in6addr_any;
-#endif
-
-#ifdef KERNEL /* MARCIO: test */
-    mAddr6->sin6_addr = in6addr_any; /* MARCIO: test */
-#endif
-
-#ifndef KERNEL
-    rx_socket = rxi6_GetHostUDPSocket(mAddr, (u_short) port);
-
-    if (rx_socket == OSI_NULLSOCKET) {
-       rx_socket = rxi_GetHostUDPSocket(host, (u_short) port);
-    }
-#endif
-    
-#ifdef KERNEL
     rx_socket = rxi_GetHostUDPSocket(host, (u_short) port);
-#endif
-
     if (rx_socket == OSI_NULLSOCKET) {
-	   return RX_ADDRINUSE;
+    return RX_ADDRINUSE;
     }
 #if defined(RX_ENABLE_LOCKS) && defined(KERNEL)
 #ifdef RX_LOCKS_DB
@@ -561,33 +536,37 @@ rx_InitHost(u_int host, u_int port)
     MUTEX_INIT(&rx_rpc_stats, "rx_rpc_stats", MUTEX_DEFAULT, 0);
     MUTEX_INIT(&rx_freePktQ_lock, "rx_freePktQ_lock", MUTEX_DEFAULT, 0);
     MUTEX_INIT(&freeSQEList_lock, "freeSQEList lock", MUTEX_DEFAULT, 0);
-    MUTEX_INIT(&rx_freeCallQueue_lock, "rx_freeCallQueue_lock", MUTEX_DEFAULT, 0);
-    CV_INIT(&rx_waitingForPackets_cv, "rx_waitingForPackets_cv", CV_DEFAULT, 0);
-    MUTEX_INIT(&rx_peerHashTable_lock, "rx_peerHashTable_lock", MUTEX_DEFAULT, 0);
-    MUTEX_INIT(&rx_connHashTable_lock, "rx_connHashTable_lock", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_freeCallQueue_lock, "rx_freeCallQueue_lock", MUTEX_DEFAULT,
+           0);
+    CV_INIT(&rx_waitingForPackets_cv, "rx_waitingForPackets_cv", CV_DEFAULT,
+        0);
+    MUTEX_INIT(&rx_peerHashTable_lock, "rx_peerHashTable_lock", MUTEX_DEFAULT,
+           0);
+    MUTEX_INIT(&rx_connHashTable_lock, "rx_connHashTable_lock", MUTEX_DEFAULT,
+           0);
     MUTEX_INIT(&rx_serverPool_lock, "rx_serverPool_lock", MUTEX_DEFAULT, 0);
 #if defined(AFS_HPUX110_ENV)
     if (!uniprocessor)
-	   rx_sleepLock = alloc_spinlock(LAST_HELD_ORDER - 10, "rx_sleepLock");
+    rx_sleepLock = alloc_spinlock(LAST_HELD_ORDER - 10, "rx_sleepLock");
 #endif /* AFS_HPUX110_ENV */
 #endif /* RX_ENABLE_LOCKS && KERNEL */
 
     rxi_nCalls = 0;
     rx_connDeadTime = 12;
-    rx_tranquil = 0;		/* reset flag */
+    rx_tranquil = 0;        /* reset flag */
     rxi_ResetStatistics();
     htable = osi_Alloc(rx_hashTableSize * sizeof(struct rx_connection *));
-    PIN(htable, rx_hashTableSize * sizeof(struct rx_connection *));	/* XXXXX */
+    PIN(htable, rx_hashTableSize * sizeof(struct rx_connection *)); /* XXXXX */
     memset(htable, 0, rx_hashTableSize * sizeof(struct rx_connection *));
     ptable = osi_Alloc(rx_hashTableSize * sizeof(struct rx_peer *));
-    PIN(ptable, rx_hashTableSize * sizeof(struct rx_peer *));	/* XXXXX */
+    PIN(ptable, rx_hashTableSize * sizeof(struct rx_peer *));   /* XXXXX */
     memset(ptable, 0, rx_hashTableSize * sizeof(struct rx_peer *));
 
     /* Malloc up a bunch of packets & buffers */
     rx_nFreePackets = 0;
     opr_queue_Init(&rx_freePacketQueue);
     rxi_NeedMorePackets = FALSE;
-    rx_nPackets = 0;	/* rx_nPackets is managed by rxi_MorePackets* */
+    rx_nPackets = 0;    /* rx_nPackets is managed by rxi_MorePackets* */
 
     /* enforce a minimum number of allocated packets */
     if (rx_extraPackets < rxi_nSendFrags * rx_maxSendWindow)
@@ -613,43 +592,32 @@ rx_InitHost(u_int host, u_int port)
     osi_GetTime(&tv);
 #endif
     if (port) {
-	   rx_port = port;
-    } else { /* MARCIO: I still need to test this part */
+    rx_port = port;
+    } else {
 #if defined(KERNEL) && !defined(UKERNEL)
-	   /* Really, this should never happen in a real kernel */
-	   rx_port = 0;
+    /* Really, this should never happen in a real kernel */
+    rx_port = 0;
 #else
-       struct sockaddr_storage addr;
-	   struct sockaddr_in *addr4;
-       struct sockaddr_in6 *addr6;
+    struct sockaddr_in addr;
 #ifdef AFS_NT40_ENV
-       int addrlen = sizeof(addr);
+        int addrlen = sizeof(addr);
 #else
-	   socklen_t addrlen = sizeof(addr);
+    socklen_t addrlen = sizeof(addr);
 #endif
-       memset(&addr, 0, sizeof(addr));
-
-	   if (getsockname((intptr_t)rx_socket, (struct sockaddr *)&addr, &addrlen)) {
-	       rx_Finalize();
-	       osi_Free(htable, rx_hashTableSize * sizeof(struct rx_connection *));
-	       return -1;
-	   }
-
-       if(addr.ss_family == AF_INET) {
-           addr4 = (struct sockaddr_in *)&addr;
-           rx_port = addr4->sin_port;
-       } else {
-           addr6 = (struct sockaddr_in6 *)&addr;
-           rx_port = addr6->sin6_port;
-       }	   
+    if (getsockname((intptr_t)rx_socket, (struct sockaddr *)&addr, &addrlen)) {
+        rx_Finalize();
+        osi_Free(htable, rx_hashTableSize * sizeof(struct rx_connection *));
+        return -1;
+    }
+    rx_port = addr.sin_port;
 #endif
     }
     rx_stats.minRtt.sec = 9999999;
-#ifdef	KERNEL
+#ifdef  KERNEL
     rx_SetEpoch(tv.tv_sec | 0x80000000);
 #else
-    rx_SetEpoch(tv.tv_sec);	/* Start time of this package, rxkad
-				 * will provide a randomer value. */
+    rx_SetEpoch(tv.tv_sec); /* Start time of this package, rxkad
+                 * will provide a randomer value. */
 #endif
     MUTEX_ENTER(&rx_quota_mutex);
     rxi_dataQuota += rx_extraQuota; /* + extra pkts caller asked to rsrv */
@@ -661,7 +629,190 @@ rx_InitHost(u_int host, u_int port)
     rx_peerHashTable = (struct rx_peer **)ptable;
 
     rx_hardAckDelay.sec = 0;
-    rx_hardAckDelay.usec = 100000;	/* 100 milliseconds */
+    rx_hardAckDelay.usec = 100000;  /* 100 milliseconds */
+
+    rxevent_Init(20, rxi_ReScheduleEvents);
+
+    /* Initialize various global queues */
+    opr_queue_Init(&rx_idleServerQueue);
+    opr_queue_Init(&rx_incomingCallQueue);
+    opr_queue_Init(&rx_freeCallQueue);
+
+#if defined(AFS_NT40_ENV) && !defined(KERNEL)
+    /* Initialize our list of usable IP addresses. */
+    rx_GetIFInfo();
+#endif
+
+    /* Start listener process (exact function is dependent on the
+     * implementation environment--kernel or user space) */
+    rxi_StartListener();
+
+    USERPRI;
+    rx_atomic_clear_bit(&rxinit_status, 0);
+    return 0;
+}
+
+int
+rx6_InitHost(struct sockaddr *host) /* user space */
+{
+#ifdef KERNEL
+    osi_timeval_t tv;
+#else
+    struct timeval tv;
+#endif /* KERNEL */
+    char *htable, *ptable;
+    struct sockaddr_in *host4;
+    struct sockaddr_in6 *host6;
+    u_int port;
+
+    if(host->sa_family == AF_INET) {
+        host4 = (struct sockaddr_in *)host;
+        port = (u_int)host4->sin_port;
+    } else {
+        host6 = (struct sockaddr_in6 *)host;
+        port = (u_int)host6->sin6_port;
+    }
+
+    SPLVAR;
+
+    INIT_PTHREAD_LOCKS;
+    if (!rx_atomic_test_and_clear_bit(&rxinit_status, 0))
+       return 0; /* already started */
+
+#ifdef RXDEBUG
+    rxi_DebugInit();
+#endif
+#ifdef AFS_NT40_ENV
+    if (afs_winsockInit() < 0)
+       return -1;
+#endif
+
+#ifndef KERNEL
+    /*
+     * Initialize anything necessary to provide a non-premptive threading
+     * environment.
+     */
+    rxi_InitializeThreadSupport();
+
+    rx_socket = rxi6_GetHostUDPSocket(host);
+#endif
+
+    if (rx_socket == OSI_NULLSOCKET) 
+       return RX_ADDRINUSE;
+    
+#if defined(RX_ENABLE_LOCKS) && defined(KERNEL)
+#ifdef RX_LOCKS_DB
+    rxdb_init();
+#endif /* RX_LOCKS_DB */
+    MUTEX_INIT(&rx_stats_mutex, "rx_stats_mutex", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_quota_mutex, "rx_quota_mutex", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_atomic_mutex, "rx_atomic_mutex", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_pthread_mutex, "rx_pthread_mutex", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_packets_mutex, "rx_packets_mutex", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_refcnt_mutex, "rx_refcnt_mutex", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_rpc_stats, "rx_rpc_stats", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_freePktQ_lock, "rx_freePktQ_lock", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&freeSQEList_lock, "freeSQEList lock", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_freeCallQueue_lock, "rx_freeCallQueue_lock", MUTEX_DEFAULT, 0);
+    CV_INIT(&rx_waitingForPackets_cv, "rx_waitingForPackets_cv", CV_DEFAULT, 0);
+    MUTEX_INIT(&rx_peerHashTable_lock, "rx_peerHashTable_lock", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_connHashTable_lock, "rx_connHashTable_lock", MUTEX_DEFAULT, 0);
+    MUTEX_INIT(&rx_serverPool_lock, "rx_serverPool_lock", MUTEX_DEFAULT, 0);
+#if defined(AFS_HPUX110_ENV)
+    if (!uniprocessor)
+       rx_sleepLock = alloc_spinlock(LAST_HELD_ORDER - 10, "rx_sleepLock");
+#endif /* AFS_HPUX110_ENV */
+#endif /* RX_ENABLE_LOCKS && KERNEL */
+
+    rxi_nCalls = 0;
+    rx_connDeadTime = 12;
+    rx_tranquil = 0; /* reset flag */
+    rxi_ResetStatistics();
+    htable = osi_Alloc(rx_hashTableSize * sizeof(struct rx_connection *));
+    PIN(htable, rx_hashTableSize * sizeof(struct rx_connection *)); /* XXXXX */
+    memset(htable, 0, rx_hashTableSize * sizeof(struct rx_connection *));
+    ptable = osi_Alloc(rx_hashTableSize * sizeof(struct rx_peer *));
+    PIN(ptable, rx_hashTableSize * sizeof(struct rx_peer *));   /* XXXXX */
+    memset(ptable, 0, rx_hashTableSize * sizeof(struct rx_peer *));
+
+    /* Malloc up a bunch of packets & buffers */
+    rx_nFreePackets = 0;
+    opr_queue_Init(&rx_freePacketQueue);
+    rxi_NeedMorePackets = FALSE;
+    rx_nPackets = 0;    /* rx_nPackets is managed by rxi_MorePackets* */
+
+    /* enforce a minimum number of allocated packets */
+    if (rx_extraPackets < rxi_nSendFrags * rx_maxSendWindow)
+        rx_extraPackets = rxi_nSendFrags * rx_maxSendWindow;
+
+    /* allocate the initial free packet pool */
+#ifdef RX_ENABLE_TSFPQ
+    rxi_MorePacketsTSFPQ(rx_extraPackets + RX_MAX_QUOTA + 2, RX_TS_FPQ_FLUSH_GLOBAL, 0);
+#else /* RX_ENABLE_TSFPQ */
+    rxi_MorePackets(rx_extraPackets + RX_MAX_QUOTA + 2);        /* fudge */
+#endif /* RX_ENABLE_TSFPQ */
+    rx_CheckPackets();
+
+    NETPRI;
+
+    clock_Init();
+
+#if defined(AFS_NT40_ENV) && !defined(AFS_PTHREAD_ENV)
+    tv.tv_sec = clock_now.sec;
+    tv.tv_usec = clock_now.usec;
+    srand((unsigned int)tv.tv_usec);
+#else
+    osi_GetTime(&tv);
+#endif
+    if (port) {
+       rx_port = port;
+    } else {
+#if defined(KERNEL) && !defined(UKERNEL)
+        rx_port = 0;
+#else
+        struct sockaddr_storage addr;
+        struct sockaddr_in *addr4;
+        struct sockaddr_in6 *addr6;
+#ifdef AFS_NT40_ENV
+        int addrlen = sizeof(addr);
+#else
+        socklen_t addrlen = sizeof(addr);
+#endif
+        memset(&addr, 0, sizeof(addr));
+
+        if (getsockname((intptr_t)rx_socket, (struct sockaddr *)&addr, &addrlen)) {
+           rx_Finalize();
+           osi_Free(htable, rx_hashTableSize * sizeof(struct rx_connection *));
+           return -1;
+       }
+
+       if(addr.ss_family == AF_INET) {
+           addr4 = (struct sockaddr_in *)&addr;
+           rx_port = addr4->sin_port;
+       } else {
+           addr6 = (struct sockaddr_in6 *)&addr;
+           rx_port = addr6->sin6_port;
+       }
+#endif     
+    }
+    rx_stats.minRtt.sec = 9999999;
+#ifdef  KERNEL
+    rx_SetEpoch(tv.tv_sec | 0x80000000);
+#else
+    rx_SetEpoch(tv.tv_sec); /* Start time of this package, rxkad
+                 * will provide a randomer value. */
+#endif
+    MUTEX_ENTER(&rx_quota_mutex);
+    rxi_dataQuota += rx_extraQuota; /* + extra pkts caller asked to rsrv */
+    MUTEX_EXIT(&rx_quota_mutex);
+    /* *Slightly* random start time for the cid.  This is just to help
+     * out with the hashing function at the peer */
+    rx_nextCid = ((tv.tv_sec ^ tv.tv_usec) << RX_CIDSHIFT);
+    rx_connHashTable = (struct rx_connection **)htable;
+    rx_peerHashTable = (struct rx_peer **)ptable;
+
+    rx_hardAckDelay.sec = 0;
+    rx_hardAckDelay.usec = 100000;  /* 100 milliseconds */
 
     rxevent_Init(20, rxi_ReScheduleEvents);
 
@@ -689,6 +840,42 @@ int
 rx_Init(u_int port)
 {
     return rx_InitHost(htonl(INADDR_ANY), port);
+}
+
+int
+rx6_Init(u_int port)
+{    
+    struct sockaddr_in6 host;
+
+    memset(&host, 0, sizeof(host));
+    host.sin6_family = AF_INET6;
+    host.sin6_addr = in6addr_any;
+    host.sin6_port = port;
+    
+
+    return rx6_InitHost(&host);
+}
+
+int
+rx6_Initv2(u_int port)
+{
+    /*
+    struct sockaddr_in host;
+
+    memset(&host, 0, sizeof(host));
+    host.sin_family = AF_INET;
+    host.sin_addr.s_addr = htonl(INADDR_ANY);
+    host.sin_port = port;
+    */
+
+    struct sockaddr_in6 host;
+
+    memset(&host, 0, sizeof(host));
+    host.sin6_family = AF_INET6;
+    host.sin6_addr = in6addr_any;
+    host.sin6_port = port;
+
+    return rx6_InitHost(&host);
 }
 
 /* RTT Timer
@@ -1169,6 +1356,7 @@ rx6_NewConnection(struct sockaddr_storage shost, u_short sservice,
         if(inet_ntop(shost4->sin_family, (void*)&shost4->sin_addr, ip_readable, sizeof(ip_readable)) == NULL) {
             printf("inet_ntop error!\n");
         } else {
+            printf("rx_NewConnection 4 (host %s, port %u)\n", ip_readable, ntohs(sport)); /* take off */
             dpf(("rx_NewConnection(host %s, port %u, service %u, securityObject %p, ""serviceSecurityIndex %d)\n", ip_readable, ntohs(sport), sservice, securityObject, serviceSecurityIndex));
         }
     } else {
@@ -1178,6 +1366,7 @@ rx6_NewConnection(struct sockaddr_storage shost, u_short sservice,
         if(inet_ntop(shost6->sin6_family, (void*)&shost6->sin6_addr, ip_readable, sizeof(ip_readable)) == NULL) {
             printf("inet_ntop error!\n");
         } else {
+            printf("rx_NewConnection 6 (host %s, port %u)\n", ip_readable, ntohs(sport));
             dpf(("rx_NewConnection(host %s, port %u, service %u, securityObject %p, ""serviceSecurityIndex %d)\n", ip_readable, ntohs(sport), sservice, securityObject, serviceSecurityIndex));
         }
     }
@@ -3257,6 +3446,29 @@ rxi6_FindPeer(struct sockaddr_storage host, int create)
         if (create) {
             pp = rxi_AllocPeer();
             memcpy(&(pp->addr), &host, sizeof(struct sockaddr_storage));
+
+            #ifndef KERNEL
+            struct sockaddr_storage mAddr;
+            struct sockaddr_in *mAddr4;
+            struct sockaddr_in6 *mAddr6;
+            char ip_print[INET6_ADDRSTRLEN];
+
+            memcpy(&mAddr, &(pp->addr), sizeof(struct sockaddr_storage));
+            memset(ip_print, 0, sizeof(ip_print));
+
+            if(mAddr.ss_family == AF_INET) {
+                mAddr4 = (struct sockaddr_in *)&mAddr;
+
+                inet_ntop(mAddr4->sin_family, (void*)&mAddr4->sin_addr, ip_print, sizeof(ip_print));
+                printf("Addr peer 4: %s\n", ip_print);
+            } else {
+                mAddr6 = (struct sockaddr_in6 *)&mAddr;
+
+                inet_ntop(mAddr6->sin6_family, (void*)&mAddr6->sin6_addr, ip_print, sizeof(ip_print));
+                printf("Addr peer 6: %s\n", ip_print);
+            }
+            #endif
+
 #ifdef AFS_RXERRQ_ENV
             rx_atomic_set(&pp->neterrs, 0);
 #endif          
@@ -3454,6 +3666,22 @@ rxi6_FindConnection(osi_socket socket, struct sockaddr *host,
         port = (u_short)host6->sin6_port;
     }
 
+    #ifndef KERNEL
+
+    char ip_read[INET6_ADDRSTRLEN];
+
+    memset(ip_read, 0, sizeof(ip_read));
+
+    if(host->sa_family == AF_INET) {
+        inet_ntop(host4->sin_family, (void*)&host4->sin_addr, ip_read, sizeof(ip_read));
+        printf("Find Connection 4: %s\n", ip_read);
+    } else {
+        inet_ntop(host6->sin6_family, (void*)&host6->sin6_addr, ip_read, sizeof(ip_read));
+        printf("Find Connection 6: %s\n", ip_read);
+    }
+
+    #endif
+
     hashindex = CONN_HASH(key, port, cid, epoch, type);
 
     MUTEX_ENTER(&rx_connHashTable_lock);
@@ -3499,6 +3727,8 @@ rxi6_FindConnection(osi_socket socket, struct sockaddr *host,
     }
 
     if (!conn) {
+        printf("Connection not found!\n");
+
         struct rx_service *service;
 
         if (type == RX_CLIENT_CONNECTION) {
@@ -3550,6 +3780,8 @@ rxi6_FindConnection(osi_socket socket, struct sockaddr *host,
             (*service->newConnProc) (conn);
         if (rx_stats_active)
             rx_atomic_inc(&rx_stats.nServerConns);
+    } else {
+        printf("Connection found!\n");
     }
 
     MUTEX_ENTER(&rx_refcnt_mutex);
@@ -4070,10 +4302,38 @@ rxi6_ReceivePacket( struct rx_packet *np, osi_socket socket,
     int unknownService = 0;
     afs_uint32 host_ = 0; /* MARCIO's CODE: Fix it! */
     u_short port = 0; /* MARCIO's CODE: Fix it! */
+#ifndef KERNEL
+    char *ipv4_wrapper = "::ffff:";
+    char ip_print4[INET_ADDRSTRLEN];
+    char ip_print6[INET6_ADDRSTRLEN];
+    struct sockaddr_in6 *addr6;
+    struct sockaddr_in addr4;
+    char *begin;
+#endif
 #ifdef RXDEBUG
     char *packetType;
 #endif
     struct rx_packet *tnp;
+
+#ifndef KERNEL
+    memset(ip_print4, 0, sizeof(ip_print4));
+    memset(ip_print6, 0, sizeof(ip_print6));
+    addr6 = (struct sockaddr_in6 *)host;
+
+    if(inet_ntop(addr6->sin6_family, (void*)&addr6->sin6_addr, ip_print6, sizeof(ip_print6)) == NULL)
+        printf("inet_ntop erro!\n");
+    else {
+        if(strncmp(ipv4_wrapper, ip_print6, 7) == 0) {
+            begin = ip_print6 + 7;
+            memcpy(ip_print4, begin, INET_ADDRSTRLEN);
+
+            addr4.sin_family = AF_INET;
+            addr4.sin_addr.s_addr = inet_addr(ip_print4);
+            addr4.sin_port = addr6->sin6_port;
+            host = &addr4;
+        }
+    }
+#endif
 
     /* RXDEBUG */
 

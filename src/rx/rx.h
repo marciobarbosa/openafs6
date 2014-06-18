@@ -200,7 +200,7 @@ extern u_short rx_PortOf(struct rx_peer *peer);
 typedef void (*rx_destructor_t) (void *);
 int rx_KeyCreate(rx_destructor_t);
 osi_socket rxi_GetHostUDPSocket(u_int host, u_short port);
-osi_socket rxi6_GetHostUDPSocket(struct sockaddr_storage ahost, u_short port);
+osi_socket rxi6_GetHostUDPSocket(struct sockaddr *ahost);
 osi_socket rxi_GetUDPSocket(u_short port);
 #endif /* KERNEL */
 

@@ -24,7 +24,9 @@ extern void rx_rto_setPeerTimeoutSecs(struct rx_peer *, int secs);
 
 extern void rx_SetEpoch(afs_uint32 epoch);
 extern int rx_Init(u_int port);
+extern int rx6_Init(u_int port);
 extern int rx_InitHost(u_int host, u_int port);
+extern int rx6_InitHost(struct sockaddr *host);
 extern void rx_SetBusyChannelError(afs_int32 onoff);
 #ifdef AFS_NT40_ENV
 extern void rx_DebugOnOff(int on);

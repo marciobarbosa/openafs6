@@ -91,7 +91,6 @@ static struct rx_connection *
 GetConn(struct cmd_syndesc *as, int aencrypt)
 {    
     struct addrinfo hints, *res, *p;
-    struct sockaddr_storage new_addr;
     struct sockaddr_in *addr4;
     struct sockaddr_in6 *addr6;
     int status;
@@ -948,6 +947,7 @@ StatServer(struct cmd_syndesc *as, void *arock)
 	return IStatServer(as, int32p);
 
     tconn = GetConn(as, 0);
+
     for (i = 0;; i++) {
 	/* for each instance */
 	tp = ibuffer;
@@ -1724,7 +1724,7 @@ main(int argc, char **argv)
 #endif
 
     /* start up rx */
-    code = rx_Init(0);
+    code = rx6_Initv2(0);
     if (code) {
 	printf("bos: could not initialize rx (%s)\n", em(code));
 	exit(1);

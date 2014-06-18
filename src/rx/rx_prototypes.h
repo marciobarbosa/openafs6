@@ -39,7 +39,7 @@ extern struct rx_connection *rx_NewConnection(afs_uint32 shost,
 					      struct rx_securityClass
 					      *securityObject,
 					      int serviceSecurityIndex);
-extern struct rx_connection *rx6_NewConnection(struct sockaddr_storage shost, 
+extern struct rx_connection *rx6_NewConnection(struct sockaddr *shost, 
 						  u_short sservice, 
                   		  struct rx_securityClass *securityObject, 
                   		  int serviceSecurityIndex);

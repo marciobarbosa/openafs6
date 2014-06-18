@@ -994,10 +994,11 @@ main(int argc, char **argv, char **envp)
     tdir = afsconf_Open(AFSDIR_SERVER_ETC_DIRPATH);
     if (!tdir) {
 	/* try to create local cell config file */
-	struct afsconf_cell tcell;
+	struct afsconf_cell tcell; /* MARCIO's CODE: Fix it! (IPv4 only) */
 	strcpy(tcell.name, "localcell");
 	tcell.numServers = 1;
 	code = gethostname(tcell.hostName[0], MAXHOSTCHARS);
+
 	if (code) {
 	    bozo_Log("failed to get hostname, code %d\n", errno);
 	    exit(1);
@@ -1129,7 +1130,7 @@ main(int argc, char **argv, char **envp)
     if (DoPidFiles) {
 	bozo_CreatePidFile("bosserver", NULL, getpid());
     }
-
+    
     tservice = rx_NewServiceHost(host, 0, /* service id */ 1,
 			         "bozo", securityClasses, numClasses,
 				 BOZO_ExecuteRequest);
@@ -1140,7 +1141,7 @@ main(int argc, char **argv, char **envp)
         rx_SetSecurityConfiguration(tservice, RXS_CONFIG_FLAGS,
                                     (void *)RXS_CONFIG_FLAGS_DISABLE_DOTCHECK);
     }
-
+    
     tservice =
 	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats",
 			  securityClasses, numClasses, RXSTATS_ExecuteRequest);

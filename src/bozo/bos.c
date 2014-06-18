@@ -163,7 +163,7 @@ GetConn(struct cmd_syndesc *as, int aencrypt)
     if (scIndex == RX_SECIDX_NULL)
         fprintf(stderr, "bos: running unauthenticated\n");
 
-    tconn = rx6_NewConnection(*((struct sockaddr_storage *)p->ai_addr), 1, sc, scIndex);
+    tconn = rx6_NewConnection(p->ai_addr, 1, sc, scIndex);
     
     if (!tconn) {
         fprintf(stderr, "bos: could not create rx connection\n");
@@ -1724,7 +1724,7 @@ main(int argc, char **argv)
 #endif
 
     /* start up rx */
-    code = rx6_Initv2(0);
+    code = rx6_Init(0);
     if (code) {
 	printf("bos: could not initialize rx (%s)\n", em(code));
 	exit(1);

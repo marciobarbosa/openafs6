@@ -91,11 +91,6 @@ extern afs_int32 afs_termState;
 
 #include <afs/rxgen_consts.h>
 
-#ifndef KERNEL /* MARCIO's CODE: test */
-    #include <ifaddrs.h>
-    #include <net/if.h>
-#endif
-
 #ifndef KERNEL
 #ifdef AFS_PTHREAD_ENV
 #ifndef AFS_NT40_ENV
@@ -853,29 +848,7 @@ rx6_Init(u_int port)
     host.sin6_port = port;
     
 
-    return rx6_InitHost(&host);
-}
-
-int
-rx6_Initv2(u_int port)
-{
-    /*
-    struct sockaddr_in host;
-
-    memset(&host, 0, sizeof(host));
-    host.sin_family = AF_INET;
-    host.sin_addr.s_addr = htonl(INADDR_ANY);
-    host.sin_port = port;
-    */
-
-    struct sockaddr_in6 host;
-
-    memset(&host, 0, sizeof(host));
-    host.sin6_family = AF_INET6;
-    host.sin6_addr = in6addr_any;
-    host.sin6_port = port;
-
-    return rx6_InitHost(&host);
+    return rx6_InitHost((struct sockaddr *)&host);
 }
 
 /* RTT Timer
@@ -1331,7 +1304,7 @@ rx_NewConnection(afs_uint32 shost, u_short sport, u_short sservice,
  * connection. This function works for both, IPv4 and IPv6. */
 #ifndef KERNEL
 struct rx_connection *
-rx6_NewConnection(struct sockaddr_storage shost, u_short sservice, 
+rx6_NewConnection(struct sockaddr *shost, u_short sservice, 
                   struct rx_securityClass *securityObject, 
                   int serviceSecurityIndex)
 {
@@ -1349,24 +1322,22 @@ rx6_NewConnection(struct sockaddr_storage shost, u_short sservice,
     SPLVAR;
     clock_NewTime();
 
-    if(shost.ss_family == AF_INET) {
-        shost4 = (struct sockaddr_in *)&shost;
+    if(shost->sa_family == AF_INET) {
+        shost4 = (struct sockaddr_in *)shost;
         sport = shost4->sin_port;
         key = (afs_uint32)shost4->sin_addr.s_addr;
         if(inet_ntop(shost4->sin_family, (void*)&shost4->sin_addr, ip_readable, sizeof(ip_readable)) == NULL) {
             printf("inet_ntop error!\n");
         } else {
-            printf("rx_NewConnection 4 (host %s, port %u)\n", ip_readable, ntohs(sport)); /* take off */
             dpf(("rx_NewConnection(host %s, port %u, service %u, securityObject %p, ""serviceSecurityIndex %d)\n", ip_readable, ntohs(sport), sservice, securityObject, serviceSecurityIndex));
         }
     } else {
-        shost6 = (struct sockaddr_in6 *)&shost;
+        shost6 = (struct sockaddr_in6 *)shost;
         sport = shost6->sin6_port;
         key = (afs_uint32)rxi6_HashAddr(shost6->sin6_addr.s6_addr);
         if(inet_ntop(shost6->sin6_family, (void*)&shost6->sin6_addr, ip_readable, sizeof(ip_readable)) == NULL) {
             printf("inet_ntop error!\n");
         } else {
-            printf("rx_NewConnection 6 (host %s, port %u)\n", ip_readable, ntohs(sport));
             dpf(("rx_NewConnection(host %s, port %u, service %u, securityObject %p, ""serviceSecurityIndex %d)\n", ip_readable, ntohs(sport), sservice, securityObject, serviceSecurityIndex));
         }
     }
@@ -3372,7 +3343,7 @@ rx_GetNetworkError(struct rx_connection *conn, int *err_origin, int *err_type,
 unsigned int 
 rxi6_HashAddr(unsigned char addr[])
 {
-    unsigned int addr_slices[4];    
+    unsigned int addr_slices[4]; 
     unsigned int aux;
     int i, j;
 
@@ -3399,7 +3370,7 @@ rxi6_HashAddr(unsigned char addr[])
  * for both, IPv4 and IPv6.
  */
 struct rx_peer *
-rxi6_FindPeer(struct sockaddr_storage host, int create)
+rxi6_FindPeer(struct sockaddr *host, int create)
 {
     struct rx_peer *pp;
     int hashIndex;
@@ -3408,13 +3379,13 @@ rxi6_FindPeer(struct sockaddr_storage host, int create)
     struct sockaddr_in6 *host6, *addr6;
     afs_uint32 key;
 
-    if(host.ss_family == AF_INET) {
-        host4 = (struct sockaddr_in *)&host;
+    if(host->sa_family == AF_INET) {
+        host4 = (struct sockaddr_in *)host;
         port = (u_short)host4->sin_port;
         key = (afs_uint32)host4->sin_addr.s_addr;
         hashIndex = PEER_HASH(key, port);
     } else {
-        host6 = (struct sockaddr_in6 *)&host;
+        host6 = (struct sockaddr_in6 *)host;
         port = (u_short)host6->sin6_port;
         key = (afs_uint32)rxi6_HashAddr(host6->sin6_addr.s6_addr);
         hashIndex = PEER_HASH(key, port);
@@ -3422,53 +3393,24 @@ rxi6_FindPeer(struct sockaddr_storage host, int create)
 
     MUTEX_ENTER(&rx_peerHashTable_lock);
 
-    if(host.ss_family == AF_INET) {
-        for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
-            if(pp->addr.ss_family == AF_INET) {
-                addr4 = (struct sockaddr_in *)&(pp->addr);
+    for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
+        if(pp->addr.ss_family == AF_INET && host->sa_family == AF_INET) {
+            addr4 = (struct sockaddr_in *)&(pp->addr);
 
-                if(host4->sin_addr.s_addr == addr4->sin_addr.s_addr)
-                    break;
-            }
-        }
-    } else {
-        for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
-            if(pp->addr.ss_family == AF_INET6) {
+            if(host4->sin_addr.s_addr == addr4->sin_addr.s_addr)
+                break;
+        } else if(pp->addr.ss_family == AF_INET6 && host->sa_family == AF_INET6) {
                 addr6 = (struct sockaddr_in6 *)&(pp->addr);
 
                 if(strncmp(host6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr, sizeof(host6->sin6_addr.s6_addr)) == 0) 
-                    break;                
-            }
+                    break; 
         }
     }
 
     if (!pp) {
         if (create) {
             pp = rxi_AllocPeer();
-            memcpy(&(pp->addr), &host, sizeof(struct sockaddr_storage));
-
-            #ifndef KERNEL
-            struct sockaddr_storage mAddr;
-            struct sockaddr_in *mAddr4;
-            struct sockaddr_in6 *mAddr6;
-            char ip_print[INET6_ADDRSTRLEN];
-
-            memcpy(&mAddr, &(pp->addr), sizeof(struct sockaddr_storage));
-            memset(ip_print, 0, sizeof(ip_print));
-
-            if(mAddr.ss_family == AF_INET) {
-                mAddr4 = (struct sockaddr_in *)&mAddr;
-
-                inet_ntop(mAddr4->sin_family, (void*)&mAddr4->sin_addr, ip_print, sizeof(ip_print));
-                printf("Addr peer 4: %s\n", ip_print);
-            } else {
-                mAddr6 = (struct sockaddr_in6 *)&mAddr;
-
-                inet_ntop(mAddr6->sin6_family, (void*)&mAddr6->sin6_addr, ip_print, sizeof(ip_print));
-                printf("Addr peer 6: %s\n", ip_print);
-            }
-            #endif
-
+            memcpy(&(pp->addr), (struct sockaddr_storage *)host, sizeof(struct sockaddr_storage));
 #ifdef AFS_RXERRQ_ENV
             rx_atomic_set(&pp->neterrs, 0);
 #endif          
@@ -3666,22 +3608,6 @@ rxi6_FindConnection(osi_socket socket, struct sockaddr *host,
         port = (u_short)host6->sin6_port;
     }
 
-    #ifndef KERNEL
-
-    char ip_read[INET6_ADDRSTRLEN];
-
-    memset(ip_read, 0, sizeof(ip_read));
-
-    if(host->sa_family == AF_INET) {
-        inet_ntop(host4->sin_family, (void*)&host4->sin_addr, ip_read, sizeof(ip_read));
-        printf("Find Connection 4: %s\n", ip_read);
-    } else {
-        inet_ntop(host6->sin6_family, (void*)&host6->sin6_addr, ip_read, sizeof(ip_read));
-        printf("Find Connection 6: %s\n", ip_read);
-    }
-
-    #endif
-
     hashindex = CONN_HASH(key, port, cid, epoch, type);
 
     MUTEX_ENTER(&rx_connHashTable_lock);
@@ -3727,8 +3653,6 @@ rxi6_FindConnection(osi_socket socket, struct sockaddr *host,
     }
 
     if (!conn) {
-        printf("Connection not found!\n");
-
         struct rx_service *service;
 
         if (type == RX_CLIENT_CONNECTION) {
@@ -3751,7 +3675,7 @@ rxi6_FindConnection(osi_socket socket, struct sockaddr *host,
         CV_INIT(&conn->conn_call_cv, "conn call cv", CV_DEFAULT, 0);
         conn->next = rx_connHashTable[hashindex];
         rx_connHashTable[hashindex] = conn;
-        conn->peer = rxi6_FindPeer(*((struct sockaddr_storage *)host), 1);
+        conn->peer = rxi6_FindPeer(host, 1);
         conn->type = RX_SERVER_CONNECTION;
         conn->lastSendTime = clock_Sec();
         conn->epoch = epoch;
@@ -3780,8 +3704,6 @@ rxi6_FindConnection(osi_socket socket, struct sockaddr *host,
             (*service->newConnProc) (conn);
         if (rx_stats_active)
             rx_atomic_inc(&rx_stats.nServerConns);
-    } else {
-        printf("Connection found!\n");
     }
 
     MUTEX_ENTER(&rx_refcnt_mutex);
@@ -4304,8 +4226,8 @@ rxi6_ReceivePacket( struct rx_packet *np, osi_socket socket,
     u_short port = 0; /* MARCIO's CODE: Fix it! */
 #ifndef KERNEL
     char *ipv4_wrapper = "::ffff:";
-    char ip_print4[INET_ADDRSTRLEN];
-    char ip_print6[INET6_ADDRSTRLEN];
+    char ip_readable4[INET_ADDRSTRLEN];
+    char ip_readable6[INET6_ADDRSTRLEN];
     struct sockaddr_in6 *addr6;
     struct sockaddr_in addr4;
     char *begin;
@@ -4316,21 +4238,21 @@ rxi6_ReceivePacket( struct rx_packet *np, osi_socket socket,
     struct rx_packet *tnp;
 
 #ifndef KERNEL
-    memset(ip_print4, 0, sizeof(ip_print4));
-    memset(ip_print6, 0, sizeof(ip_print6));
+    memset(ip_readable4, 0, sizeof(ip_readable4));
+    memset(ip_readable6, 0, sizeof(ip_readable6));
     addr6 = (struct sockaddr_in6 *)host;
 
-    if(inet_ntop(addr6->sin6_family, (void*)&addr6->sin6_addr, ip_print6, sizeof(ip_print6)) == NULL)
-        printf("inet_ntop erro!\n");
+    if(inet_ntop(addr6->sin6_family, (void*)&addr6->sin6_addr, ip_readable6, sizeof(ip_readable6)) == NULL)
+        printf("rx: inet_ntop erro!\n");
     else {
-        if(strncmp(ipv4_wrapper, ip_print6, 7) == 0) {
-            begin = ip_print6 + 7;
-            memcpy(ip_print4, begin, INET_ADDRSTRLEN);
+        if(strncmp(ipv4_wrapper, ip_readable6, 7) == 0) {
+            begin = ip_readable6 + 7;
+            memcpy(ip_readable4, begin, INET_ADDRSTRLEN);
 
             addr4.sin_family = AF_INET;
-            addr4.sin_addr.s_addr = inet_addr(ip_print4);
+            addr4.sin_addr.s_addr = inet_addr(ip_readable4);
             addr4.sin_port = addr6->sin6_port;
-            host = &addr4;
+            host = (struct sockaddr *)&addr4;
         }
     }
 #endif
@@ -4341,7 +4263,7 @@ rxi6_ReceivePacket( struct rx_packet *np, osi_socket socket,
         (np->header.type == RX_PACKET_TYPE_DEBUG))) {
         struct rx_peer *peer;
         
-        peer = rxi6_FindPeer(*((struct sockaddr_storage *)host), 0);
+        peer = rxi6_FindPeer(host, 0);
         
         if (peer && (peer->refCount > 0)) {
 #ifdef AFS_RXERRQ_ENV

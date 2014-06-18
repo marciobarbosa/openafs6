@@ -267,8 +267,8 @@ rxi6_GetHostUDPSocket(struct sockaddr *ahost)
 
     socketFd = socket(ahost->sa_family, SOCK_DGRAM, IPPROTO_UDP);
 
-    if(socketFd == OSI_NULLSOCKET) {    
-        perror("socket"); 
+    if(socketFd == OSI_NULLSOCKET) {
+        perror("socket");
         close(socketFd);
         return OSI_NULLSOCKET; 
     }
@@ -437,6 +437,51 @@ rx_getAllAddr(afs_uint32 * buffer, int maxSize)
     return count;
 }
 
+/*
+** return number of addresses
+** and the addresses themselves in the buffer
+** maxSize - max number of interfaces to return (works for both IPv4 and IPv6).
+*/
+
+static int
+rx6_getAllAddr(struct sockaddr *buffer, unsigned int maxSize)
+{   /* just works for linux and user space */
+    int status, count = 0;
+    struct ifaddrs *myaddrs, *ifa;
+    struct sockaddr_storage *addrs = (struct sockaddr_storage *)buffer;
+
+    status = getifaddrs(&myaddrs);
+
+    if(status != 0)
+        return 0;
+
+    for (ifa = myaddrs; ifa != NULL && count < NIFS; ifa = ifa->ifa_next) {
+
+        if (ifa->ifa_addr == NULL) continue; 
+        if ((ifa->ifa_flags & IFF_UP) == 0) continue;
+        if (count >= maxSize) continue; /* no more space */
+        if((ifa->ifa_flags & IFF_LOOPBACK) != 0) continue; /* skip loopback address */
+
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            memset(&addrs[count], 0, sizeof(struct sockaddr_storage));
+            memcpy(&addrs[count], ifa->ifa_addr, sizeof(struct sockaddr_in));
+            
+            count++;
+        }
+
+        else if (ifa->ifa_addr->sa_family == AF_INET6) {
+            memset(&addrs[count], 0, sizeof(struct sockaddr_storage));
+            memcpy(&addrs[count], ifa->ifa_addr, sizeof(struct sockaddr_in6));
+            
+            count++;
+        }               
+    }
+    
+    freeifaddrs(myaddrs);
+    
+    return count;
+}
+
 /* this function returns the total number of interface addresses
  * the buffer has to be passed in by the caller. It also returns
  * the matching interface mask and mtu.  All values are returned
@@ -460,6 +505,84 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
     }
     return count;
 }
+
+/* this function returns the total number of interface addresses
+ * the buffer has to be passed in by the caller. It also returns
+ * the matching interface mask and mtu.  All values are returned
+ * in network byte order (works for both, IPv4 and IPv6).
+ */
+
+int 
+rx6_getAllAddrMaskMtu(struct sockaddr *addrBuffer, struct sockaddr *maskBuffer, 
+                      unsigned int *mtuBuffer, unsigned int maxSize)
+{   /* just works for linux and user space */
+    int count = 0;
+    int s, status;
+    struct ifreq ifr;
+    struct ifaddrs *myaddrs, *ifa;
+    struct sockaddr_storage *addrs = (struct sockaddr_storage *)addrBuffer;
+    struct sockaddr_storage *masks = (struct sockaddr_storage *)maskBuffer;
+
+    status = getifaddrs(&myaddrs);
+    s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); 
+
+    if(status != 0)
+        return 0;
+
+    if(s < 0)
+        return 0;
+
+    for(ifa = myaddrs; ifa != NULL && count < NIFS; ifa = ifa->ifa_next) {
+        memset(&ifr, 0, sizeof(ifr));
+
+        if (ifa->ifa_addr == NULL) continue; 
+        if ((ifa->ifa_flags & IFF_UP) == 0) continue;
+        if (count >= maxSize) continue; /* no more space */
+        if((ifa->ifa_flags & IFF_LOOPBACK) != 0) continue; /* skip loopback address */
+
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            memset(&addrs[count], 0, sizeof(struct sockaddr_storage));
+            memset(&masks[count], 0, sizeof(struct sockaddr_storage));
+            memcpy(&addrs[count], ifa->ifa_addr, sizeof(struct sockaddr_in));
+            memcpy(&masks[count], ifa->ifa_netmask, sizeof(struct sockaddr_in));
+            memcpy(ifr.ifr_name, ifa->ifa_name, strlen(ifa->ifa_name));
+            ifr.ifr_name[strlen(ifa->ifa_name)] = '\0';
+                            
+            if (ioctl(s, SIOCGIFMTU, (caddr_t) &ifr) < 0) {
+                printf("The function ioctl() did not work!\n"); /* MARCIO: use dpf() insted of printf() */
+                mtuBuffer[count] = htonl(1500);
+            } else {
+                mtuBuffer[count] = htonl(ifr.ifr_metric);
+            }
+            
+            count++;
+        }
+
+        else if (ifa->ifa_addr->sa_family == AF_INET6) {
+            memset(&addrs[count], 0, sizeof(struct sockaddr_storage));
+            memset(&masks[count], 0, sizeof(struct sockaddr_storage));
+            memcpy(&addrs[count], ifa->ifa_addr, sizeof(struct sockaddr_in6));
+            memcpy(&masks[count], ifa->ifa_netmask, sizeof(struct sockaddr_in6));
+            memcpy(ifr.ifr_name, ifa->ifa_name, strlen(ifa->ifa_name));
+            ifr.ifr_name[strlen(ifa->ifa_name)] = '\0';
+                            
+            if (ioctl(s, SIOCGIFMTU, (caddr_t) &ifr) < 0) {
+                printf("The function ioctl() did not work!\n"); /* MARCIO: use dpf() insted of printf() */
+                mtuBuffer[count] = htonl(1500);
+            } else {
+                mtuBuffer[count] = htonl(ifr.ifr_metric);
+            }
+            
+            count++;
+        }               
+    }
+    
+    freeifaddrs(myaddrs);
+    close(s);
+    
+    return count;
+}
+
 #endif
 
 #ifdef AFS_NT40_ENV

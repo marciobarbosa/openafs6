@@ -438,9 +438,30 @@ struct rx_connection *
 UV_Bind(afs_uint32 aserver, afs_int32 port)
 {
     struct rx_connection *tc;
+    
+    tc = rx_NewConnection(aserver, htons(port), VOLSERVICE_ID, uvclass, uvindex);
 
-    tc = rx_NewConnection(aserver, htons(port), VOLSERVICE_ID, uvclass,
-			  uvindex);
+    return tc;
+}
+
+/* New version of UV_Bind. This function works for both, IPv4 and IPv6 */
+struct rx_connection *
+UV6_Bind(struct sockaddr *aserver, afs_int32 port)
+{
+    struct rx_connection *tc;
+    struct sockaddr_in *addr4;
+    struct sockaddr_in6 *addr6;
+
+    if(aserver->sa_family == AF_INET) {
+    	addr4 = (struct sockaddr_in *)aserver;
+    	addr4->sin_port = htons(port);
+    } else {
+    	addr6 = (struct sockaddr_in6 *)aserver;
+    	addr6->sin6_port = htons(port);
+    }
+    
+    tc = rx6_NewConnection(aserver, VOLSERVICE_ID, uvclass, uvindex);
+
     return tc;
 }
 
@@ -7497,7 +7518,42 @@ UV_VolserStatus(afs_uint32 server, transDebugInfo ** rpntr, afs_int32 * rcount)
     aconn = UV_Bind(server, AFSCONF_VOLUMEPORT);
     transInfo.transDebugEntries_val = (transDebugInfo *) 0;
     transInfo.transDebugEntries_len = 0;
+    
     code = AFSVolMonitor(aconn, &transInfo);
+
+    if (code) {
+	fprintf(STDERR,
+		"Could not access status information about the server\n");
+	PrintError("", code);
+	if (transInfo.transDebugEntries_val)
+	    free(transInfo.transDebugEntries_val);
+	if (aconn)
+	    rx_DestroyConnection(aconn);
+	return code;
+    } else {
+	*rcount = transInfo.transDebugEntries_len;
+	*rpntr = transInfo.transDebugEntries_val;
+	if (aconn)
+	    rx_DestroyConnection(aconn);
+	return 0;
+    }
+
+
+}
+
+int
+UV6_VolserStatus(struct sockaddr *server, transDebugInfo ** rpntr, afs_int32 * rcount)
+{
+    struct rx_connection *aconn;
+    transDebugEntries transInfo;
+    afs_int32 code = 0;
+
+    aconn = UV6_Bind(server, AFSCONF_VOLUMEPORT);
+    transInfo.transDebugEntries_val = (transDebugInfo *) 0;
+    transInfo.transDebugEntries_len = 0;
+    
+    code = AFSVolMonitor(aconn, &transInfo);
+
     if (code) {
 	fprintf(STDERR,
 		"Could not access status information about the server\n");

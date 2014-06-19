@@ -262,6 +262,45 @@ GetServer(char *aname)
      */
     return 0;
 }
+/*
+ * New version of GetServer. This function works for both, IPv4 and IPv6.
+ */
+int 
+GetServer6(char *aname, struct sockaddr *addr, int ipv6)
+{
+	struct addrinfo hints, *res, *p;
+	int status;
+
+	memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = 0;
+
+    if(status = getaddrinfo(aname, NULL, &hints, &res) != 0) {
+        printf("vos: %s\n", gai_strerror(status));
+        return 0;
+    }
+
+    for(p = res; p != NULL; p = p->ai_next) {
+        if (p->ai_family == AF_INET && ipv6 == 0)
+            break;
+        else if(p->ai_family == AF_INET6 && ipv6 == 1)
+        	break;
+    }
+
+    if(p == NULL) {
+    	printf("vos: address not found!\n");
+    	return 0;
+    } else {
+    	if(!ipv6)
+    		memcpy(addr, p->ai_addr, sizeof(struct sockaddr_in));
+    	else
+    		memcpy(addr, p->ai_addr, sizeof(struct sockaddr_in6));
+    }
+
+    freeaddrinfo(res);
+
+    return 1;
+}
 
 afs_int32
 GetVolumeType(char *aname)
@@ -4075,14 +4114,16 @@ VolserStatus(struct cmd_syndesc *as, void *arock)
     int i;
     char pname[10];
     time_t t;
+    struct sockaddr_storage addr;
 
-    server = GetServer(as->parms[0].items->data);
+    server = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 0);
+
     if (!server) {
 	fprintf(STDERR, "vos: host '%s' not found in host table\n",
 		as->parms[0].items->data);
 	exit(1);
     }
-    code = UV_VolserStatus(server, &pntr, &count);
+    code = UV6_VolserStatus((struct sockaddr *)&addr, &pntr, &count);
     if (code) {
 	PrintDiagnostics("status", code);
 	exit(1);
@@ -5460,10 +5501,10 @@ SetAddrs(struct cmd_syndesc *as, void *arock)
 	for (ti = as->parms[1].items; ti && i < ADDRSPERSITE; ti = ti->next) {
 
 	    if (noresolve)
-		saddr = GetServerNoresolve(ti->data);
-	    else
-		saddr = GetServer(ti->data);
-
+			saddr = GetServerNoresolve(ti->data);	    
+	    else 
+			saddr = GetServer(ti->data);
+	    
 	    if (!saddr) {
 		fprintf(STDERR, "vos: Can't get host info for '%s'\n",
 			ti->data);

@@ -1690,14 +1690,14 @@ osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec, int nvecs,
         if(inet_ntop(addr6->sin6_family, (void*)&addr6->sin6_addr, ip_readable, sizeof(ip_readable)) == NULL)
             printf("error6!\n");
         else
-            printf("SENDMSG ADDR6: %s\n", ip_readable);
+            printf("SENDMSG ADDR6': %s\n", ip_readable);
     } else if(((struct sockaddr_storage *)addr_)->ss_family == AF_INET) {
         addr4 = (struct sockaddr_in *)addr_;
 
         if(inet_ntop(addr4->sin_family, (void*)&addr4->sin_addr, ip_readable, sizeof(ip_readable)) == NULL)
             printf("error4!\n");
         else
-            printf("SENDMSG ADDR4: %s\n", ip_readable);
+            printf("SENDMSG ADDR4': %s\n", ip_readable);
     } else {
         printf("NONE!\n");
     }

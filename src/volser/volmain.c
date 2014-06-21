@@ -445,26 +445,30 @@ main(int argc, char **argv)
 #endif
     /* Open VolserLog and map stdout, stderr into it; VInitVolumePackage2 can
        log, so we need to do this here */
-    OpenLog(logFile);
+    //OpenLog(logFile); /* MARCIO: take the comment off! */
 
+    /* MARCIO: take the comment off!
     VOptDefaults(volumeServer, &opts);
+    
     if (VInitVolumePackage2(volumeServer, &opts)) {
 	Log("Shutting down: errors encountered initializing volume package\n");
 	exit(1);
     }
+    */
     /* For nuke() */
     Lock_Init(&localLock);
-    DInit(40);
+    DInit(40); 
 #ifndef AFS_PTHREAD_ENV
     vol_PollProc = IOMGR_Poll;	/* tell vol pkg to poll io system periodically */
 #endif
 #ifndef AFS_NT40_ENV
     rxi_syscallp = volser_syscall;
-#endif
+#endif    
     rx_nPackets = rxpackets;	/* set the max number of packets */
     if (udpBufSize)
 	rx_SetUdpBufSize(udpBufSize);	/* set the UDP buffer size for receive */
     if (rxBind) {
+    
 	afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
@@ -480,8 +484,9 @@ main(int argc, char **argv)
         if (ccode == 1)
             host = SHostAddrs[0];
     }
-
-    code = rx_InitHost(host, (int)htons(AFSCONF_VOLUMEPORT));
+    
+    //code = rx_InitHost(host, (int)htons(AFSCONF_VOLUMEPORT));
+    code = rx6_Init((int)htons(AFSCONF_VOLUMEPORT));
     if (code) {
 	fprintf(stderr, "rx init failed on socket AFSCONF_VOLUMEPORT %u\n",
 		AFSCONF_VOLUMEPORT);

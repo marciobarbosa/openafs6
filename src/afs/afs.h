@@ -34,7 +34,6 @@
 
 
 extern int afs_shuttingdown;
-
 /*
  * Macros to uniquely identify the AFS vfs struct
  */

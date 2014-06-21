@@ -287,7 +287,6 @@ hpr_Initialize(struct ubik_client **uclient)
 	afsconf_Close(tdir);
 	return code;
     }
-
     code = rx_Init(0);
     if (code) {
 	ViceLog(0, ("hpr_Initialize: Could not initialize rx."));

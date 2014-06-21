@@ -16,7 +16,6 @@
 #include <UKERNEL/afsincludes.h>
 #else
 
-
 /* AFS based headers */
 #include "afs/stds.h"
 #ifdef	AFS_AIX_ENV

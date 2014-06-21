@@ -3444,6 +3444,7 @@ rxi_FindPeer(afs_uint32 host, u_short port, int create)
     int hashIndex;
     hashIndex = PEER_HASH(host, port);
     MUTEX_ENTER(&rx_peerHashTable_lock);
+
     for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
 	if ((pp->host == host) && (pp->port == port))
 	    break;

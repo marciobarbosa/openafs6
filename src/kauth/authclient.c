@@ -197,8 +197,7 @@ ka_SingleServerConn(char *cell, char *server,	/* name of server to contact */
     if (match < 0) {
 	UNLOCK_GLOBAL_MUTEX;
 	return KANOCELLS;
-    }
-
+    }    
     code = rx_Init(0);
     if (code) {
 	UNLOCK_GLOBAL_MUTEX;
@@ -300,7 +299,6 @@ ka_AuthServerConn(char *cell, int service, struct ktc_token * token,
 	UNLOCK_GLOBAL_MUTEX;
 	return code;
     }
-
     code = rx_Init(0);
     if (code) {
 	UNLOCK_GLOBAL_MUTEX;

@@ -25,7 +25,6 @@
 #include "rmtsys.h"
 #include "sys_prototypes.h"
 
-
 #define	NOPAG	    0xffffffff	/* Also defined in afs/afs.h */
 static afs_int32 hostAddr = 0;
 static int hostAddrLookup = 0;

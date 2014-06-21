@@ -13,7 +13,6 @@
 
 #include <roken.h>
 
-
 #include <afs/cmd.h>
 #include <rx/rx.h>
 #include <rx/rx_globals.h>

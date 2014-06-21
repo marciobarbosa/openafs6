@@ -4115,15 +4115,20 @@ VolserStatus(struct cmd_syndesc *as, void *arock)
     char pname[10];
     time_t t;
     struct sockaddr_storage addr;
-
-    server = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 0);
+    
+    server = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 1); /* last parameter: 0 = ipv4; 1 = ipv6 */
+    
+    if(!server) /* if an ipv6 was not found, try to find an ipv4 address */
+    	server = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 0); /* last parameter: 0 = ipv4; 1 = ipv6 */
 
     if (!server) {
 	fprintf(STDERR, "vos: host '%s' not found in host table\n",
 		as->parms[0].items->data);
 	exit(1);
     }
+    
     code = UV6_VolserStatus((struct sockaddr *)&addr, &pntr, &count);
+    
     if (code) {
 	PrintDiagnostics("status", code);
 	exit(1);
@@ -4201,6 +4206,7 @@ VolserStatus(struct cmd_syndesc *as, void *arock)
     }
     if (oldpntr)
 	free(oldpntr);
+
     return 0;
 }
 
@@ -6173,7 +6179,7 @@ main(int argc, char **argv)
     cmd_AddParm(ts, "-backup", CMD_FLAG, CMD_OPTIONAL,
 		"also delete backup volume if one is found");
     COMMONPARMS;
-
+    
     ts = cmd_CreateSyntax("status", VolserStatus, NULL,
 			  "report on volser status");
     cmd_AddParm(ts, "-server", CMD_SINGLE, 0, "machine name");
@@ -6286,7 +6292,9 @@ main(int argc, char **argv)
     cmd_AddParm(ts, "-host", CMD_LIST, 0, "address of host");
 
     COMMONPARMS;
+
     code = cmd_Dispatch(argc, argv);
+
     if (rxInitDone) {
 	/* Shut down the ubik_client and rx connections */
 	if (cstruct) {

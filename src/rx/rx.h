@@ -620,8 +620,6 @@ struct rx_securityClass {
 #define RXS_GetStats(obj,conn,stats) RXS_OP(obj,GetStats,(obj,conn,stats))
 #define RXS_SetConfiguration(obj, conn, type, value, currentValue) RXS_OP(obj, SetConfiguration,(obj,conn,type,value,currentValue))
 
-
-
 /* Structure for keeping rx statistics.  Note that this structure is returned
  * by rxdebug, so, for compatibility reasons, new fields should be appended (or
  * spares used), the rxdebug protocol checked, if necessary, and the PrintStats

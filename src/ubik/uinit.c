@@ -45,8 +45,8 @@ internal_client_init(struct afsconf_dir *dir, struct afsconf_cell *info,
 
     progname = getprogname();
     if (progname == NULL)
-	progname = "<unknown>";
-	
+	progname = "<unknown>";	
+
     code = rx6_Init(0);
     if (code) {
 	fprintf(stderr, "%s: could not initialize rx.\n", progname);

@@ -5598,9 +5598,70 @@ UV_ListPartitions(afs_uint32 aserver, struct partList *ptrPartList,
     PrintError("", code);
     if (aconn)
 	rx_DestroyConnection(aconn);
+
     return code;
 }
 
+/* list all the partitions on <aserver> (IPv4 and IPv6) */
+int
+UV6_ListPartitions(struct sockaddr *aserver, struct partList *ptrPartList, afs_int32 * cntp)
+{
+	struct rx_connection *aconn;
+    struct pIDs partIds;
+    struct partEntries partEnts;
+    int i, j = 0, code;
+
+    *cntp = 0;
+    aconn = UV6_Bind(aserver, AFSCONF_VOLUMEPORT);
+
+    partEnts.partEntries_len = 0;
+    partEnts.partEntries_val = NULL;
+    code = AFSVolXListPartitions(aconn, &partEnts);	/* this is available only on new servers */
+
+    if (code == RXGEN_OPCODE) {
+		for (i = 0; i < 26; i++)	/* try old interface */
+		    partIds.partIds[i] = -1;
+
+		code = AFSVolListPartitions(aconn, &partIds);
+
+		if (!code) {
+		    for (i = 0; i < 26; i++) {
+				if ((partIds.partIds[i]) != -1) {
+				    ptrPartList->partId[j] = partIds.partIds[i];
+				    ptrPartList->partFlags[j] = PARTVALID;
+				    j++;
+				} else
+				    ptrPartList->partFlags[i] = 0;
+		    }
+		    *cntp = j;
+		}
+    } else if (!code) {
+		*cntp = partEnts.partEntries_len;
+		if (*cntp > VOLMAXPARTS) {
+		    fprintf(STDERR,
+			    "Warning: number of partitions on the server too high %d (process only %d)\n",
+			    *cntp, VOLMAXPARTS);
+		    	*cntp = VOLMAXPARTS;
+		}
+		for (i = 0; i < *cntp; i++) {
+		    ptrPartList->partId[i] = partEnts.partEntries_val[i];
+		    ptrPartList->partFlags[i] = PARTVALID;
+		}		
+		free(partEnts.partEntries_val);
+    }
+
+   	/* out: */
+    if (code)
+		fprintf(STDERR,
+		"Could not fetch the list of partitions from the server\n");
+    
+    PrintError("", code);
+    
+    if (aconn)
+		rx_DestroyConnection(aconn);
+
+    return code;
+}
 
 /*zap the list of volumes specified by volPtrArray (the volCloneId field).
  This is used by the backup system */
@@ -5746,6 +5807,7 @@ UV_ListVolumes(afs_uint32 aserver, afs_int32 apart, int all,
     volumeInfo.volEntries_len = 0;
 
     aconn = UV_Bind(aserver, AFSCONF_VOLUMEPORT);
+
     code = AFSVolListVolumes(aconn, apart, all, &volumeInfo);
     if (code) {
 	fprintf(STDERR,
@@ -5758,6 +5820,43 @@ UV_ListVolumes(afs_uint32 aserver, afs_int32 apart, int all,
     if (aconn)
 	rx_DestroyConnection(aconn);
     PrintError("", code);
+
+    return code;
+}
+
+/*list all the volumes on <aserver> and <apart>. If all = 1, then all the
+* relevant fields of the volume are also returned. This is a heavy weight operation. (IPv4 and IPv6)*/
+int
+UV6_ListVolumes(struct sockaddr *aserver, afs_int32 apart, int all,
+	       	    struct volintInfo **resultPtr, afs_int32 * size)
+{
+	struct rx_connection *aconn;
+    afs_int32 code = 0;
+    volEntries volumeInfo;
+
+    code = 0;
+    *size = 0;
+    *resultPtr = (volintInfo *) 0;
+    volumeInfo.volEntries_val = (volintInfo *) 0;	/*this hints the stub to allocate space */
+    volumeInfo.volEntries_len = 0;
+
+    aconn = UV6_Bind(aserver, AFSCONF_VOLUMEPORT);
+
+    code = AFSVolListVolumes(aconn, apart, all, &volumeInfo);
+
+    if (code) {
+		fprintf(STDERR,
+		"Could not fetch the list of volumes from the server\n");
+    } else {
+		*resultPtr = volumeInfo.volEntries_val;
+		*size = volumeInfo.volEntries_len;
+    }
+
+    if (aconn)
+		rx_DestroyConnection(aconn);
+	
+    PrintError("", code);
+
     return code;
 }
 

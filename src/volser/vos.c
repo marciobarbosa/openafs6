@@ -336,7 +336,28 @@ IsPartValid(afs_int32 partId, afs_uint32 server, afs_int32 *code)
     return success;
 }
 
+int
+IsPartValid6(afs_int32 partId, struct sockaddr *server, afs_int32 *code)
+{
+	struct partList dummyPartList;
+    int i, success, cnt;
 
+    success = 0;
+    *code = 0;
+
+    *code = UV6_ListPartitions(server, &dummyPartList, &cnt);
+    
+    if (*code)
+		return success;
+
+    for (i = 0; i < cnt; i++) {
+		if (dummyPartList.partFlags[i] & PARTVALID)
+		    if (dummyPartList.partId[i] == partId)
+				success = 1;
+    }
+
+    return success;
+}
 
  /*sends the contents of file associated with <fd> and <blksize>  to Rx Stream
   * associated  with <call> */
@@ -657,6 +678,130 @@ DisplayFormat(volintInfo *pntr, afs_uint32 server, afs_int32 part,
 		fprintf(STDOUT, "**** Could not attach volume %lu ****\n",
 			(unsigned long)pntr->volid);
 	}
+    }
+}
+
+static void
+DisplayFormat6(volintInfo *pntr, struct sockaddr *server, afs_int32 part,
+	      		int *totalOK, int *totalNotOK, int *totalBusy, int fast,
+	      		int longlist, int disp)
+{
+    char pname[10];
+    time_t t;
+
+    if (fast) {
+		fprintf(STDOUT, "%-10lu\n", (unsigned long)pntr->volid);
+    } else if (longlist) {
+		if (pntr->status == VOK) {
+		    fprintf(STDOUT, "%-32s ", pntr->name);
+		    fprintf(STDOUT, "%10lu ", (unsigned long)pntr->volid);
+
+		    if (pntr->type == 0)
+				fprintf(STDOUT, "RW ");
+		    if (pntr->type == 1)
+				fprintf(STDOUT, "RO ");
+		    if (pntr->type == 2)
+				fprintf(STDOUT, "BK ");
+
+		    fprintf(STDOUT, "%10d K  ", pntr->size);
+
+		    if (pntr->inUse == 1) {
+				fprintf(STDOUT, "On-line");
+				*totalOK += 1;
+		    } else {
+				fprintf(STDOUT, "Off-line");
+				*totalNotOK += 1;
+		    }
+
+		    if (pntr->needsSalvaged == 1)
+				fprintf(STDOUT, "**needs salvage**");
+
+		    fprintf(STDOUT, "\n");
+		    MapPartIdIntoName(part, pname);
+		    fprintf(STDOUT, "    %s %s \n", hostutil6_GetNameByINet(server), pname);
+		    fprintf(STDOUT, "    RWrite %10lu ROnly %10lu Backup %10lu \n",
+			    (unsigned long)pntr->parentID,
+			    (unsigned long)pntr->cloneID,
+			    (unsigned long)pntr->backupID);
+		    fprintf(STDOUT, "    MaxQuota %10d K \n", pntr->maxquota);
+		    t = pntr->creationDate;
+		    fprintf(STDOUT, "    Creation    %s", ctime(&t));
+		    t = pntr->copyDate;
+		    fprintf(STDOUT, "    Copy        %s", ctime(&t));
+
+		    t = pntr->backupDate;
+
+		    if (!t)
+				fprintf(STDOUT, "    Backup      Never\n");
+		    else
+				fprintf(STDOUT, "    Backup      %s", ctime(&t));
+
+		    t = pntr->accessDate;
+
+		    if (t)
+				fprintf(STDOUT, "    Last Access %s", ctime(&t));
+
+		    t = pntr->updateDate;
+
+		    if (!t)
+				fprintf(STDOUT, "    Last Update Never\n");
+		    else
+				fprintf(STDOUT, "    Last Update %s", ctime(&t));
+
+		    fprintf(STDOUT, "    %d accesses in the past day (i.e., vnode references)\n", pntr->dayUse);
+
+		} else if (pntr->status == VBUSY) {
+		    *totalBusy += 1;
+		    qPut(&busyHead, pntr->volid);
+
+		    if (disp)
+				fprintf(STDOUT, "**** Volume %lu is busy ****\n", (unsigned long)pntr->volid);
+		} else {
+		    *totalNotOK += 1;
+		    qPut(&notokHead, pntr->volid);
+
+		    if (disp)
+				fprintf(STDOUT, "**** Could not attach volume %lu ****\n", (unsigned long)pntr->volid);
+		}
+		fprintf(STDOUT, "\n");
+    } else {			/* default listing */
+		if (pntr->status == VOK) {
+		    fprintf(STDOUT, "%-32s ", pntr->name);
+		    fprintf(STDOUT, "%10lu ", (unsigned long)pntr->volid);
+
+		    if (pntr->type == 0)
+				fprintf(STDOUT, "RW ");
+		    if (pntr->type == 1)
+				fprintf(STDOUT, "RO ");
+		    if (pntr->type == 2)
+				fprintf(STDOUT, "BK ");
+
+		    fprintf(STDOUT, "%10d K ", pntr->size);
+
+		    if (pntr->inUse == 1) {
+				fprintf(STDOUT, "On-line");
+				*totalOK += 1;
+		    } else {
+				fprintf(STDOUT, "Off-line");
+				*totalNotOK += 1;
+		    }
+		    if (pntr->needsSalvaged == 1)
+				fprintf(STDOUT, "**needs salvage**");
+
+		    fprintf(STDOUT, "\n");
+		} else if (pntr->status == VBUSY) {
+		    *totalBusy += 1;
+		    qPut(&busyHead, pntr->volid);
+
+		    if (disp)
+				fprintf(STDOUT, "**** Volume %lu is busy ****\n", (unsigned long)pntr->volid);
+		} else {
+		    *totalNotOK += 1;
+		    qPut(&notokHead, pntr->volid);
+
+		    if (disp)
+				fprintf(STDOUT, "**** Could not attach volume %lu ****\n", (unsigned long)pntr->volid);
+		}
     }
 }
 
@@ -1247,6 +1392,48 @@ DisplayVolumes(afs_uint32 server, afs_int32 part, volintInfo *pntr,
 		    "Total volumes onLine %d ; Total volumes offLine %d ; Total busy %d\n\n",
 		    totalOK, totalNotOK, totalBusy);
 	}
+    }
+}
+
+static void
+DisplayVolumes6(struct sockaddr *server, afs_int32 part, volintInfo *pntr,
+	       afs_int32 count, afs_int32 longlist, afs_int32 fast, int quiet)
+{
+	int totalOK, totalNotOK, totalBusy, i;
+    afs_uint32 volid = 0;
+
+    totalOK = 0;
+    totalNotOK = 0;
+    totalBusy = 0;
+    qInit(&busyHead);
+    qInit(&notokHead);
+
+    for (i = 0; i < count; i++) {
+		DisplayFormat6(pntr, server, part, &totalOK, &totalNotOK, &totalBusy, fast, longlist, 0);
+		pntr++;
+    }
+
+    if (totalBusy) {
+		while (busyHead.count) {
+		    qGet(&busyHead, &volid);
+		    fprintf(STDOUT, "**** Volume %lu is busy ****\n", (unsigned long)volid);
+		}
+    }
+
+    if (totalNotOK) {
+		while (notokHead.count) {
+		    qGet(&notokHead, &volid);
+		    fprintf(STDOUT, "**** Could not attach volume %lu ****\n", (unsigned long)volid);
+		}
+    }
+    
+    if (!quiet) {
+		fprintf(STDOUT, "\n");
+		if (!fast) {
+		    fprintf(STDOUT,
+			    "Total volumes onLine %d ; Total volumes offLine %d ; Total busy %d\n\n",
+			    totalOK, totalNotOK, totalBusy);
+		}
     }
 }
 /*------------------------------------------------------------------------
@@ -3721,9 +3908,13 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
     int all;
     int quiet, cnt;
 
+    struct sockaddr_storage addr; 
+
     apart = -1;
     fast = 0;
     int32list = 0;
+
+    memset(&addr, 0, sizeof(addr));
 
     if (as->parms[3].items)
 	int32list = 1;
@@ -3765,15 +3956,24 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
 	dummyPartList.partFlags[0] = PARTVALID;
 	cnt = 1;
     }
-    aserver = GetServer(as->parms[0].items->data);
+
+    printf("1\n");
+
+    aserver = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 1); /* last parameter: 0 = ipv4; 1 = ipv6 */
+    
+    if(!aserver) /* if an ipv6 was not found, try to find an ipv4 address */
+    	aserver = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 0); /* last parameter: 0 = ipv4; 1 = ipv6 */
+
     if (aserver == 0) {
 	fprintf(STDERR, "vos: server '%s' not found in host table\n",
 		as->parms[0].items->data);
 	exit(1);
     }
 
+    printf("2\n");
+
     if (apart != -1) {
-	if (!IsPartValid(apart, aserver, &code)) {	/*check for validity of the partition */
+	if (!IsPartValid6(apart, (struct sockaddr *)&addr, &code)) {	/*check for validity of the partition */
 	    if (code)
 		PrintError("", code);
 	    else
@@ -3783,22 +3983,27 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
 	    exit(1);
 	}
     } else {
-	code = UV_ListPartitions(aserver, &dummyPartList, &cnt);
+	code = UV6_ListPartitions((struct sockaddr *)&addr, &dummyPartList, &cnt);
 	if (code) {
 	    PrintDiagnostics("listvol", code);
 	    exit(1);
 	}
     }
+
+    printf("3\n");
+
     for (i = 0; i < cnt; i++) {
 	if (dummyPartList.partFlags[i] & PARTVALID) {
+
+		printf("4\n");
+
 	    if (wantExtendedInfo)
-		code =
-		    UV_XListVolumes(aserver, dummyPartList.partId[i], all,
-				    &xInfoP, &count);
+			code = UV_XListVolumes(aserver, dummyPartList.partId[i], all, &xInfoP, &count);	    
 	    else
-		code =
-		    UV_ListVolumes(aserver, dummyPartList.partId[i], all,
-				   &pntr, &count);
+			code = UV6_ListVolumes((struct sockaddr *)&addr, dummyPartList.partId[i], all, &pntr, &count);
+	    
+		printf("5\n");
+
 	    if (code) {
 		PrintDiagnostics("listvol", code);
 		exit(1);
@@ -3829,26 +4034,26 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
 			as->parms[0].items->data, pname,
 			(unsigned long)count);
 	    if (wantExtendedInfo) {
-		if (as->parms[6].items)
-		    XDisplayVolumes2(aserver, dummyPartList.partId[i], origxInfoP,
-				count, int32list, fast, quiet);
-		else
-		    XDisplayVolumes(aserver, dummyPartList.partId[i], origxInfoP,
-				count, int32list, fast, quiet);
-		if (xInfoP)
-		    free(xInfoP);
-		xInfoP = (volintXInfo *) 0;
+			if (as->parms[6].items)
+			    XDisplayVolumes2(aserver, dummyPartList.partId[i], origxInfoP, count, int32list, fast, quiet);			
+			else
+			    XDisplayVolumes(aserver, dummyPartList.partId[i], origxInfoP, count, int32list, fast, quiet);
+			
+			if (xInfoP)
+			    free(xInfoP);
+			xInfoP = (volintXInfo *) 0;
 	    } else {
-		if (as->parms[6].items)
-		    DisplayVolumes2(aserver, dummyPartList.partId[i], oldpntr,
-				    count);
-		else
-		    DisplayVolumes(aserver, dummyPartList.partId[i], oldpntr,
-				   count, int32list, fast, quiet);
-		if (pntr)
-		    free(pntr);
-		pntr = (volintInfo *) 0;
+			if (as->parms[6].items)
+			    DisplayVolumes2(aserver, dummyPartList.partId[i], oldpntr, count);
+			else
+			    DisplayVolumes6((struct sockaddr *)&addr, dummyPartList.partId[i], oldpntr, count, int32list, fast, quiet);
+			
+			if (pntr)
+			    free(pntr);
+			pntr = (volintInfo *) 0;
 	    }
+
+	    printf("6\n");
 	}
     }
     return 0;

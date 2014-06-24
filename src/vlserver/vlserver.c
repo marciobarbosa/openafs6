@@ -361,17 +361,15 @@ main(int argc, char **argv)
 #ifndef AFS_NT40_ENV
     serverLogSyslogTag = "vlserver";
 #endif
-    OpenLog(logFile);	/* set up logging */
-    SetupLogSignals();
-
+    //OpenLog(logFile);	/* set up logging */ /* MARCIO: Take this off! */
+    SetupLogSignals();    
     tdir = afsconf_Open(configDir);
     if (!tdir) {
 	VLog(0,
 	    ("vlserver: can't open configuration files in dir %s, giving up.\n",
 	     configDir));
 	exit(1);
-    }
-
+    }    
     /* initialize audit user check */
     osi_audit_set_user_check(tdir, vldb_IsLocalRealmMatch);
 
@@ -392,7 +390,6 @@ main(int argc, char **argv)
 	exit(1);
     }
     memcpy(&myHost, th->h_addr, sizeof(afs_uint32));
-
 #if !defined(AFS_HPUX_ENV) && !defined(AFS_NT40_ENV)
     signal(SIGXCPU, CheckSignal_Signal);
 #endif
@@ -481,7 +478,6 @@ main(int argc, char **argv)
         rx_SetSecurityConfiguration(tservice, RXS_CONFIG_FLAGS,
                                     (void *)RXS_CONFIG_FLAGS_DISABLE_DOTCHECK);
     }
-
     tservice =
 	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats",
 			  securityClasses, numClasses,

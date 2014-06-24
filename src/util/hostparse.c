@@ -116,6 +116,28 @@ hostutil_GetNameByINet(afs_uint32 addr)
     return tbuffer;
 }
 
+/* Translate an internet address into a nice printable string. 
+   This function works for both, IPv4 and IPv6. Just offer support
+   to LINUX */
+char *
+hostutil6_GetNameByINet(struct sockaddr *addr)
+{
+	static char tbuffer[256];
+	int size;
+
+	if(addr->sa_family == AF_INET)
+		size = sizeof(struct sockaddr_in);
+	else
+		size = sizeof(struct sockaddr_in6);
+
+	memset(tbuffer, 0, sizeof(tbuffer));
+
+	if(getnameinfo(addr, size, tbuffer, sizeof(tbuffer), NULL, 0, 0) != 0)
+		return NULL;
+
+	return tbuffer;
+}
+
 /* the parameter is a pointer to a buffer containing a string of
 ** bytes of the form
 ** w.x.y.z 	# machineName

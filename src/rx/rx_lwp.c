@@ -437,6 +437,9 @@ rxi_Recvmsg(osi_socket socket, struct msghdr *msg_p, int flags)
     struct sockaddr_in *addr4;
     struct sockaddr_in6 *addr6;
     char ip_readable[INET6_ADDRSTRLEN];
+    FILE *fp;
+
+    fp = fopen("/home/marcio/Documents/Project/mbarbosa/openafs6/debug/vol", "a");
 
     addr = (struct sockaddr *)msg_p->msg_name;
     memset(ip_readable, 0, sizeof(ip_readable));
@@ -447,8 +450,8 @@ rxi_Recvmsg(osi_socket socket, struct msghdr *msg_p, int flags)
     	if(inet_ntop(addr4->sin_family, (void*)&addr4->sin_addr, ip_readable, sizeof(ip_readable)) == NULL)
     		printf("inet_ntop error!\n");
     	else {
-    		printf("Recv Addr4: %s\n", ip_readable);
-    		printf("Recv Port4: %d\n", ntohs(addr4->sin_port));
+    		fprintf(fp, "Recv Addr4: %s\n", ip_readable);
+    		fprintf(fp, "Recv Port4: %d\n", ntohs(addr4->sin_port));
     	}
     } else if(addr->sa_family == AF_INET6) {
     	addr6 = (struct sockaddr_in6 *)addr;
@@ -456,12 +459,14 @@ rxi_Recvmsg(osi_socket socket, struct msghdr *msg_p, int flags)
     	if(inet_ntop(addr6->sin6_family, (void*)&addr6->sin6_addr, ip_readable, sizeof(ip_readable)) == NULL)
     		printf("inet_ntop error!\n");
     	else {
-    		printf("Recv Addr6: %s\n", ip_readable);
-    		printf("Recv Port6: %d\n", ntohs(addr6->sin6_port));
+    		fprintf(fp, "Recv Addr6: %s\n", ip_readable);
+    		fprintf(fp, "Recv Port6: %d\n", ntohs(addr6->sin6_port));
     	}
     } else {
-    	printf("NONE!\n");
+    	fprintf(fp, "%s\n", "NONE");
     }
+
+    fclose(fp);
 #endif
 
 #ifdef AFS_RXERRQ_ENV
@@ -482,38 +487,6 @@ int
 rxi_Sendmsg(osi_socket socket, struct msghdr *msg_p, int flags)
 {
     fd_set *sfds = (fd_set *) 0;
-
-#ifndef KERNEL
-    struct sockaddr *addr;
-    struct sockaddr_in *addr4;
-    struct sockaddr_in6 *addr6;
-    char ip_readable[INET6_ADDRSTRLEN];
-
-    addr = (struct sockaddr *)msg_p->msg_name;
-    memset(ip_readable, 0, sizeof(ip_readable));
-
-    if(addr->sa_family == AF_INET) {
-    	addr4 = (struct sockaddr_in *)addr;
-
-    	if(inet_ntop(addr4->sin_family, (void*)&addr4->sin_addr, ip_readable, sizeof(ip_readable)) == NULL)
-    		printf("inet_ntop error!\n");
-    	else {
-    		printf("Send Addr4: %s\n", ip_readable);
-    		printf("Send Port4: %d\n", ntohs(addr4->sin_port));
-    	}
-    } else if(addr->sa_family == AF_INET6) {
-    	addr6 = (struct sockaddr_in6 *)addr;
-
-    	if(inet_ntop(addr6->sin6_family, (void*)&addr6->sin6_addr, ip_readable, sizeof(ip_readable)) == NULL)
-    		printf("inet_ntop error!\n");
-    	else {
-    		printf("Send Addr6: %s\n", ip_readable);
-    		printf("Send Port6: %d\n", ntohs(addr6->sin6_port));
-    	}
-    } else {
-    	printf("NONE!\n");
-    }
-#endif
 
     while (sendmsg(socket, msg_p, flags) == -1) {
 	int err;

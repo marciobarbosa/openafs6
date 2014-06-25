@@ -4385,7 +4385,6 @@ rxi6_ReceivePacket( struct rx_packet *np, osi_socket socket,
         case RX_PACKET_TYPE_DATA:
             if (type == RX_CLIENT_CONNECTION && !opr_queue_IsEmpty(&call->tq))
                 rxi_AckAllInTransmitQueue(call);
-                printf("DATA PACKET!\n");
                 np = rxi_ReceiveDataPacket(call, np, 1, socket, host, port, tnop, newcallp);
         break;
         case RX_PACKET_TYPE_ACK:

@@ -3957,8 +3957,6 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
 	cnt = 1;
     }
 
-    printf("1\n");
-
     aserver = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 1); /* last parameter: 0 = ipv4; 1 = ipv6 */
     
     if(!aserver) /* if an ipv6 was not found, try to find an ipv4 address */
@@ -3969,8 +3967,6 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
 		as->parms[0].items->data);
 	exit(1);
     }
-
-    printf("2\n");
 
     if (apart != -1) {
 	if (!IsPartValid6(apart, (struct sockaddr *)&addr, &code)) {	/*check for validity of the partition */
@@ -3990,19 +3986,13 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
 	}
     }
 
-    printf("3\n");
-
     for (i = 0; i < cnt; i++) {
 	if (dummyPartList.partFlags[i] & PARTVALID) {
-
-		printf("4\n");
 
 	    if (wantExtendedInfo)
 			code = UV_XListVolumes(aserver, dummyPartList.partId[i], all, &xInfoP, &count);	    
 	    else
 			code = UV6_ListVolumes((struct sockaddr *)&addr, dummyPartList.partId[i], all, &pntr, &count);
-	    
-		printf("5\n");
 
 	    if (code) {
 		PrintDiagnostics("listvol", code);
@@ -4052,8 +4042,6 @@ ListVolumes(struct cmd_syndesc *as, void *arock)
 			    free(pntr);
 			pntr = (volintInfo *) 0;
 	    }
-
-	    printf("6\n");
 	}
     }
     return 0;

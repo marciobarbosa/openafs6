@@ -445,16 +445,15 @@ main(int argc, char **argv)
 #endif
     /* Open VolserLog and map stdout, stderr into it; VInitVolumePackage2 can
        log, so we need to do this here */
-    //OpenLog(logFile); /* MARCIO: take the comment off! */
-
-    /* MARCIO: take the comment off!
+    OpenLog(logFile); /* MARCIO: take the comment off! */
+    //begin
     VOptDefaults(volumeServer, &opts);
     
     if (VInitVolumePackage2(volumeServer, &opts)) {
 	Log("Shutting down: errors encountered initializing volume package\n");
 	exit(1);
     }
-    */
+    //end
     /* For nuke() */
     Lock_Init(&localLock);
     DInit(40); 

@@ -42,6 +42,21 @@ internal_client_init(struct afsconf_dir *dir, struct afsconf_cell *info,
     /* This must change if VLDB_MAXSERVERS becomes larger than MAXSERVERS */
     static struct rx_connection *serverconns[MAXSERVERS];
     const char *progname;
+    struct sockaddr_in6 host;
+    char ip_readable[INET6_ADDRSTRLEN];
+    char buf[sizeof(struct in6_addr)];
+
+    memset(buf, 0, sizeof(buf));
+    memset(ip_readable, 0, sizeof(ip_readable));
+    memset(&host, 0, sizeof(host));
+    
+    host.sin6_family = AF_INET6;
+    host.sin6_port = port;
+
+    inet_pton(AF_INET6, "fe80::20c:29ff:fec2:4d8c", buf);
+    memcpy(&host.sin6_addr.s6_addr, buf, sizeof(host.sin6_addr.s6_addr));
+	
+    printf("First port: %d\n", port);
 
     progname = getprogname();
     if (progname == NULL)
@@ -71,23 +86,46 @@ internal_client_init(struct afsconf_dir *dir, struct afsconf_cell *info,
 	(*secproc) (sc, scIndex);
 
     if (server) {
-	serverconns[0] = rx_NewConnection(server, port,
-					  usrvid, sc, scIndex);
+    	
+		serverconns[0] = rx_NewConnection(server, port, usrvid, sc, scIndex); /* MARCIO: Fix it! */    	
+
+		//serverconns[0] = rx6_NewConnection((struct sockaddr *)&host, 
+		//				  usrvid, sc, scIndex); /* MARCIO: Possible source of problems! */
     } else {
-	if (info->numServers > maxservers) {
-	    fprintf(stderr,
-		    "%s: info.numServers=%d (> maxservers=%d)\n",
-		    progname, info->numServers, maxservers);
-	    return -1;
-	}
-	for (i = 0; i < info->numServers; i++) {
-	    if (!info->hostAddr[i].sin_port && port)
-		info->hostAddr[i].sin_port = port;
-	    serverconns[i] =
-		rx_NewConnection(info->hostAddr[i].sin_addr.s_addr,
-				 info->hostAddr[i].sin_port, usrvid,
-				 sc, scIndex);
-	}
+		if (info->numServers > maxservers) {
+		    fprintf(stderr,
+			    "%s: info.numServers=%d (> maxservers=%d)\n",
+			    progname, info->numServers, maxservers);
+		    return -1;
+		}
+		for (i = 0; i < info->numServers; i++) {
+		    if (!info->hostAddr[i].sin_port && port)
+				info->hostAddr[i].sin_port = port;
+
+			if(inet_ntop(info->hostAddr[i].sin_family, (void*)&info->hostAddr[i].sin_addr, ip_readable, sizeof(ip_readable)) == NULL)
+				printf("inet_ntop error!\n");
+			else
+				printf("Addr: %s\n", ip_readable);
+			printf("Port: %d\n", port);
+
+			//memcpy(&host, &info->hostAddr[i], sizeof(struct sockaddr_in));
+			
+			host.sin6_port = info->hostAddr[i].sin_port;
+
+			serverconns[i] =
+			rx6_NewConnection((struct sockaddr *)&host, usrvid, sc, scIndex); /* MARCIO: Possible source of problems! */
+
+			//serverconns[i] = rx6_NewConnection((struct sockaddr *)&info->hostAddr[i], usrvid, sc, scIndex);		
+
+			printf("New port: %d\n", info->hostAddr[i].sin_port);	
+
+			/*
+		    serverconns[i] =
+			rx_NewConnection(info->hostAddr[i].sin_addr.s_addr,
+					 info->hostAddr[i].sin_port, usrvid,
+					 sc, scIndex);
+			*/		
+		}
     }
     /* Are we just setting up connections, or is this really ubik stuff? */
     if (uclientp) {
@@ -149,7 +187,7 @@ internal_client_init_dir(const char *confDir, char *cellName, int secFlags,
 	afsconf_Close(dir);
 	return code;
     }
-
+    
     code = internal_client_init(dir, &info, secFlags, uclientp, secproc,
 			        maxservers, serviceid, deadtime, server,
 				port, usrvid);
@@ -165,7 +203,6 @@ ugen_ClientInitServer(const char *confDir, char *cellName, int secFlags,
 		      char *serviceid, int deadtime, afs_uint32 server,
 		      afs_uint32 port)
 {
-
     return internal_client_init_dir(confDir, cellName, secFlags, uclientp,
 				    NULL, maxservers, serviceid, deadtime,
 				    server, port, USER_SERVICE_ID);
@@ -205,7 +242,6 @@ ugen_ClientInit(int noAuthFlag, const char *confDir, char *cellName, afs_int32 s
 
     if (noAuthFlag)
 	secFlags |= AFSCONF_SECOPTS_NOAUTH;
-
     return internal_client_init_dir(confDir, cellName, secFlags, uclientp,
 				    secproc, maxservers, serviceid, deadtime,
 				    server, port, usrvid);

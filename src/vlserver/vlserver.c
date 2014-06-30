@@ -446,6 +446,7 @@ main(int argc, char **argv)
 				afsconf_CheckAuth, tdir);
 
     ubik_SyncWriterCacheProc = vlsynccache;
+    
     code =
 	ubik_ServerInitByInfo(myHost, htons(AFSCONF_VLDBPORT), &info, clones,
 			      vl_dbaseName, &VL_dbase);

@@ -34,11 +34,13 @@ extern void rx_StatsOnOff(int on);
 extern void rx_StartClientThread(void);
 #endif
 extern void rx_StartServer(int donateMe);
+
 extern struct rx_connection *rx_NewConnection(afs_uint32 shost,
 					      u_short sport, u_short sservice,
 					      struct rx_securityClass
 					      *securityObject,
 					      int serviceSecurityIndex);
+
 extern struct rx_connection *rx6_NewConnection(struct sockaddr *shost, 
 						  u_short sservice, 
                   		  struct rx_securityClass *securityObject, 

@@ -450,7 +450,7 @@ ubik_ServerInitCommon(afs_uint32 myHost, short myPort,
 
     /* the following call is idempotent so when/if it got called earlier,
      * by whatever called us, it doesn't really matter -- klm */
-    code = rx_Init(myPort);
+    code = rx6_Init(myPort); /* MARCIO */
     if (code < 0)
 	return code;
 

@@ -2161,6 +2161,8 @@ volOffline(struct cmd_syndesc *as, void *arock)
 static int
 CreateVolume(struct cmd_syndesc *as, void *arock)
 {
+	printf("Create Volume!\n");
+
     afs_int32 pnum;
     char part[10];
     afs_uint32 volid = 0, rovolid = 0, bkvolid = 0;
@@ -2170,103 +2172,112 @@ CreateVolume(struct cmd_syndesc *as, void *arock)
     afs_int32 vcode;
     afs_int32 quota;
     afs_uint32 tserver;
+    struct sockaddr_storage addr;
 
     arovolid = &rovolid;
 
     quota = 5000;
-    tserver = GetServer(as->parms[0].items->data);
+
+    tserver = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 1); /* last parameter: 0 = ipv4; 1 = ipv6 */
+
+    if(!tserver) /* if an ipv6 was not found, try to find an ipv4 address */
+    	tserver = GetServer6(as->parms[0].items->data, (struct sockaddr *)&addr, 0); /* last parameter: 0 = ipv4; 1 = ipv6 */
+
     if (!tserver) {
-	fprintf(STDERR, "vos: host '%s' not found in host table\n",
+		fprintf(STDERR, "vos: host '%s' not found in host table\n",
 		as->parms[0].items->data);
-	return ENOENT;
+		return ENOENT;
     }
+
     pnum = volutil_GetPartitionID(as->parms[1].items->data);
+
     if (pnum < 0) {
-	fprintf(STDERR, "vos: could not interpret partition name '%s'\n",
+		fprintf(STDERR, "vos: could not interpret partition name '%s'\n",
 		as->parms[1].items->data);
-	return ENOENT;
+		return ENOENT;
     }
-    if (!IsPartValid(pnum, tserver, &code)) {	/*check for validity of the partition */
-	if (code)
-	    PrintError("", code);
-	else
-	    fprintf(STDERR,
-		    "vos : partition %s does not exist on the server\n",
-		    as->parms[1].items->data);
-	return ENOENT;
+
+    if (!IsPartValid6(pnum, (struct sockaddr *)&addr, &code)) {	/*check for validity of the partition */
+		if (code)
+		    PrintError("", code);
+		else
+		    fprintf(STDERR, "vos : partition %s does not exist on the server\n", as->parms[1].items->data);
+		return ENOENT;
     }
+
     if (!ISNAMEVALID(as->parms[2].items->data)) {
-	fprintf(STDERR,
-		"vos: the name of the root volume %s exceeds the size limit of %d\n",
-		as->parms[2].items->data, VOLSER_OLDMAXVOLNAME - 10);
-	return E2BIG;
+		fprintf(STDERR, "vos: the name of the root volume %s exceeds the size limit of %d\n", as->parms[2].items->data, VOLSER_OLDMAXVOLNAME - 10);
+		return E2BIG;
     }
+
     if (!VolNameOK(as->parms[2].items->data)) {
-	fprintf(STDERR,
-		"Illegal volume name %s, should not end in .readonly or .backup\n",
-		as->parms[2].items->data);
-	return EINVAL;
+		fprintf(STDERR, "Illegal volume name %s, should not end in .readonly or .backup\n", as->parms[2].items->data);
+		return EINVAL;
     }
+
     if (IsNumeric(as->parms[2].items->data)) {
-	fprintf(STDERR, "Illegal volume name %s, should not be a number\n",
-		as->parms[2].items->data);
-	return EINVAL;
+		fprintf(STDERR, "Illegal volume name %s, should not be a number\n", as->parms[2].items->data);
+		return EINVAL;
     }
+
+    printf("Param: %s\n", as->parms[2].items->data);
     vcode = VLDB_GetEntryByName(as->parms[2].items->data, &entry);
+    printf("OUT!\n");
+
     if (!vcode) {
-	fprintf(STDERR, "Volume %s already exists\n",
-		as->parms[2].items->data);
-	PrintDiagnostics("create", code);
-	return EEXIST;
+		fprintf(STDERR, "Volume %s already exists\n", as->parms[2].items->data);
+		PrintDiagnostics("create", code);
+		return EEXIST;
     }
 
     if (as->parms[3].items) {
-	code = util_GetHumanInt32(as->parms[3].items->data, &quota);
-	if (code) {
-	    fprintf(STDERR, "vos: bad integer specified for quota.\n");
-	    return code;
-	}
+		code = util_GetHumanInt32(as->parms[3].items->data, &quota);
+		if (code) {
+		    fprintf(STDERR, "vos: bad integer specified for quota.\n");
+		    return code;
+		}
     }
 
     if (as->parms[4].items) {
-	if (!IsNumeric(as->parms[4].items->data)) {
-	    fprintf(STDERR, "vos: Given volume ID %s should be numeric.\n",
-		    as->parms[4].items->data);
-	    return EINVAL;
-	}
+		if (!IsNumeric(as->parms[4].items->data)) {
+		    fprintf(STDERR, "vos: Given volume ID %s should be numeric.\n",
+			    as->parms[4].items->data);
+		    return EINVAL;
+		}
 
-	code = util_GetUInt32(as->parms[4].items->data, &volid);
-	if (code) {
-	    fprintf(STDERR, "vos: bad integer specified for volume ID.\n");
-	    return code;
-	}
+		code = util_GetUInt32(as->parms[4].items->data, &volid);
+		if (code) {
+		    fprintf(STDERR, "vos: bad integer specified for volume ID.\n");
+		    return code;
+		}
     }
 
     if (as->parms[5].items) {
-	if (!IsNumeric(as->parms[5].items->data)) {
-	    fprintf(STDERR, "vos: Given RO volume ID %s should be numeric.\n",
-		    as->parms[5].items->data);
-	    return EINVAL;
-	}
+		if (!IsNumeric(as->parms[5].items->data)) {
+		    fprintf(STDERR, "vos: Given RO volume ID %s should be numeric.\n", as->parms[5].items->data);
+		    return EINVAL;
+		}
 
-	code = util_GetUInt32(as->parms[5].items->data, &rovolid);
-	if (code) {
-	    fprintf(STDERR, "vos: bad integer specified for volume ID.\n");
-	    return code;
-	}
+		code = util_GetUInt32(as->parms[5].items->data, &rovolid);
+		if (code) {
+		    fprintf(STDERR, "vos: bad integer specified for volume ID.\n");
+		    return code;
+		}
 
-	if (rovolid == 0) {
-	    arovolid = NULL;
-	}
+		if (rovolid == 0) {
+		    arovolid = NULL;
+		}
     }
-
+    
     code =
-	UV_CreateVolume3(tserver, pnum, as->parms[2].items->data, quota, 0,
+	UV6_CreateVolume3((struct sockaddr *)&addr, pnum, as->parms[2].items->data, quota, 0,
 			 0, 0, 0, &volid, arovolid, &bkvolid);
+
     if (code) {
-	PrintDiagnostics("create", code);
-	return code;
+		PrintDiagnostics("create", code);
+		return code;
     }
+
     MapPartIdIntoName(pnum, part);
     fprintf(STDOUT, "Volume %lu created on partition %s of %s\n",
 	    (unsigned long)volid, part, as->parms[0].items->data);
@@ -6485,7 +6496,7 @@ main(int argc, char **argv)
     cmd_AddParm(ts, "-host", CMD_LIST, 0, "address of host");
 
     COMMONPARMS;
-
+    
     code = cmd_Dispatch(argc, argv);
 
     if (rxInitDone) {

@@ -863,6 +863,157 @@ UV_CreateVolume3(afs_uint32 aserver, afs_int32 apart, char *aname,
     return error;
 }
 
+int
+UV6_CreateVolume3(struct sockaddr *aserver, afs_int32 apart, char *aname,
+		 afs_int32 aquota, afs_int32 aspare1, afs_int32 aspare2,
+		 afs_int32 aspare3, afs_int32 aspare4, afs_uint32 * anewid,
+		 afs_uint32 * aroid, afs_uint32 * abkid)
+{
+	struct rx_connection *aconn;
+    afs_int32 tid;
+    afs_int32 code;
+    afs_int32 error;
+    afs_int32 rcode, vcode;
+    afs_int32 lastid;
+    struct nvldbentry entry, storeEntry;	/*the new vldb entry */
+    struct volintInfo tstatus;
+
+    tid = 0;
+    error = 0;
+
+    init_volintInfo(&tstatus);
+    tstatus.maxquota = aquota;
+
+    aconn = UV6_Bind(aserver, AFSCONF_VOLUMEPORT);
+
+    if (aroid && *aroid) {
+		VPRINT1("Using RO volume ID %d.\n", *aroid);
+    }
+    if (abkid && *abkid) {
+		VPRINT1("Using BK volume ID %d.\n", *abkid);
+    }
+
+    if (*anewid) {
+        vcode = VLDB_GetEntryByID(*anewid, -1, &entry);
+
+		if (!vcode) {
+		    fprintf(STDERR, "Volume ID %d already exists\n", *anewid);
+		    return VVOLEXISTS;
+		} 
+
+		VPRINT1("Using volume ID %d.\n", *anewid);
+    } else {
+		vcode = ubik_VL_GetNewVolumeId(cstruct, 0, 1, anewid);
+		EGOTO1(cfail, vcode, "Could not get an Id for volume %s\n", aname);
+
+		if (aroid && *aroid == 0) {
+		    vcode = ubik_VL_GetNewVolumeId(cstruct, 0, 1, aroid);
+		    EGOTO1(cfail, vcode, "Could not get an RO Id for volume %s\n", aname);
+		}
+
+		if (abkid && *abkid == 0) {
+		    vcode = ubik_VL_GetNewVolumeId(cstruct, 0, 1, abkid);
+		    EGOTO1(cfail, vcode, "Could not get a BK Id for volume %s\n", aname);
+		}
+    }
+
+    /* rw,ro, bk id are related in the default case */
+    /* If caller specified RW id, but not RO/BK ids, have them be RW+1 and RW+2 */
+    lastid = *anewid;
+
+    if (aroid && *aroid != 0) {
+		lastid = max(lastid, *aroid);
+    }
+    if (abkid && *abkid != 0) {
+		lastid = max(lastid, *abkid);
+    }
+    if (aroid && *aroid == 0) {
+		*aroid = ++lastid;
+    }
+    if (abkid && *abkid == 0) {
+		*abkid = ++lastid;
+    }
+
+    code = AFSVolCreateVolume_retry(aconn, apart, aname, volser_RW, 0, anewid, &tid);
+    EGOTO2(cfail, code, "Failed to create the volume %s %u \n", aname, *anewid);
+
+    code = AFSVolSetInfo(aconn, tid, &tstatus);
+
+    if (code)
+		EPRINT(code, "Could not change quota, continuing...\n");
+
+    code = AFSVolSetFlags(aconn, tid, 0);	/* bring it online (mark it InService */
+    EGOTO2(cfail, code, "Could not bring the volume %s %u online \n", aname, *anewid);
+
+    VPRINT2("Volume %s %u created and brought online\n", aname, *anewid);
+
+    /* set up the vldb entry for this volume */
+    strncpy(entry.name, aname, VOLSER_OLDMAXVOLNAME);
+    entry.nServers = 1;
+    memset(&(entry.serverNumber6[0]), 0, sizeof(struct sockaddr_storage));
+    memcpy(&(entry.serverNumber6[0]), (struct sockaddr_storage *)aserver, sizeof(struct sockaddr_storage));
+    
+    if(aserver->sa_family == AF_INET) {
+    	printf("IPv4!\n");
+    	entry.serverNumber[0] = ((struct sockaddr_in *)aserver)->sin_addr.s_addr;	/* this should have another level of indirection later */
+    }
+    else {
+    	printf("IPv6!\n");
+    	entry.serverNumber[0] = 0;
+    }
+
+    entry.serverPartition[0] = apart;	/* this should also have another indirection level */
+    entry.flags = RW_EXISTS;	/* this records that rw volume exists */
+    entry.serverFlags[0] = ITSRWVOL;	/*this rep site has rw  vol */
+    entry.volumeId[RWVOL] = *anewid;
+    entry.volumeId[ROVOL] = aroid ? *aroid : 0;
+    entry.volumeId[BACKVOL] = abkid ? *abkid : 0;
+    entry.cloneId = 0;
+
+    /*map into right byte order, before passing to xdr, the stuff has to be in host
+     * byte order. Xdr converts it into network order */
+    MapNetworkToHost(&entry, &storeEntry);
+    /* create the vldb entry */
+    vcode = VLDB_CreateEntry(&storeEntry);
+
+    if (vcode) {
+		fprintf(STDERR, "Could not create a VLDB entry for the volume %s %lu\n", aname, (unsigned long)*anewid);
+		/*destroy the created volume */
+		VPRINT1("Deleting the newly created volume %u\n", *anewid);
+		AFSVolDeleteVolume(aconn, tid);
+		error = vcode;
+		goto cfail;
+    }
+
+    VPRINT2("Created the VLDB entry for the volume %s %u\n", aname, *anewid);
+    /* volume created, now terminate the transaction and release the connection */
+    code = AFSVolEndTrans(aconn, tid, &rcode);	/*if it crashes before this
+						 * the volume will come online anyway when transaction timesout , so if
+						 * vldb entry exists then the volume is guaranteed to exist too wrt create */
+
+	tid = 0;
+
+    if (code) {
+		fprintf(STDERR, "Failed to end the transaction on the volume %s %lu\n", aname, (unsigned long)*anewid);
+		error = code;
+		goto cfail;
+    }
+
+  cfail:
+    if (tid) {
+		code = AFSVolEndTrans(aconn, tid, &rcode);
+		if (code)
+	    	fprintf(STDERR, "WARNING: could not end transaction\n");
+    }
+
+    if (aconn)
+		rx_DestroyConnection(aconn);
+
+    PrintError("", error);
+    
+    return error;
+}
+
 /* create a volume, given a server, partition number, volume name --> sends
 * back new vol id in <anewid>*/
 int
@@ -7845,6 +7996,7 @@ MapNetworkToHost(struct nvldbentry *old, struct nvldbentry *new)
 	count++;
     for (i = 0; i < count; i++) {
 	new->serverNumber[i] = ntohl(old->serverNumber[i]);
+	memcpy(&(new->serverNumber6[i]), &(old->serverNumber6[i]), sizeof(struct sockaddr_storage));
 	new->serverPartition[i] = old->serverPartition[i];
 	new->serverFlags[i] = old->serverFlags[i];
     }

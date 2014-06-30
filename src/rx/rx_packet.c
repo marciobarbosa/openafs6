@@ -2307,6 +2307,8 @@ void
 rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
 	       struct rx_packet *p, int istack)
 {
+    printf("RXI_SENDPACKET!\n");
+
 #if defined(KERNEL)
     int waslocked;
 #endif

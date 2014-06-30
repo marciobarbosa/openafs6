@@ -3411,6 +3411,12 @@ rxi6_FindPeer(struct sockaddr *host, int create)
         if (create) {
             pp = rxi_AllocPeer();
             memcpy(&(pp->addr), (struct sockaddr_storage *)host, sizeof(struct sockaddr_storage));
+
+            if(host->sa_family == AF_INET)
+                printf("New Peer4 port: %d\n", ((struct sockaddr_in *)host)->sin_port);
+            else if(host->sa_family == AF_INET6)
+                printf("New Peer6 port: %d\n", ((struct sockaddr_in6*)host)->sin6_port);
+
 #ifdef AFS_RXERRQ_ENV
             rx_atomic_set(&pp->neterrs, 0);
 #endif          

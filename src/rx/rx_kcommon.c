@@ -112,9 +112,9 @@ rxk_shutdownPorts(void)
 }
 
 osi_socket
-rxi_GetHostUDPSocketAddr(struct sockaddr *host)
+rxk_GetHostUDPSocketAddr(struct sockaddr *host)
 {
-    osi_socket *sockp;
+    osi_socket *sockp;    
     int port;
 
     sockp = (osi_socket *)rxk_NewSocketHostAddr(host);
@@ -124,7 +124,7 @@ rxi_GetHostUDPSocketAddr(struct sockaddr *host)
         return OSI_NULLSOCKET;
 
     rxk_AddPort(port, (char *)sockp);
-
+    
     return (osi_socket) sockp;
 }
 
@@ -137,21 +137,14 @@ rxi_GetHostUDPSocket(u_int host, u_short port)
     addr.sin_addr.s_addr = host;
     addr.sin_port = port;
 
-    return rxi_GetHostUDPSocketAddr((struct sockaddr *)&addr);
+    return rxk_GetHostUDPSocketAddr((struct sockaddr *)&addr);
 }
 
-/*
 osi_socket
-rxi_GetHostUDPSocket(u_int host, u_short port)
+rxi_GetUDPSocket(u_short port)
 {
-    osi_socket *sockp;
-    sockp = (osi_socket *)rxk_NewSocketHost(host, port);
-    if (sockp == (osi_socket *)0)
-	return OSI_NULLSOCKET;
-    rxk_AddPort(port, (char *)sockp);
-    return (osi_socket) sockp;
+    return rxi_GetHostUDPSocket(htonl(INADDR_ANY), port);
 }
-*/
 
 /*
  * osi_utoa() - write the NUL-terminated ASCII decimal form of the given
@@ -822,7 +815,7 @@ rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
  * in network byte order.
  */
 osi_socket *
-rxk_NewSocketHost_(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(afs_uint32 ahost, short aport)
 {
     afs_int32 code;
 #ifdef AFS_DARWIN80_ENV
@@ -1184,24 +1177,6 @@ rxk_NewSocketHostAddr(struct sockaddr *ahost)
     thread_funnel_switch(NETWORK_FUNNEL, KERNEL_FUNNEL);
 #endif
     return (osi_socket *)0;
-}
-
-osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
-{
-    struct sockaddr_in addr4;
-
-    addr4.sin_family = AF_INET;
-    addr4.sin_addr.s_addr = ahost;
-    addr4.sin_port = aport;
-
-    return rxk_NewSocketHostAddr((struct sockaddr *)&addr4);
-}
-
-osi_socket
-rxi_GetUDPSocket(u_short port)
-{
-    return rxi_GetHostUDPSocket(htonl(INADDR_ANY), port);
 }
 
 osi_socket *

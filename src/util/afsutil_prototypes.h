@@ -64,6 +64,9 @@ extern char *hostutil_GetNameByINet(afs_uint32 addr);
 extern afs_uint32 extractAddr(char *line, int maxSize);
 extern char *afs_inet_ntoa_r(afs_uint32 addr, char *buf);
 extern char *gettmpdir(void);
+extern char *rxi_PrindSockAddr(char *buffer, int size, struct sockaddr *addr);
+extern int rxi_IsSockAddrEqual(struct sockaddr *addr1, struct sockaddr *addr2);
+extern struct sockaddr *rxi_CloneSockAddr(struct sockaddr *addr);
 
 /* hputil.c */
 #ifdef AFS_HPUX_ENV

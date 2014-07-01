@@ -34,6 +34,7 @@ int (*rxk_GetPacketProc) (struct rx_packet **ahandle, int asize);
 #endif
 
 osi_socket *rxk_NewSocketHost(afs_uint32 ahost, short aport);
+osi_socket *rxk_NewSocketHostAddr(struct sockaddr *ahost);
 extern struct interfaceAddr afs_cb_interface;
 
 rxk_ports_t rxk_ports;
@@ -111,6 +112,36 @@ rxk_shutdownPorts(void)
 }
 
 osi_socket
+rxi_GetHostUDPSocketAddr(struct sockaddr *host)
+{
+    osi_socket *sockp;
+    int port;
+
+    sockp = (osi_socket *)rxk_NewSocketHostAddr(host);
+    port = (host->sa_family == AF_INET) ? ((struct sockaddr_in *)host)->sin_port : ((struct sockaddr_in6 *)host)->sin6_port;
+
+    if (sockp == (osi_socket *)0)
+        return OSI_NULLSOCKET;
+
+    rxk_AddPort(port, (char *)sockp);
+
+    return (osi_socket) sockp;
+}
+
+osi_socket
+rxi_GetHostUDPSocket(u_int host, u_short port)
+{
+    struct sockaddr_in addr;
+
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = host;
+    addr.sin_port = port;
+
+    return rxi_GetHostUDPSocketAddr((struct sockaddr *)&addr);
+}
+
+/*
+osi_socket
 rxi_GetHostUDPSocket(u_int host, u_short port)
 {
     osi_socket *sockp;
@@ -120,12 +151,7 @@ rxi_GetHostUDPSocket(u_int host, u_short port)
     rxk_AddPort(port, (char *)sockp);
     return (osi_socket) sockp;
 }
-
-osi_socket
-rxi_GetUDPSocket(u_short port)
-{
-    return rxi_GetHostUDPSocket(htonl(INADDR_ANY), port);
-}
+*/
 
 /*
  * osi_utoa() - write the NUL-terminated ASCII decimal form of the given
@@ -796,7 +822,7 @@ rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
  * in network byte order.
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost_(afs_uint32 ahost, short aport)
 {
     afs_int32 code;
 #ifdef AFS_DARWIN80_ENV
@@ -981,6 +1007,201 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
     thread_funnel_switch(NETWORK_FUNNEL, KERNEL_FUNNEL);
 #endif
     return (osi_socket *)0;
+}
+
+osi_socket *
+rxk_NewSocketHostAddr(struct sockaddr *ahost)
+{
+    afs_int32 code;
+    short family = (ahost->sa_family == AF_INET) ? AF_INET : AF_INET6;
+#ifdef AFS_DARWIN80_ENV
+    socket_t newSocket;
+#else
+    struct socket *newSocket;
+#endif
+#if (!defined(AFS_HPUX1122_ENV) && !defined(AFS_FBSD_ENV))
+    struct mbuf *nam;
+#endif
+#ifdef AFS_HPUX110_ENV
+    /* prototype copied from kernel source file streams/str_proto.h */
+    extern MBLKP allocb_wait(int, int);
+    MBLKP bindnam;
+    int addrsize = (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+    struct file *fp;
+    extern struct fileops socketops;
+#endif
+#ifdef AFS_SGI65_ENV
+    bhv_desc_t bhv;
+#endif
+    AFS_STATCNT(osi_NewSocket);
+#if (defined(AFS_DARWIN_ENV) || defined(AFS_XBSD_ENV)) && defined(KERNEL_FUNNEL)
+    thread_funnel_switch(KERNEL_FUNNEL, NETWORK_FUNNEL);
+#endif
+    AFS_ASSERT_GLOCK();
+    AFS_GUNLOCK();
+#if defined(AFS_HPUX102_ENV)
+#if     defined(AFS_HPUX110_ENV)
+    /* we need a file associated with the socket so sosend in NetSend
+     * will not fail */
+    /* blocking socket */
+    code = socreate(family, &newSocket, SOCK_DGRAM, 0, 0);
+    fp = falloc();
+    if (!fp)
+       goto bad;
+
+    fp->f_flag = FREAD | FWRITE;
+    fp->f_type = DTYPE_SOCKET;
+    fp->f_ops = &socketops;
+
+    fp->f_data = (void *)newSocket;
+    newSocket->so_fp = (void *)fp;
+#else /* AFS_HPUX110_ENV */
+    code = socreate(family, &newSocket, SOCK_DGRAM, 0, SS_NOWAIT);
+#endif /* else AFS_HPUX110_ENV */
+#elif defined(AFS_SGI65_ENV) || defined(AFS_OBSD_ENV)
+    code = socreate(family, &newSocket, SOCK_DGRAM, IPPROTO_UDP);
+#elif defined(AFS_FBSD_ENV)
+    code = socreate(family, &newSocket, SOCK_DGRAM, IPPROTO_UDP, afs_osi_credp, curthread);
+#elif defined(AFS_DARWIN80_ENV)
+#ifdef RXK_LISTENER_ENV
+    code = sock_socket(family, SOCK_DGRAM, IPPROTO_UDP, NULL, NULL, &newSocket);
+#else
+    code = sock_socket(family, SOCK_DGRAM, IPPROTO_UDP, rx_upcall, NULL, &newSocket);
+#endif
+#elif defined(AFS_NBSD50_ENV)
+    code = socreate(family, &newSocket, SOCK_DGRAM, 0, osi_curproc(), NULL);
+#elif defined(AFS_NBSD40_ENV)
+    code = socreate(family, &newSocket, SOCK_DGRAM, 0, osi_curproc());
+#else
+    code = socreate(family, &newSocket, SOCK_DGRAM, 0);
+#endif /* AFS_HPUX102_ENV */
+    if (code)
+       goto bad;
+#ifdef AFS_HPUX110_ENV
+    bindnam = allocb_wait((addrsize + SO_MSGOFFSET + 1), BPRI_MED);
+
+    if (!bindnam) {
+       setuerror(ENOBUFS);
+       goto bad;
+    }
+
+    memcpy((caddr_t) bindnam->b_rptr + SO_MSGOFFSET, (caddr_t) ahost, addrsize);
+    bindnam->b_wptr = bindnam->b_rptr + (addrsize + SO_MSGOFFSET + 1);
+    code = sobind(newSocket, bindnam, addrsize);
+
+    if (code) {
+       soclose(newSocket);
+#if !defined(AFS_HPUX1122_ENV)
+       m_freem(nam);
+#endif
+       goto bad;
+    }
+
+    freeb(bindnam);
+#else /* AFS_HPUX110_ENV */
+#if defined(AFS_DARWIN80_ENV)
+    {
+        int buflen = 50000;
+        int i, code2;
+        for (i = 0; i < 2; i++) {
+            code = sock_setsockopt(newSocket, SOL_SOCKET, SO_SNDBUF, &buflen, sizeof(buflen));
+            code2 = sock_setsockopt(newSocket, SOL_SOCKET, SO_RCVBUF, &buflen, sizeof(buflen));
+            if (!code && !code2)
+                break;
+            if (i == 2)
+                osi_Panic("osi_NewSocket: last attempt to reserve 32K failed!\n");
+            buflen = 32766;
+        }
+    }
+#else
+#if defined(AFS_NBSD_ENV)
+    solock(newSocket);
+#endif
+    code = soreserve(newSocket, 50000, 50000);
+    if (code) {
+        code = soreserve(newSocket, 32766, 32766);
+        if (code)
+            osi_Panic("osi_NewSocket: last attempt to reserve 32K failed!\n");
+    }
+#if defined(AFS_NBSD_ENV)
+    sounlock(newSocket);
+#endif
+#endif
+#if defined(AFS_DARWIN_ENV) || defined(AFS_FBSD_ENV)
+#if defined(AFS_FBSD_ENV)
+    code = sobind(newSocket, (struct sockaddr *)ahost, curthread);
+#else
+    code = sobind(newSocket, (struct sockaddr *)ahost);
+#endif
+    if (code) {
+        dpf(("sobind fails (%d)\n", (int)code));
+        soclose(newSocket);
+        goto bad;
+    }
+#else /* defined(AFS_DARWIN_ENV) || defined(AFS_FBSD_ENV) */
+#ifdef  AFS_OSF_ENV
+    nam = m_getclr(M_WAIT, MT_SONAME);
+#else /* AFS_OSF_ENV */
+    nam = m_get(M_WAIT, MT_SONAME);
+#endif
+    if (nam == NULL) {
+#if defined(KERNEL_HAVE_UERROR)
+        setuerror(ENOBUFS);
+#endif
+        goto bad;
+    }
+    nam->m_len = (ahost->sa_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+    memcpy(mtod(nam, caddr_t), ahost, nam->m_len);
+#if defined(AFS_SGI65_ENV)
+    BHV_PDATA(&bhv) = (void *)newSocket;
+    code = sobind(&bhv, nam);
+    m_freem(nam);
+#elif defined(AFS_OBSD44_ENV) || defined(AFS_NBSD40_ENV)
+    code = sobind(newSocket, nam, osi_curproc());
+#else
+    code = sobind(newSocket, nam);
+#endif
+    if (code) {
+        dpf(("sobind fails (%d)\n", (int)code));
+        soclose(newSocket);
+#ifndef AFS_SGI65_ENV
+        m_freem(nam);
+#endif
+        goto bad;
+    }
+#endif /* else AFS_DARWIN_ENV */
+#endif /* else AFS_HPUX110_ENV */
+
+    AFS_GLOCK();
+#if defined(AFS_DARWIN_ENV) && defined(KERNEL_FUNNEL)
+    thread_funnel_switch(NETWORK_FUNNEL, KERNEL_FUNNEL);
+#endif
+    return (osi_socket *)newSocket;
+
+  bad:
+    AFS_GLOCK();
+#if defined(AFS_DARWIN_ENV) && defined(KERNEL_FUNNEL)
+    thread_funnel_switch(NETWORK_FUNNEL, KERNEL_FUNNEL);
+#endif
+    return (osi_socket *)0;
+}
+
+osi_socket *
+rxk_NewSocketHost(afs_uint32 ahost, short aport)
+{
+    struct sockaddr_in addr4;
+
+    addr4.sin_family = AF_INET;
+    addr4.sin_addr.s_addr = ahost;
+    addr4.sin_port = aport;
+
+    return rxk_NewSocketHostAddr((struct sockaddr *)&addr4);
+}
+
+osi_socket
+rxi_GetUDPSocket(u_short port)
+{
+    return rxi_GetHostUDPSocket(htonl(INADDR_ANY), port);
 }
 
 osi_socket *

@@ -687,9 +687,8 @@ rx6_InitHost(struct sockaddr *host) /* user space */
      * Initialize anything necessary to provide a non-premptive threading
      * environment.
      */
-    rxi_InitializeThreadSupport();
-
-    rx_socket = rxi6_GetHostUDPSocket(host);
+    rxi_InitializeThreadSupport();  
+    rx_socket = rxi6_GetHostUDPSocket(host);  
 #endif
 
     if (rx_socket == OSI_NULLSOCKET) 

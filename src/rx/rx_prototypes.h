@@ -236,6 +236,13 @@ extern int rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[],
 			  	 afs_uint32 maskBuffer[],
 				 afs_uint32 mtuBuffer[],
 				 int maxSize);
+#ifndef KERNEL
+typedef char rx_addr_str_t[INET6_ADDRSTRLEN];
+extern char *rxi_PrintSockAddr(rx_addr_str_t buffer, struct sockaddr *addr);
+extern unsigned short rxi_GetSockAddrPort(struct sockaddr *addr);
+extern int rxi_IsSockAddrEqual(struct sockaddr *addr1, struct sockaddr *addr2);
+extern struct sockaddr *rxi_CloneSockAddr(struct sockaddr *addr);
+#endif
 
 /* rx_globals.c */
 extern int rx_GetMaxReceiveWindow(void);

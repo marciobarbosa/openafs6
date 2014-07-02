@@ -334,6 +334,19 @@ rxi_PrindSockAddr(char *buffer, int size, struct sockaddr *addr)
 	return buffer;
 }
 
+unsigned short
+rxi_PrindSockPort(struct sockaddr *addr)
+{
+	unsigned short port;
+
+	if(addr->sa_family == AF_INET)
+		port = ((struct sockaddr_in *)addr)->sin_port;
+	else
+		port = ((struct sockaddr_in6 *)addr)->sin6_port;
+
+	return ntohs(port);
+}
+
 int 
 rxi_IsSockAddrEqual(struct sockaddr *addr1, struct sockaddr *addr2)
 {

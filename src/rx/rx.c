@@ -1041,22 +1041,43 @@ rx_NewConnection(afs_uint32 shost, u_short sport, u_short sservice,
 		 struct rx_securityClass *securityObject,
 		 int serviceSecurityIndex)
 {
+    struct sockaddr_in saddr;
+
+    memset(&saddr, 0, sizeof(struct sockaddr));
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = shost;
+    saddr.sin_port = sport;
+
+    return rx_NewConnectionSA((struct sockaddr *)&saddr, sservice, securityObject, serviceSecurityIndex);
+}
+
+struct rx_connection *
+rx_NewConnectionSA(struct sockaddr *saddr, u_short sservice,
+         struct rx_securityClass *securityObject,
+         int serviceSecurityIndex)
+{
     int hashindex, i;
     afs_int32 cid;
     struct rx_connection *conn;
+    struct sockaddr_in *saddr_in = (struct sockaddr_in *)saddr;
+
+#ifdef RXDEBUG
+    rx_addr_str_t buffer;
+#endif
 
     SPLVAR;
 
     clock_NewTime();
-    dpf(("rx_NewConnection(host %x, port %u, service %u, securityObject %p, "
-	 "serviceSecurityIndex %d)\n",
-         ntohl(shost), ntohs(sport), sservice, securityObject,
-	 serviceSecurityIndex));
+    dpf(("rx_NewConnection(host %s, service %u, securityObject %p, "
+     "serviceSecurityIndex %d)\n",
+        rx_PrintSockAddr(buffer, saddr) , sservice, securityObject,
+     serviceSecurityIndex));
 
     /* Vasilsi said: "NETPRI protects Cid and Alloc", but can this be true in
      * the case of kmem_alloc? */
     conn = rxi_AllocConnection();
-#ifdef	RX_ENABLE_LOCKS
+#ifdef  RX_ENABLE_LOCKS
     MUTEX_INIT(&conn->conn_call_lock, "conn call lock", MUTEX_DEFAULT, 0);
     MUTEX_INIT(&conn->conn_data_lock, "conn data lock", MUTEX_DEFAULT, 0);
     CV_INIT(&conn->conn_call_cv, "conn call cv", CV_DEFAULT, 0);
@@ -1067,7 +1088,7 @@ rx_NewConnection(afs_uint32 shost, u_short sport, u_short sservice,
     conn->type = RX_CLIENT_CONNECTION;
     conn->cid = cid;
     conn->epoch = rx_epoch;
-    conn->peer = rxi_FindPeer(shost, sport, 1);
+    conn->peer = rxi_FindPeer(saddr_in->sin_addr.s_addr, saddr_in->sin_port, 1);
     conn->serviceId = sservice;
     conn->securityObject = securityObject;
     conn->securityData = (void *) 0;
@@ -1082,20 +1103,20 @@ rx_NewConnection(afs_uint32 shost, u_short sport, u_short sservice,
     conn->abortCount = 0;
     conn->error = 0;
     for (i = 0; i < RX_MAXCALLS; i++) {
-	conn->twind[i] = rx_initSendWindow;
-	conn->rwind[i] = rx_initReceiveWindow;
-	conn->lastBusy[i] = 0;
+    conn->twind[i] = rx_initSendWindow;
+    conn->rwind[i] = rx_initReceiveWindow;
+    conn->lastBusy[i] = 0;
     }
 
     RXS_NewConnection(securityObject, conn);
     hashindex =
-	CONN_HASH(shost, sport, conn->cid, conn->epoch, RX_CLIENT_CONNECTION);
+    CONN_HASH(saddr_in->sin_addr.s_addr, saddr_in->sin_port, conn->cid, conn->epoch, RX_CLIENT_CONNECTION);
 
-    conn->refCount++;		/* no lock required since only this thread knows... */
+    conn->refCount++;       /* no lock required since only this thread knows... */
     conn->next = rx_connHashTable[hashindex];
     rx_connHashTable[hashindex] = conn;
     if (rx_stats_active)
-	rx_atomic_inc(&rx_stats.nClientConns);
+    rx_atomic_inc(&rx_stats.nClientConns);
     MUTEX_EXIT(&rx_connHashTable_lock);
     USERPRI;
     return conn;

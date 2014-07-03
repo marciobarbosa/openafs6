@@ -3001,6 +3001,7 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
     static struct rx_securityClass *sc = 0;
     static struct AFSCBs tc = { 0, 0 };
     char hoststr[16];
+    struct sockaddr_in saddr;
 
     /* nothing more can be done */
     if (!host->interface)
@@ -3030,9 +3031,14 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
 	    continue;
 
 	interfaces[j] = host->interface->interface[i];
+
+    memset(&saddr, 0, sizeof(struct sockaddr_in));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = interfaces[j].addr;
+    saddr.sin_port = interfaces[j].port;
+
 	conns[j] =
-	    rx_NewConnection(interfaces[j].addr,
-			     interfaces[j].port, 1, sc, 0);
+	    rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
 	rx_SetConnDeadTime(conns[j], 2);
 	rx_SetConnHardDeadTime(conns[j], AFS_HARDDEADTIME);
 	j++;
@@ -3098,6 +3104,7 @@ MultiProbeAlternateAddress_r(struct host *host)
     struct AddrPort *interfaces;
     static struct rx_securityClass *sc = 0;
     char hoststr[16];
+    struct sockaddr_in saddr;
 
     /* nothing more can be done */
     if (!host->interface)
@@ -3127,9 +3134,14 @@ MultiProbeAlternateAddress_r(struct host *host)
 	    continue;
 
 	interfaces[j] = host->interface->interface[i];
+
+    memset(&saddr, 0, sizeof(struct sockaddr_in));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = interfaces[j].addr;
+    saddr.sin_port = interfaces[j].port;
+
 	conns[j] =
-	    rx_NewConnection(interfaces[j].addr,
-			     interfaces[j].port, 1, sc, 0);
+	    rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
 	rx_SetConnDeadTime(conns[j], 2);
 	rx_SetConnHardDeadTime(conns[j], AFS_HARDDEADTIME);
 	j++;

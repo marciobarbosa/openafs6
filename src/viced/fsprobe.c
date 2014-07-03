@@ -27,6 +27,7 @@ pxclient_Initialize(int auth, afs_int32 serverAddr)
     afs_int32 code;
     rx_securityIndex scIndex;
     struct rx_securityClass *sc;
+    struct sockaddr_in saddr;
 
     code = rx_Init(htons(2115) /*0 */ );
     if (code) {
@@ -36,8 +37,14 @@ pxclient_Initialize(int auth, afs_int32 serverAddr)
     scIndex = RX_SECIDX_NULL;
     rx_SetRxDeadTime(50);
     sc = rxnull_NewClientSecurityObject();
+
+    memset(&saddr, 0, sizeof(struct sockaddr_in));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = serverAddr;
+    saddr.sin_port = htons(7000);
+
     serverconns[0] =
-	rx_NewConnection(serverAddr, htons(7000), 1, sc, scIndex);
+	rx_NewConnectionSA((struct sockaddr_in *)&saddr, 1, sc, scIndex);
 
     code = ubik_ClientInit(serverconns, &cstruct);
 

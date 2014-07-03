@@ -5832,11 +5832,18 @@ TryLocalVLServer(char *avolid, struct VolumeInfo *avolinfo)
     struct vldbentry tve;
     struct rx_securityClass *vlSec;
     afs_int32 code;
+    struct sockaddr_in saddr;
 
     if (!vlConn) {
 	vlSec = rxnull_NewClientSecurityObject();
+
+	memset(&saddr, 0, sizeof(struct sockaddr_in));
+	saddr.sin_family = AF_INET;
+	saddr.sin_addr.s_addr = htonl(0x7f000001);
+	saddr.sin_port = htons(7003);
+
 	vlConn =
-	    rx_NewConnection(htonl(0x7f000001), htons(7003), 52, vlSec, 0);
+	    rx_NewConnectionSA((struct sockaddr *)&saddr, 52, vlSec, 0);
 	rx_SetConnDeadTime(vlConn, 15);	/* don't wait long */
     }
     if (down && (time(NULL) < lastDownTime + 180)) {
@@ -6829,6 +6836,7 @@ SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr)
     struct rx_connection *conn;
     afs_int32 viceid = -1;
 #endif
+    struct sockaddr_in saddr;
 
     if ((errorCode = CallPreamble(acall, ACTIVECALL, NULL, &tcon, &tcallhost)))
 	    goto Bad_CallBackRxConnAddr1;
@@ -6868,8 +6876,12 @@ SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr)
     if ( *addr != thost->interface->addr[i] )
 	goto Bad_CallBackRxConnAddr;
 
-    conn = rx_NewConnection (thost->interface->addr[i],
-			     thost->port, 1, sc, 0);
+	memset(&saddr, 0, sizeof(struct sockaddr_in));
+	saddr.sin_family = AF_INET;
+	saddr.sin_addr.s_addr = thost->interface->addr[i];
+	saddr.sin_port = thost->port;
+
+    conn = rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
     rx_SetConnDeadTime(conn, 2);
     rx_SetConnHardDeadTime(conn, AFS_HARDDEADTIME);
     H_UNLOCK;

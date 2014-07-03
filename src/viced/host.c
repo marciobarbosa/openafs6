@@ -264,6 +264,7 @@ hpr_Initialize(struct ubik_client **uclient)
     struct afsconf_cell info;
     afs_int32 i;
     char cellstr[64];
+    struct sockaddr_in saddr;
 
     tdir = afsconf_Open(FS_configPath);
     if (!tdir) {
@@ -312,10 +313,13 @@ hpr_Initialize(struct ubik_client **uclient)
 
     memset(serverconns, 0, sizeof(serverconns));        /* terminate list!!! */
     for (i = 0; i < info.numServers; i++) {
+        memset(&saddr, 0, sizeof(struct sockaddr_in));
+        saddr.sin_family = AF_INET;
+        saddr.sin_addr.s_addr = info.hostAddr[i].sin_addr.s_addr;
+        saddr.sin_port = info.hostAddr[i].sin_port;
+
         serverconns[i] =
-            rx_NewConnection(info.hostAddr[i].sin_addr.s_addr,
-                             info.hostAddr[i].sin_port, PRSRV,
-			     sc, scIndex);
+            rx_NewConnectionSA((struct sockaddr *)&saddr, PRSRV, sc, scIndex);
     }
 
     code = ubik_ClientInit(serverconns, uclient);
@@ -713,10 +717,18 @@ h_Alloc_r(struct rx_connection *r_con)
 static void
 h_SetupCallbackConn_r(struct host * host)
 {
+    struct sockaddr_in saddr;
+
     if (!sc)
 	sc = rxnull_NewClientSecurityObject();
+
+    memset(&saddr, 0, sizeof(struct sockaddr_in));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host->host;
+    saddr.sin_port = host->port;
+
     host->callback_rxcon =
-	rx_NewConnection(host->host, host->port, 1, sc, 0);
+	rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
     rx_SetConnDeadTime(host->callback_rxcon, 50);
     rx_SetConnHardDeadTime(host->callback_rxcon, AFS_HARDDEADTIME);
 }
@@ -1351,6 +1363,7 @@ reconcileHosts_r(afs_uint32 addr, afs_uint16 port, struct host *newHost,
     afsUUID *newHostUuid = &nulluuid;
     afsUUID *oldHostUuid = &nulluuid;
     char hoststr[16];
+    struct sockaddr_in saddr;
 
     ViceLog(125,
 	    ("reconcileHosts_r: addr %s:%d newHost %" AFS_PTR_FMT " oldHost %"
@@ -1364,7 +1377,12 @@ reconcileHosts_r(afs_uint32 addr, afs_uint16 port, struct host *newHost,
 	sc = rxnull_NewClientSecurityObject();
     }
 
-    cb = rx_NewConnection(addr, port, 1, sc, 0);
+    memset(&saddr, 0, sizeof(struct sockaddr_in));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = addr;
+    saddr.sin_port = port;
+
+    cb = rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
     rx_SetConnDeadTime(cb, 50);
     rx_SetConnHardDeadTime(cb, AFS_HARDDEADTIME);
 
@@ -1834,6 +1852,7 @@ h_GetHost_r(struct rx_connection *tcon)
     Capabilities caps;
     struct rx_connection *cb_conn = NULL;
     struct rx_connection *cb_in = NULL;
+    struct sockaddr_in saddr;
 
     caps.Capabilities_val = NULL;
 
@@ -1936,7 +1955,13 @@ h_GetHost_r(struct rx_connection *tcon)
              */
 	    if (!sc)
                 sc = rxnull_NewClientSecurityObject();
-            cb_in = rx_NewConnection(haddr, hport, 1, sc, 0);
+
+            memset(&saddr, 0, sizeof(struct sockaddr_in));
+            saddr.sin_family = AF_INET;
+            saddr.sin_addr.s_addr = haddr;
+            saddr.sin_port = hport;
+
+            cb_in = rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
             rx_SetConnDeadTime(cb_in, 50);
             rx_SetConnHardDeadTime(cb_in, AFS_HARDDEADTIME);
 

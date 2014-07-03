@@ -1544,11 +1544,10 @@ vl_Initialize(struct afsconf_dir *dir)
 		 info.numServers, MAXSERVERS));
 	exit(1);
     }
-    for (i = 0; i < info.numServers; i++)
-	serverconns[i] =
-	    rx_NewConnection(info.hostAddr[i].sin_addr.s_addr,
-			     info.hostAddr[i].sin_port, USER_SERVICE_ID, sc,
-			     scIndex);
+    for (i = 0; i < info.numServers; i++) 
+    	serverconns[i] =
+    	    rx_NewConnectionSA((struct sockaddr *)&info.hostAddr[i], USER_SERVICE_ID, sc,
+    			     scIndex);
     code = ubik_ClientInit(serverconns, &cstruct);
     if (code) {
 	ViceLog(0, ("vl_Initialize: ubik client init failed.\n"));

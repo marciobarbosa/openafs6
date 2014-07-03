@@ -9393,3 +9393,64 @@ int rx_DumpCalls(FILE *outputFile, char *cookie)
     return 0;
 }
 #endif
+
+/* this function receives a sockaddr as a parameter and returns a copy of this variable; returns -1 if the family is not known */
+struct sockaddr* 
+rxi_CloneSockAddr(struct sockaddr *addr)
+{
+    struct sockaddr *new_addr;
+
+    switch(addr->sa_family) {
+        case AF_INET:
+            new_addr = (struct sockaddr *)rxi_Alloc(sizeof(struct sockaddr_in));
+            memcpy(new_addr, addr, sizeof(struct sockaddr_in));
+            break;          
+        case AF_INET6:
+            new_addr = (struct sockaddr *)rxi_Alloc(sizeof(struct sockaddr_in6));
+            memcpy(new_addr, addr, sizeof(struct sockaddr_in6));
+            break;          
+        default:
+            new_addr = NULL;
+    }
+
+    return new_addr;
+}
+
+/* this function returns the formatted address of addr */
+char *
+rx_PrintSockAddr(rx_addr_str_t buffer, struct sockaddr *addr)
+{   
+    buffer[0] = '\0';
+
+#ifndef KERNEL
+
+    switch(addr->sa_family) {
+        case AF_INET:
+            inet_ntop(AF_INET, (void *)&((struct sockaddr_in *)addr)->sin_addr, buffer, sizeof(rx_addr_str_t));
+            break;
+        case AF_INET6:
+            inet_ntop(AF_INET6, (void *)&((struct sockaddr_in6 *)addr)->sin6_addr, buffer, sizeof(rx_addr_str_t));
+            break;
+    }
+
+#endif
+
+    return buffer;
+}
+
+/* this function returns 1 (true) if addr1 is equal to addr2; 0 (false) otherwise */
+int
+rxi_IsSockAddrEqual(struct sockaddr *addr1, struct sockaddr *addr2)
+{
+    int is_equal = 0;
+
+    if(addr1->sa_family == AF_INET && addr2->sa_family == AF_INET) {
+        if(((struct sockaddr_in *)addr1)->sin_addr.s_addr == ((struct sockaddr_in *)addr2)->sin_addr.s_addr)
+            is_equal = 1;
+    } else if(addr1->sa_family == AF_INET6 && addr2->sa_family == AF_INET6) {
+        if(!memcmp(((struct sockaddr_in6 *)addr1)->sin6_addr.s6_addr, ((struct sockaddr_in6 *)addr2)->sin6_addr.s6_addr, sizeof(struct in6_addr)))
+            is_equal = 1;
+    }
+
+    return is_equal;
+}

@@ -26,6 +26,7 @@ typedef char rx_addr_str_t[48];
 extern struct sockaddr *rxi_CloneSockAddr(struct sockaddr *addr);
 extern char *rx_PrintSockAddr(rx_addr_str_t buffer, struct sockaddr *addr);
 extern int rxi_IsSockAddrEqual(struct sockaddr *addr1, struct sockaddr *addr2);
+extern int rxi_IsSockPortEqual(struct sockaddr *addr1, struct sockaddr *addr2);
 
 extern void rx_SetEpoch(afs_uint32 epoch);
 extern int rx_Init(u_int port);

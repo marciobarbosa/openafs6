@@ -370,7 +370,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
     afs_int32 i;
     afs_int32 mtu;
 
-    i = rxi_Findcbi(pp->host);
+    i = rxi_Findcbi(((struct sockaddr_in *)pp->saddr)->sin_addr.s_addr);
     if (i == -1) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
 	pp->ifMTU = MIN(RX_REMOTE_PACKET_SIZE, rx_MyMaxSendSize);
@@ -394,7 +394,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 	(void)rxi_GetIFInfo();
 #  endif
 
-    ifn = rxi_FindIfnet(pp->host, NULL);
+    ifn = rxi_FindIfnet(((struct sockaddr_in *)pp->saddr)->sin_addr.s_addr, NULL);
     if (ifn) {
 	rx_rto_setPeerTimeoutSecs(pp, 2);
 	pp->ifMTU = MIN(RX_MAX_PACKET_SIZE, rx_MyMaxSendSize);
@@ -420,7 +420,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 #else /* AFS_SUN5_ENV */
     afs_int32 mtu;
 
-    mtu = rxi_FindIfMTU(pp->host);
+    mtu = rxi_FindIfMTU(((struct sockaddr_in *)pp->saddr)->sin_addr.s_addr);
 
     if (mtu <= 0) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);

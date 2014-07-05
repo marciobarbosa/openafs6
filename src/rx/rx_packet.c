@@ -1851,8 +1851,8 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 		for (tc = rx_connHashTable[i]; tc; tc = tc->next) {
 		    if ((all || rxi_IsConnInteresting(tc))
 			&& tin.index-- <= 0) {
-			tconn.host = tc->peer->host;
-			tconn.port = tc->peer->port;
+			tconn.host = ((struct sockaddr_in *)tc->peer->saddr)->sin_addr.s_addr;
+			tconn.port = ((struct sockaddr_in *)tc->peer->saddr)->sin_port;
 			tconn.cid = htonl(tc->cid);
 			tconn.epoch = htonl(tc->epoch);
 			tconn.serial = htonl(tc->serial);
@@ -1962,9 +1962,9 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
                         tp->refCount++;
                         MUTEX_EXIT(&rx_peerHashTable_lock);
 
-                        MUTEX_ENTER(&tp->peer_lock);
-			tpeer.host = tp->host;
-			tpeer.port = tp->port;
+                        MUTEX_ENTER(&tp->peer_lock);                        
+			tpeer.host = ((struct sockaddr_in *)tp->saddr)->sin_addr.s_addr;
+			tpeer.port = ((struct sockaddr_in *)tp->saddr)->sin_port;
 			tpeer.ifMTU = htons(tp->ifMTU);
 			tpeer.idleWhen = htonl(tp->idleWhen);
 			tpeer.refCount = htons(tp->refCount);
@@ -2202,8 +2202,8 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
     /* The address we're sending the packet to */
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = peer->port;
-    addr.sin_addr.s_addr = peer->host;
+    addr.sin_port = ((struct sockaddr_in *)peer->saddr)->sin_port;
+    addr.sin_addr.s_addr = ((struct sockaddr_in *)peer->saddr)->sin_addr.s_addr;
 
     /* This stuff should be revamped, I think, so that most, if not
      * all, of the header stuff is always added here.  We could
@@ -2319,8 +2319,8 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
 #ifdef RXDEBUG
     }
     dpf(("%c %d %s: %x.%u.%u.%u.%u.%u.%u flags %d, packet %"AFS_PTR_FMT" len %d\n",
-          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(peer->host),
-          ntohs(peer->port), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
+          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(((struct sockaddr_in *)peer->saddr)->sin_addr.s_addr),
+          ntohs(((struct sockaddr_in *)peer->saddr)->sin_port), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
           p->header.seq, p->header.flags, p, p->length));
 #endif
     if (rx_stats_active) {
@@ -2355,8 +2355,8 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
 #endif
     /* The address we're sending the packet to */
     addr.sin_family = AF_INET;
-    addr.sin_port = peer->port;
-    addr.sin_addr.s_addr = peer->host;
+    addr.sin_port = ((struct sockaddr_in *)peer->saddr)->sin_port;
+    addr.sin_addr.s_addr = ((struct sockaddr_in *)peer->saddr)->sin_addr.s_addr;
 
     if (len + 1 > RX_MAXIOVECS) {
 	osi_Panic("rxi_SendPacketList, len > RX_MAXIOVECS\n");
@@ -2513,8 +2513,8 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
     osi_Assert(p != NULL);
 
     dpf(("%c %d %s: %x.%u.%u.%u.%u.%u.%u flags %d, packet %"AFS_PTR_FMT" len %d\n",
-          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(peer->host),
-          ntohs(peer->port), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
+          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(((struct sockaddr_in *)peer->saddr)->sin_addr.s_addr),
+          ntohs(((struct sockaddr_in *)peer->saddr)->sin_port), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
           p->header.seq, p->header.flags, p, p->length));
 
 #endif

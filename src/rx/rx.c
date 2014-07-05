@@ -2884,6 +2884,11 @@ rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host, afs_uint32 port, int mtu)
     struct rx_peer **peer_ptr = NULL, **peer_end = NULL;
     struct rx_peer *next = NULL;
     int hashIndex;
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = port;
 
     if (!peer) {
 	MUTEX_ENTER(&rx_peerHashTable_lock);
@@ -2897,15 +2902,15 @@ rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host, afs_uint32 port, int mtu)
 		    peer = *peer_ptr;
 		for ( ; peer; peer = next) {
 		    next = peer->next;
-		    if (host == peer->host)
-			break;
+                    if(rxi_IsSockAddrEqual((struct sockaddr *)&saddr, peer->saddr))
+                        break;
 		}
 	    }
 	} else {
 	    hashIndex = PEER_HASH(host, port);
 	    for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-		if ((peer->host == host) && (peer->port == port))
-		    break;
+                if(rxi_IsSockAddrEqual(peer->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual(peer->saddr, (struct sockaddr *)&saddr))
+                    break;
 	    }
 	}
     } else {
@@ -2948,14 +2953,19 @@ rxi_SetPeerDead(struct sock_extended_err *err, afs_uint32 host, afs_uint16 port)
 {
     int hashIndex = PEER_HASH(host, port);
     struct rx_peer *peer;
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = port;
 
     MUTEX_ENTER(&rx_peerHashTable_lock);
 
     for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-	if (peer->host == host && peer->port == port) {
-	    peer->refCount++;
-	    break;
-	}
+        if(rxi_IsSockAddrEqual(peer->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual(peer->saddr, (struct sockaddr *)&saddr)) {
+            peer->refCount++;
+            break;
+        }
     }
 
     MUTEX_EXIT(&rx_peerHashTable_lock);
@@ -3080,17 +3090,22 @@ rxi_FindPeer(afs_uint32 host, u_short port, int create)
 {
     struct rx_peer *pp;
     int hashIndex;
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = port;
+
     hashIndex = PEER_HASH(host, port);
     MUTEX_ENTER(&rx_peerHashTable_lock);
     for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
-	if ((pp->host == host) && (pp->port == port))
-	    break;
+        if(rxi_IsSockAddrEqual(pp->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual(pp->saddr, (struct sockaddr *)&saddr))
+            break;
     }
     if (!pp) {
 	if (create) {
 	    pp = rxi_AllocPeer();	/* This bzero's *pp */
-	    pp->host = host;	/* set here or in InitPeerParams is zero */
-	    pp->port = port;
+            pp->saddr = rxi_CloneSockAddr((struct sockaddr *)&saddr);
 #ifdef AFS_RXERRQ_ENV
 	    rx_atomic_set(&pp->neterrs, 0);
 #endif
@@ -3131,6 +3146,12 @@ rxi_FindConnection(osi_socket socket, afs_uint32 host,
 {
     int hashindex, flag, i;
     struct rx_connection *conn;
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = port;
+
     *unknownService = 0;
     hashindex = CONN_HASH(host, port, cid, epoch, type);
     MUTEX_ENTER(&rx_connHashTable_lock);
@@ -3149,9 +3170,9 @@ rxi_FindConnection(osi_socket socket, afs_uint32 host,
 		MUTEX_EXIT(&rx_connHashTable_lock);
 		return (struct rx_connection *)0;
 	    }
-	    if (pp->host == host && pp->port == port)
-		break;
-	    if (type == RX_CLIENT_CONNECTION && pp->port == port)
+            if(rxi_IsSockAddrEqual(pp->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual(pp->saddr, (struct sockaddr *)&saddr))
+                break;
+	    if (type == RX_CLIENT_CONNECTION && rxi_IsSockPortEqual(pp->saddr, (struct sockaddr *)&saddr))
 		break;
 	    /* So what happens when it's a callback connection? */
 	    if (		/*type == RX_CLIENT_CONNECTION && */
@@ -3311,7 +3332,7 @@ rxi_AbortIfServerBusy(osi_socket socket, struct rx_connection *conn,
 {
     if ((rx_BusyThreshold > 0) &&
 	(rx_atomic_read(&rx_nWaiting) > rx_BusyThreshold)) {
-	rxi_SendRawAbort(socket, conn->peer->host, conn->peer->port,
+	rxi_SendRawAbort(socket, ((struct sockaddr_in *)conn->peer->saddr)->sin_addr.s_addr, ((struct sockaddr_in *)conn->peer->saddr)->sin_port,
 			 rx_BusyError, np, 0);
 	if (rx_stats_active)
 	    rx_atomic_inc(&rx_stats.nBusies);
@@ -7488,7 +7509,7 @@ void
 rx_PrintPeerStats(FILE * file, struct rx_peer *peer)
 {
     fprintf(file, "Peer %x.%d.\n",
-	    ntohl(peer->host), (int)ntohs(peer->port));
+	    ntohl(((struct sockaddr_in *)peer->saddr)->sin_addr.s_addr), (int)ntohs(((struct sockaddr_in *)peer->saddr)->sin_port));
 
     fprintf(file,
 	    "   Rtt %d, " "total sent %d, " "resent %d\n",
@@ -7895,12 +7916,17 @@ rx_GetLocalPeers(afs_uint32 peerHost, afs_uint16 peerPort,
 	struct rx_peer *tp;
 	afs_int32 error = 1; /* default to "did not succeed" */
 	afs_uint32 hashValue = PEER_HASH(peerHost, peerPort);
+        struct sockaddr_in saddr;
+
+        saddr.sin_family = AF_INET;
+        saddr.sin_addr.s_addr = peerHost;
+        saddr.sin_port = peerPort;
 
 	MUTEX_ENTER(&rx_peerHashTable_lock);
 	for(tp = rx_peerHashTable[hashValue];
 	      tp != NULL; tp = tp->next) {
-		if (tp->host == peerHost)
-			break;
+                if(rxi_IsSockAddrEqual(tp->saddr, (struct sockaddr *)&saddr))
+                        break;
 	}
 
 	if (tp) {
@@ -7910,8 +7936,8 @@ rx_GetLocalPeers(afs_uint32 peerHost, afs_uint16 peerPort,
 		error = 0;
 
                 MUTEX_ENTER(&tp->peer_lock);
-		peerStats->host = tp->host;
-		peerStats->port = tp->port;
+		peerStats->host = ((struct sockaddr_in *)tp->saddr)->sin_addr.s_addr;
+		peerStats->port = ((struct sockaddr_in *)tp->saddr)->sin_port;
 		peerStats->ifMTU = tp->ifMTU;
 		peerStats->idleWhen = tp->idleWhen;
 		peerStats->refCount = tp->refCount;
@@ -8585,7 +8611,8 @@ rxi_IncrementTimeAndCount(struct rx_peer *peer, afs_uint32 rxInterface,
         MUTEX_ENTER(&peer->peer_lock);
 	rxi_AddRpcStat(&peer->rpcStats, rxInterface, currentFunc, totalFunc,
 		       queueTime, execTime, bytesSent, bytesRcvd, isServer,
-		       peer->host, peer->port, 1, &rxi_rpc_peer_stat_cnt);
+		       ((struct sockaddr_in *)peer->saddr)->sin_addr.s_addr, 
+                       ((struct sockaddr_in *)peer->saddr)->sin_port, 1, &rxi_rpc_peer_stat_cnt);
         MUTEX_EXIT(&peer->peer_lock);
     }
 
@@ -9472,6 +9499,20 @@ rxi_IsSockAddrEqual(struct sockaddr *addr1, struct sockaddr *addr2)
         if(!memcmp(((struct sockaddr_in6 *)addr1)->sin6_addr.s6_addr, ((struct sockaddr_in6 *)addr2)->sin6_addr.s6_addr, sizeof(struct in6_addr)))
             is_equal = 1;
     }
+
+    return is_equal;
+}
+
+/* this function returns 1 (true) if port1 is equal to port2; 0 (false) otherwise */
+int
+rxi_IsSockPortEqual(struct sockaddr *addr1, struct sockaddr *addr2)
+{
+    int is_equal = 0;
+    int port1 = (addr1->sa_family == AF_INET) ? ((struct sockaddr_in *)addr1)->sin_port : ((struct sockaddr_in6 *)addr1)->sin6_port;
+    int port2 = (addr2->sa_family == AF_INET) ? ((struct sockaddr_in *)addr2)->sin_port : ((struct sockaddr_in6 *)addr2)->sin6_port;
+
+    if(port1 == port2)
+        is_equal = 1;
 
     return is_equal;
 }

@@ -337,7 +337,7 @@ MyArrivalProc(struct rx_packet *ahandle,
     rxi_DecodePacketHeader(ahandle);
     ahandle =
 	rxi_ReceivePacket(ahandle, arock,
-			  afrom->sin_addr.s_addr, afrom->sin_port, NULL,
+			  (struct sockaddr *)afrom, NULL,
 			  NULL);
 
     /* free the packet if it has been returned */
@@ -1197,6 +1197,7 @@ rxk_Listener(void)
     struct rx_packet *rxp = NULL;
     int code;
     int host, port;
+    struct sockaddr_in saddr;
 
 #ifdef AFS_LINUX20_ENV
     rxk_ListenerPid = current->pid;
@@ -1228,7 +1229,11 @@ rxk_Listener(void)
 		osi_Panic("rxk_Listener: No more Rx buffers!\n");
 	}
 	if (!(code = rxk_ReadPacket(rx_socket, rxp, &host, &port))) {
-	    rxp = rxi_ReceivePacket(rxp, rx_socket, host, port, 0, 0);
+            saddr.sin_family = AF_INET;
+            saddr.sin_addr.s_addr = host;
+            saddr.sin_port = port;
+
+	    rxp = rxi_ReceivePacket(rxp, rx_socket, (struct sockaddr *)&saddr, 0, 0);
 	}
     }
 

@@ -28,11 +28,9 @@ extern void rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host,
 extern void rxi_ProcessNetError(struct sock_extended_err *err,
                                 afs_uint32 addr, afs_uint16 port);
 #endif
-extern struct rx_peer *rxi_FindPeer(afs_uint32 host, u_short port,
-				    int create);
+extern struct rx_peer *rxi_FindPeer(struct sockaddr *saddr, int create);
 extern struct rx_packet *rxi_ReceivePacket(struct rx_packet *np,
-					   osi_socket socket, afs_uint32 host,
-					   u_short port, int *tnop,
+					   osi_socket socket, struct sockaddr *saddr, int *tnop,
 					   struct rx_call **newcallp);
 extern int rxi_IsConnInteresting(struct rx_connection *aconn);
 extern void rxi_PostDelayedAckEvent(struct rx_call *call, struct clock *now);

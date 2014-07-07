@@ -417,7 +417,7 @@ extern int rxi_FreePackets(int num_pkts, struct opr_queue *q);
 extern struct rx_packet *rxi_AllocSendPacket(struct rx_call *call,
 					     int want);
 extern int rxi_ReadPacket(osi_socket socket, struct rx_packet *p,
-			  afs_uint32 * host, u_short * port);
+			  struct sockaddr *saddr);
 extern struct rx_packet *rxi_SplitJumboPacket(struct rx_packet *p,
 					      afs_uint32 host, short port,
 					      int first);
@@ -427,18 +427,17 @@ extern int osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec,
 #endif
 extern struct rx_packet *rxi_ReceiveDebugPacket(struct rx_packet *ap,
 						osi_socket asocket,
-						afs_uint32 ahost, short aport,
+						struct sockaddr *saddr,
 						int istack);
 extern struct rx_packet *rxi_ReceiveVersionPacket(struct rx_packet
 						  *ap, osi_socket asocket,
-						  afs_uint32 ahost,
-						  short aport, int istack);
+						  struct sockaddr *saddr, int istack);
 extern void rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
 			   struct rx_packet *p, int istack);
 extern void rxi_SendPacketList(struct rx_call *call,
 			       struct rx_connection *conn,
 			       struct rx_packet **list, int len, int istack);
-extern void rxi_SendRawAbort(osi_socket socket, afs_uint32 host, u_short port,
+extern void rxi_SendRawAbort(osi_socket socket, struct sockaddr *saddr,
 			     afs_int32 error, struct rx_packet *source,
 			     int istack);
 extern struct rx_packet *rxi_SendSpecial(struct rx_call *call,

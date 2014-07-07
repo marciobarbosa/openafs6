@@ -123,14 +123,14 @@ static struct rx_packet *rxi_SendCallAbort(struct rx_call *call,
 					   int istack, int force);
 static void rxi_AckAll(struct rx_call *call);
 static struct rx_connection
-	*rxi_FindConnection(osi_socket socket, afs_uint32 host, u_short port,
+	*rxi_FindConnection(osi_socket socket, struct sockaddr *saddr,
 			    u_short serviceId, afs_uint32 cid,
 			    afs_uint32 epoch, int type, u_int securityIndex,
                             int *unknownService);
 static struct rx_packet
 	*rxi_ReceiveDataPacket(struct rx_call *call, struct rx_packet *np,
 			       int istack, osi_socket socket,
-			       afs_uint32 host, u_short port, int *tnop,
+			       struct sockaddr *saddr, int *tnop,
 			       struct rx_call **newcallp);
 static struct rx_packet
 	*rxi_ReceiveAckPacket(struct rx_call *call, struct rx_packet *np,
@@ -1088,7 +1088,7 @@ rx_NewConnectionSA(struct sockaddr *saddr, u_short sservice,
     conn->type = RX_CLIENT_CONNECTION;
     conn->cid = cid;
     conn->epoch = rx_epoch;
-    conn->peer = rxi_FindPeer(saddr_in->sin_addr.s_addr, saddr_in->sin_port, 1);
+    conn->peer = rxi_FindPeer(saddr, 1);
     conn->serviceId = sservice;
     conn->securityObject = securityObject;
     conn->securityData = (void *) 0;
@@ -3086,26 +3086,21 @@ rx_GetNetworkError(struct rx_connection *conn, int *err_origin, int *err_type,
  * new one will be allocated and initialized
  */
 struct rx_peer *
-rxi_FindPeer(afs_uint32 host, u_short port, int create)
+rxi_FindPeer(struct sockaddr *saddr, int create)
 {
     struct rx_peer *pp;
     int hashIndex;
-    struct sockaddr_in saddr;
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = port;
-
-    hashIndex = PEER_HASH(host, port);
+    hashIndex = PEER_HASH(((struct sockaddr_in *)saddr)->sin_addr.s_addr, ((struct sockaddr_in *)saddr)->sin_port);
     MUTEX_ENTER(&rx_peerHashTable_lock);
     for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
-        if(rxi_IsSockAddrEqual(pp->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual(pp->saddr, (struct sockaddr *)&saddr))
+        if(rxi_IsSockAddrEqual(pp->saddr, saddr) && rxi_IsSockPortEqual(pp->saddr, saddr))
             break;
     }
     if (!pp) {
 	if (create) {
 	    pp = rxi_AllocPeer();	/* This bzero's *pp */
-            pp->saddr = rxi_CloneSockAddr((struct sockaddr *)&saddr);
+            pp->saddr = rxi_CloneSockAddr(saddr);
 #ifdef AFS_RXERRQ_ENV
 	    rx_atomic_set(&pp->neterrs, 0);
 #endif
@@ -3139,21 +3134,17 @@ rxi_FindPeer(afs_uint32 host, u_short port, int create)
  * server connection is created, it will be created using the supplied
  * index, if the index is valid for this service */
 static struct rx_connection *
-rxi_FindConnection(osi_socket socket, afs_uint32 host,
-		   u_short port, u_short serviceId, afs_uint32 cid,
+rxi_FindConnection(osi_socket socket, struct sockaddr *saddr, 
+                   u_short serviceId, afs_uint32 cid,
 		   afs_uint32 epoch, int type, u_int securityIndex,
                    int *unknownService)
 {
     int hashindex, flag, i;
     struct rx_connection *conn;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = port;
 
     *unknownService = 0;
-    hashindex = CONN_HASH(host, port, cid, epoch, type);
+    hashindex = CONN_HASH(((struct sockaddr_in *)saddr)->sin_addr.s_addr, ((struct sockaddr_in *)saddr)->sin_port, 
+                           cid, epoch, type);
     MUTEX_ENTER(&rx_connHashTable_lock);
     rxLastConn ? (conn = rxLastConn, flag = 0) : (conn =
 						  rx_connHashTable[hashindex],
@@ -3170,9 +3161,9 @@ rxi_FindConnection(osi_socket socket, afs_uint32 host,
 		MUTEX_EXIT(&rx_connHashTable_lock);
 		return (struct rx_connection *)0;
 	    }
-            if(rxi_IsSockAddrEqual(pp->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual(pp->saddr, (struct sockaddr *)&saddr))
+            if(rxi_IsSockAddrEqual(pp->saddr, saddr) && rxi_IsSockPortEqual(pp->saddr, saddr))
                 break;
-	    if (type == RX_CLIENT_CONNECTION && rxi_IsSockPortEqual(pp->saddr, (struct sockaddr *)&saddr))
+	    if (type == RX_CLIENT_CONNECTION && rxi_IsSockPortEqual(pp->saddr, saddr))
 		break;
 	    /* So what happens when it's a callback connection? */
 	    if (		/*type == RX_CLIENT_CONNECTION && */
@@ -3206,7 +3197,7 @@ rxi_FindConnection(osi_socket socket, afs_uint32 host,
 	CV_INIT(&conn->conn_call_cv, "conn call cv", CV_DEFAULT, 0);
 	conn->next = rx_connHashTable[hashindex];
 	rx_connHashTable[hashindex] = conn;
-	conn->peer = rxi_FindPeer(host, port, 1);
+	conn->peer = rxi_FindPeer(saddr, 1);
 	conn->type = RX_SERVER_CONNECTION;
 	conn->lastSendTime = clock_Sec();	/* don't GC immediately */
 	conn->epoch = epoch;
@@ -3332,8 +3323,7 @@ rxi_AbortIfServerBusy(osi_socket socket, struct rx_connection *conn,
 {
     if ((rx_BusyThreshold > 0) &&
 	(rx_atomic_read(&rx_nWaiting) > rx_BusyThreshold)) {
-	rxi_SendRawAbort(socket, ((struct sockaddr_in *)conn->peer->saddr)->sin_addr.s_addr, ((struct sockaddr_in *)conn->peer->saddr)->sin_port,
-			 rx_BusyError, np, 0);
+	rxi_SendRawAbort(socket, conn->peer->saddr, rx_BusyError, np, 0);
 	if (rx_stats_active)
 	    rx_atomic_inc(&rx_stats.nBusies);
 	return 1;
@@ -3488,13 +3478,15 @@ int (*rx_almostSent) (struct rx_packet *, struct sockaddr_in *) = 0;
 
 struct rx_packet *
 rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
-		  afs_uint32 host, u_short port, int *tnop,
+		  struct sockaddr *saddr, int *tnop,
 		  struct rx_call **newcallp)
 {
     struct rx_call *call;
     struct rx_connection *conn;
     int type;
     int unknownService = 0;
+    afs_uint32 host = ((struct sockaddr_in *)saddr)->sin_addr.s_addr;
+    u_short port = ((struct sockaddr_in *)saddr)->sin_port;
 #ifdef RXDEBUG
     char *packetType;
 #endif
@@ -3508,7 +3500,8 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
     packetType = (np->header.type > 0 && np->header.type < RX_N_PACKET_TYPES)
 	? rx_packetTypes[np->header.type - 1] : "*UNKNOWN*";
     dpf(("R %d %s: %x.%d.%d.%d.%d.%d.%d flags %d, packet %"AFS_PTR_FMT"\n",
-	 np->header.serial, packetType, ntohl(host), ntohs(port), np->header.serviceId,
+	 np->header.serial, packetType, ntohl(((struct sockaddr_in *)saddr)->sin_addr.s_addr), 
+         ntohs(((struct sockaddr_in *)saddr)->sin_port), np->header.serviceId,
 	 np->header.epoch, np->header.cid, np->header.callNumber,
 	 np->header.seq, np->header.flags, np));
 #endif
@@ -3520,7 +3513,7 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
 	struct rx_peer *peer;
 
 	/* Try to look up the peer structure, but don't create one */
-	peer = rxi_FindPeer(host, port, 0);
+	peer = rxi_FindPeer(saddr, 0);
 
 	/* Since this may not be associated with a connection, it may have
 	 * no refCount, meaning we could race with ReapConnections
@@ -3539,11 +3532,11 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
     }
 
     if (np->header.type == RX_PACKET_TYPE_VERSION) {
-	return rxi_ReceiveVersionPacket(np, socket, host, port, 1);
+	return rxi_ReceiveVersionPacket(np, socket, saddr, 1);
     }
 
     if (np->header.type == RX_PACKET_TYPE_DEBUG) {
-	return rxi_ReceiveDebugPacket(np, socket, host, port, 1);
+	return rxi_ReceiveDebugPacket(np, socket, saddr, 1);
     }
 #ifdef RXDEBUG
     /* If an input tracer function is defined, call it with the packet and
@@ -3552,8 +3545,8 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
 	struct sockaddr_in addr;
 	int drop;
 	addr.sin_family = AF_INET;
-	addr.sin_port = port;
-	addr.sin_addr.s_addr = host;
+	addr.sin_port = ((struct sockaddr_in *)saddr)->sin_port;
+	addr.sin_addr.s_addr = ((struct sockaddr_in *)saddr)->sin_addr.s_addr;
 #ifdef STRUCT_SOCKADDR_HAS_SA_LEN
 	addr.sin_len = sizeof(addr);
 #endif /* AFS_OSF_ENV */
@@ -3561,8 +3554,7 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
 	/* drop packet if return value is non-zero */
 	if (drop)
 	    return np;
-	port = addr.sin_port;	/* in case fcn changed addr */
-	host = addr.sin_addr.s_addr;
+	saddr = (struct sockaddr *)&addr;	/* in case fcn changed addr */
     }
 #endif
 
@@ -3573,7 +3565,7 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
     /* Find the connection (or fabricate one, if we're the server & if
      * necessary) associated with this packet */
     conn =
-	rxi_FindConnection(socket, host, port, np->header.serviceId,
+	rxi_FindConnection(socket, saddr, np->header.serviceId,
 			   np->header.cid, np->header.epoch, type,
 			   np->header.securityIndex, &unknownService);
 
@@ -3581,8 +3573,7 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
        don't abort an abort. */
     if (!conn) {
         if (unknownService && (np->header.type != RX_PACKET_TYPE_ABORT))
-            rxi_SendRawAbort(socket, host, port, RX_INVALID_OPERATION,
-                             np, 0);
+            rxi_SendRawAbort(socket, saddr, RX_INVALID_OPERATION, np, 0);
         return np;
     }
 
@@ -3671,7 +3662,7 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
 	if (type == RX_CLIENT_CONNECTION && !opr_queue_IsEmpty(&call->tq))
 	    rxi_AckAllInTransmitQueue(call);
 
-	np = rxi_ReceiveDataPacket(call, np, 1, socket, host, port, tnop,
+	np = rxi_ReceiveDataPacket(call, np, 1, socket, saddr, tnop,
 				   newcallp);
 	break;
     case RX_PACKET_TYPE_ACK:
@@ -3938,7 +3929,7 @@ TryAttach(struct rx_call *acall, osi_socket socket,
 static struct rx_packet *
 rxi_ReceiveDataPacket(struct rx_call *call,
 		      struct rx_packet *np, int istack,
-		      osi_socket socket, afs_uint32 host, u_short port,
+		      osi_socket socket, struct sockaddr *saddr,
 		      int *tnop, struct rx_call **newcallp)
 {
     int ackNeeded = 0;		/* 0 means no, otherwise ack_reason */
@@ -3998,7 +3989,8 @@ rxi_ReceiveDataPacket(struct rx_call *call,
 	/* The RX_JUMBO_PACKET is set in all but the last packet in each
 	 * AFS 3.5 jumbogram. */
 	if (flags & RX_JUMBO_PACKET) {
-	    tnp = rxi_SplitJumboPacket(np, host, port, isFirst);
+	    tnp = rxi_SplitJumboPacket(np, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
+                                        ((struct sockaddr_in *)saddr)->sin_port, isFirst);
 	} else {
 	    tnp = NULL;
 	}
@@ -8404,11 +8396,16 @@ rx_ClearPeerRPCStats(afs_int32 rxInterface, afs_uint32 peerHost, afs_uint16 peer
     rx_interface_stat_p rpc_stat;
     int totalFunc, i;
     struct rx_peer * peer;
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = peerHost;
+    saddr.sin_port = peerPort;
 
     if (rxInterface == -1)
         return;
 
-    peer = rxi_FindPeer(peerHost, peerPort, 0);
+    peer = rxi_FindPeer((struct sockaddr *)&saddr, 0);
     if (!peer)
         return;
 
@@ -8465,6 +8462,11 @@ rx_CopyPeerRPCStats(afs_uint64 op, afs_uint32 peerHost, afs_uint16 peerPort)
     int currentFunc = (op & MAX_AFS_UINT32);
     afs_int32 rxInterface = (op >> 32);
     struct rx_peer *peer;
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = peerHost;
+    saddr.sin_port = peerPort;
 
     if (!rxi_monitor_peerStats)
         return NULL;
@@ -8475,7 +8477,7 @@ rx_CopyPeerRPCStats(afs_uint64 op, afs_uint32 peerHost, afs_uint16 peerPort)
     if (rpcop_stat == NULL)
         return NULL;
 
-    peer = rxi_FindPeer(peerHost, peerPort, 0);
+    peer = rxi_FindPeer((struct sockaddr *)&saddr, 0);
     if (!peer)
         return NULL;
 

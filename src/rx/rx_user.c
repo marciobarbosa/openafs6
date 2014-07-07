@@ -690,7 +690,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 
     /* try to second-guess IP, and identify which link is most likely to
      * be used for traffic to/from this host. */
-    ppaddr = ntohl(((struct sockaddr_in *)pp->saddr)->sin_addr.s_addr);
+    ppaddr = ntohl(((struct sockaddr_in *)&pp->saddr)->sin_addr.s_addr);
 
     pp->ifMTU = 0;
     rx_rto_setPeerTimeoutSecs(pp, 2);
@@ -722,8 +722,8 @@ rxi_InitPeerParams(struct rx_peer *pp)
     sock=socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock != OSI_NULLSOCKET) {
         addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = ((struct sockaddr_in *)pp->saddr)->sin_addr.s_addr;
-        addr.sin_port = ((struct sockaddr_in *)pp->saddr)->sin_port;
+        addr.sin_addr.s_addr = ((struct sockaddr_in *)&pp->saddr)->sin_addr.s_addr;
+        addr.sin_port = ((struct sockaddr_in *)&pp->saddr)->sin_port;
         if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
             int mtu=0;
             socklen_t s = sizeof(mtu);

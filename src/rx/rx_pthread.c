@@ -204,7 +204,7 @@ rxi_ReScheduleEvents(void)
 static void
 rxi_ListenerProc(osi_socket sock, int *tnop, struct rx_call **newcallp)
 {
-    struct sockaddr *saddr;
+    struct sockaddr_storage saddr;
     struct rx_packet *p = (struct rx_packet *)0;
 
     MUTEX_ENTER(&listener_mutex);
@@ -229,9 +229,9 @@ rxi_ListenerProc(osi_socket sock, int *tnop, struct rx_call **newcallp)
 	    }
 	}
 
-	if (rxi_ReadPacket(sock, p, saddr)) {
+	if (rxi_ReadPacket(sock, p, (struct sockaddr *)&saddr)) {
 	    clock_NewTime();
-	    p = rxi_ReceivePacket(p, sock, saddr, tnop, newcallp);
+	    p = rxi_ReceivePacket(p, sock, (struct sockaddr *)&saddr, tnop, newcallp);
 	    if (newcallp && *newcallp) {
 		if (p)
 		    rxi_FreePacket(p);

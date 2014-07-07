@@ -64,7 +64,7 @@ void
 rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 {
     struct rx_packet *tp;
-    struct sockaddr *saddr;
+    struct sockaddr_storage saddr;
     int rc;
 
     /*
@@ -78,9 +78,9 @@ rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 
 	tp = rxi_AllocPacket(RX_PACKET_CLASS_RECEIVE);
 	usr_assert(tp != NULL);
-	rc = rxi_ReadPacket(usockp, tp, saddr);
+	rc = rxi_ReadPacket(usockp, tp, (struct sockaddr *)&saddr);
 	if (rc != 0) {
-	    tp = rxi_ReceivePacket(tp, usockp, saddr, tnop, newcallp);
+	    tp = rxi_ReceivePacket(tp, usockp, (struct sockaddr *)&saddr, tnop, newcallp);
 	    if (newcallp && *newcallp) {
 		if (tp) {
 		    rxi_FreePacket(tp);

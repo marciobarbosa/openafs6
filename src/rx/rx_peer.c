@@ -19,9 +19,9 @@
 #include "rx_peer.h"
 
 afs_uint32 rx_HostOf(struct rx_peer *peer) {
-    return ((struct sockaddr_in *)peer->saddr)->sin_addr.s_addr;
+    return ((struct sockaddr_in *)&peer->saddr)->sin_addr.s_addr;
 }
 
 u_short rx_PortOf(struct rx_peer *peer) {
-    return ((struct sockaddr_in *)peer->saddr)->sin_port;
+    return ((struct sockaddr_in *)&peer->saddr)->sin_port;
 }

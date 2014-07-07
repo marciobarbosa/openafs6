@@ -130,8 +130,7 @@ static struct rx_connection
 static struct rx_packet
 	*rxi_ReceiveDataPacket(struct rx_call *call, struct rx_packet *np,
 			       int istack, osi_socket socket,
-			       struct sockaddr *saddr, int *tnop,
-			       struct rx_call **newcallp);
+			       int *tnop, struct rx_call **newcallp);
 static struct rx_packet
 	*rxi_ReceiveAckPacket(struct rx_call *call, struct rx_packet *np,
 			      int istack);
@@ -3485,8 +3484,6 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
     struct rx_connection *conn;
     int type;
     int unknownService = 0;
-    afs_uint32 host = ((struct sockaddr_in *)saddr)->sin_addr.s_addr;
-    u_short port = ((struct sockaddr_in *)saddr)->sin_port;
 #ifdef RXDEBUG
     char *packetType;
 #endif
@@ -3542,19 +3539,14 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
     /* If an input tracer function is defined, call it with the packet and
      * network address.  Note this function may modify its arguments. */
     if (rx_justReceived) {
-	struct sockaddr_in addr;
 	int drop;
-	addr.sin_family = AF_INET;
-	addr.sin_port = ((struct sockaddr_in *)saddr)->sin_port;
-	addr.sin_addr.s_addr = ((struct sockaddr_in *)saddr)->sin_addr.s_addr;
 #ifdef STRUCT_SOCKADDR_HAS_SA_LEN
-	addr.sin_len = sizeof(addr);
+	((struct sockaddr_in *)saddr)->sin_len = sizeof(struct sockaddr_in);
 #endif /* AFS_OSF_ENV */
-	drop = (*rx_justReceived) (np, &addr);
+	drop = (*rx_justReceived) (np, (struct sockaddr_in *)saddr);
 	/* drop packet if return value is non-zero */
 	if (drop)
 	    return np;
-	saddr = (struct sockaddr *)&addr;	/* in case fcn changed addr */
     }
 #endif
 
@@ -3662,8 +3654,7 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
 	if (type == RX_CLIENT_CONNECTION && !opr_queue_IsEmpty(&call->tq))
 	    rxi_AckAllInTransmitQueue(call);
 
-	np = rxi_ReceiveDataPacket(call, np, 1, socket, saddr, tnop,
-				   newcallp);
+	np = rxi_ReceiveDataPacket(call, np, 1, socket, tnop, newcallp);
 	break;
     case RX_PACKET_TYPE_ACK:
 	/* Respond immediately to ack packets requesting acknowledgement
@@ -3929,8 +3920,8 @@ TryAttach(struct rx_call *acall, osi_socket socket,
 static struct rx_packet *
 rxi_ReceiveDataPacket(struct rx_call *call,
 		      struct rx_packet *np, int istack,
-		      osi_socket socket, struct sockaddr *saddr,
-		      int *tnop, struct rx_call **newcallp)
+		      osi_socket socket, int *tnop,
+                      struct rx_call **newcallp)
 {
     int ackNeeded = 0;		/* 0 means no, otherwise ack_reason */
     int newPackets = 0;
@@ -3989,8 +3980,7 @@ rxi_ReceiveDataPacket(struct rx_call *call,
 	/* The RX_JUMBO_PACKET is set in all but the last packet in each
 	 * AFS 3.5 jumbogram. */
 	if (flags & RX_JUMBO_PACKET) {
-	    tnp = rxi_SplitJumboPacket(np, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                                        ((struct sockaddr_in *)saddr)->sin_port, isFirst);
+	    tnp = rxi_SplitJumboPacket(np, isFirst);
 	} else {
 	    tnp = NULL;
 	}

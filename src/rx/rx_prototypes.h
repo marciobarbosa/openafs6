@@ -282,8 +282,7 @@ extern int rxi_GetIFInfo(void);
 extern int rxk_FreeSocket(struct socket *asocket);
 extern osi_socket *rxk_NewSocket(short aport);
 # endif
-extern int rxk_ReadPacket(osi_socket so, struct rx_packet *p, int *host,
-			  int *port);
+extern int rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct sockaddr *saddr);
 # ifdef UKERNEL
 extern void *rx_ServerProc(void *);
 # endif
@@ -418,9 +417,7 @@ extern struct rx_packet *rxi_AllocSendPacket(struct rx_call *call,
 					     int want);
 extern int rxi_ReadPacket(osi_socket socket, struct rx_packet *p,
 			  struct sockaddr *saddr);
-extern struct rx_packet *rxi_SplitJumboPacket(struct rx_packet *p,
-					      afs_uint32 host, short port,
-					      int first);
+extern struct rx_packet *rxi_SplitJumboPacket(struct rx_packet *p, int first);
 #ifndef KERNEL
 extern int osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec,
 		       int nvecs, int length, int istack);

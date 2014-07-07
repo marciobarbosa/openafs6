@@ -86,8 +86,7 @@ extern char cml_version_number[];
 static int AllocPacketBufs(int class, int num_pkts, struct opr_queue *q);
 
 static void rxi_SendDebugPacket(struct rx_packet *apacket, osi_socket asocket,
-				afs_uint32 ahost, short aport,
-				afs_int32 istack);
+				struct sockaddr *saddr, afs_int32 istack);
 static struct rx_packet *rxi_AllocPacketNoLock(int class);
 
 #ifndef KERNEL
@@ -1521,8 +1520,7 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *saddr)
  * last two pad bytes. */
 
 struct rx_packet *
-rxi_SplitJumboPacket(struct rx_packet *p, afs_uint32 host, short port,
-		     int first)
+rxi_SplitJumboPacket(struct rx_packet *p, int first)
 {
     struct rx_packet *np;
     struct rx_jumboHeader *jp;
@@ -1809,8 +1807,7 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 		rx_packetwrite(ap, 0, sizeof(struct rx_debugStats),
 			       (char *)&tstat);
 		ap->length = sizeof(struct rx_debugStats);
-		rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                                     ((struct sockaddr_in *)saddr)->sin_port, istack);
+		rxi_SendDebugPacket(ap, asocket, saddr, istack);
 		rx_computelen(ap, ap->length);
 	    }
 	    break;
@@ -1903,8 +1900,7 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 				       (char *)&tconn);
 			tl = ap->length;
 			ap->length = sizeof(struct rx_debugConn);
-			rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                                             ((struct sockaddr_in *)saddr)->sin_port, istack);
+			rxi_SendDebugPacket(ap, asocket, saddr, istack);
 			ap->length = tl;
 			return ap;
 		    }
@@ -1917,8 +1913,7 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 			   (char *)&tconn);
 	    tl = ap->length;
 	    ap->length = sizeof(struct rx_debugConn);
-	    rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                                 ((struct sockaddr_in *)saddr)->sin_port, istack);
+	    rxi_SendDebugPacket(ap, asocket, saddr, istack);
 	    ap->length = tl;
 	    break;
 	}
@@ -2003,8 +1998,7 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 				       (char *)&tpeer);
 			tl = ap->length;
 			ap->length = sizeof(struct rx_debugPeer);
-			rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                                             ((struct sockaddr_in *)saddr)->sin_port, istack);
+			rxi_SendDebugPacket(ap, asocket, saddr, istack);
 			ap->length = tl;
 			return ap;
 		    }
@@ -2017,8 +2011,7 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 			   (char *)&tpeer);
 	    tl = ap->length;
 	    ap->length = sizeof(struct rx_debugPeer);
-	    rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                                 ((struct sockaddr_in *)saddr)->sin_port, istack);
+	    rxi_SendDebugPacket(ap, asocket, saddr, istack);
 	    ap->length = tl;
 	    break;
 	}
@@ -2044,8 +2037,7 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 	    ap->length = sizeof(rx_stats);
         if (rx_stats_active)
 	    MUTEX_EXIT(&rx_stats_mutex);
-	    rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                                 ((struct sockaddr_in *)saddr)->sin_port, istack);
+	    rxi_SendDebugPacket(ap, asocket, saddr, istack);
 	    ap->length = tl;
 	    break;
 	}
@@ -2057,8 +2049,7 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 	rx_packetwrite(ap, 0, sizeof(struct rx_debugIn), (char *)&tin);
 	tl = ap->length;
 	ap->length = sizeof(struct rx_debugIn);
-	rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                             ((struct sockaddr_in *)saddr)->sin_port, istack);
+	rxi_SendDebugPacket(ap, asocket, saddr, istack);
 	ap->length = tl;
 	break;
     }
@@ -2085,8 +2076,7 @@ rxi_ReceiveVersionPacket(struct rx_packet *ap, osi_socket asocket,
 	rx_packetwrite(ap, 0, 65, buf);
 	tl = ap->length;
 	ap->length = 65;
-	rxi_SendDebugPacket(ap, asocket, ((struct sockaddr_in *)saddr)->sin_addr.s_addr, 
-                             ((struct sockaddr_in *)saddr)->sin_port, istack);
+	rxi_SendDebugPacket(ap, asocket, saddr, istack);
 	ap->length = tl;
     }
 
@@ -2097,20 +2087,16 @@ rxi_ReceiveVersionPacket(struct rx_packet *ap, osi_socket asocket,
 /* send a debug packet back to the sender */
 static void
 rxi_SendDebugPacket(struct rx_packet *apacket, osi_socket asocket,
-		    afs_uint32 ahost, short aport, afs_int32 istack)
+		    struct sockaddr *saddr, afs_int32 istack)
 {
-    struct sockaddr_in taddr;
     unsigned int i, nbytes, savelen = 0;
     int saven = 0;
 #ifdef KERNEL
     int waslocked = ISAFS_GLOCK();
 #endif
 
-    taddr.sin_family = AF_INET;
-    taddr.sin_port = aport;
-    taddr.sin_addr.s_addr = ahost;
 #ifdef STRUCT_SOCKADDR_HAS_SA_LEN
-    taddr.sin_len = sizeof(struct sockaddr_in);
+    ((struct sockaddr_in *)saddr)->sin_len = sizeof(struct sockaddr_in);
 #endif
 
     /* We need to trim the niovecs. */
@@ -2139,7 +2125,7 @@ rxi_SendDebugPacket(struct rx_packet *apacket, osi_socket asocket,
 #endif
 #endif
     /* debug packets are not reliably delivered, hence the cast below. */
-    (void)osi_NetSend(asocket, &taddr, apacket->wirevec, apacket->niovecs,
+    (void)osi_NetSend(asocket, (struct sockaddr_in *)saddr, apacket->wirevec, apacket->niovecs,
 		      apacket->length + RX_HEADER_SIZE, istack);
 #ifdef KERNEL
 #ifdef RX_KERNEL_TRACE
@@ -2198,17 +2184,11 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
     int waslocked;
 #endif
     int code;
-    struct sockaddr_in addr;
     struct rx_peer *peer = conn->peer;
     osi_socket socket;
 #ifdef RXDEBUG
     char deliveryType = 'S';
 #endif
-    /* The address we're sending the packet to */
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = ((struct sockaddr_in *)&peer->saddr)->sin_port;
-    addr.sin_addr.s_addr = ((struct sockaddr_in *)&peer->saddr)->sin_addr.s_addr;
 
     /* This stuff should be revamped, I think, so that most, if not
      * all, of the header stuff is always added here.  We could
@@ -2244,7 +2224,7 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
     /* If an output tracer function is defined, call it with the packet and
      * network address.  Note this function may modify its arguments. */
     if (rx_almostSent) {
-	int drop = (*rx_almostSent) (p, &addr);
+	int drop = (*rx_almostSent) (p, (struct sockaddr_in *)&peer->saddr);
 	/* drop packet if return value is non-zero? */
 	if (drop)
 	    deliveryType = 'D';	/* Drop the packet */
@@ -2291,7 +2271,7 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
 #endif
 #endif
 	if ((code =
-	     osi_NetSend(socket, &addr, p->wirevec, p->niovecs,
+	     osi_NetSend(socket, (struct sockaddr_in *)&peer->saddr, p->wirevec, p->niovecs,
 			 p->length + RX_HEADER_SIZE, istack)) != 0) {
 	    /* send failed, so let's hurry up the resend, eh? */
             if (rx_stats_active)
@@ -2346,7 +2326,6 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
 #if     defined(AFS_SUN5_ENV) && defined(KERNEL)
     int waslocked;
 #endif
-    struct sockaddr_in addr;
     struct rx_peer *peer = conn->peer;
     osi_socket socket;
     struct rx_packet *p = NULL;
@@ -2358,10 +2337,6 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
 #ifdef RXDEBUG
     char deliveryType = 'S';
 #endif
-    /* The address we're sending the packet to */
-    addr.sin_family = AF_INET;
-    addr.sin_port = ((struct sockaddr_in *)&peer->saddr)->sin_port;
-    addr.sin_addr.s_addr = ((struct sockaddr_in *)&peer->saddr)->sin_addr.s_addr;
 
     if (len + 1 > RX_MAXIOVECS) {
 	osi_Panic("rxi_SendPacketList, len > RX_MAXIOVECS\n");
@@ -2452,7 +2427,7 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
 	/* If an output tracer function is defined, call it with the packet and
 	 * network address.  Note this function may modify its arguments. */
 	if (rx_almostSent) {
-	    int drop = (*rx_almostSent) (p, &addr);
+	    int drop = (*rx_almostSent) (p, (struct sockaddr_in *)&peer->saddr);
 	    /* drop packet if return value is non-zero? */
 	    if (drop)
 		deliveryType = 'D';	/* Drop the packet */
@@ -2490,7 +2465,7 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
 	    AFS_GUNLOCK();
 #endif
 	if ((code =
-	     osi_NetSend(socket, &addr, &wirevec[0], len + 1, length,
+	     osi_NetSend(socket, (struct sockaddr_in *)&peer->saddr, &wirevec[0], len + 1, length,
 			 istack)) != 0) {
 	    /* send failed, so let's hurry up the resend, eh? */
             if (rx_stats_active)

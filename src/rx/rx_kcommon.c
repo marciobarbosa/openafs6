@@ -1084,7 +1084,7 @@ afs_rxevent_daemon(void)
 
 /* rxk_ReadPacket returns 1 if valid packet, 0 on error. */
 int
-rxk_ReadPacket(osi_socket so, struct rx_packet *p, int *host, int *port)
+rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct sockaddr *saddr)
 {
     int code;
     struct sockaddr_in from;
@@ -1154,8 +1154,8 @@ rxk_ReadPacket(osi_socket so, struct rx_packet *p, int *host, int *port)
 	    /* Extract packet header. */
 	    rxi_DecodePacketHeader(p);
 
-	    *host = from.sin_addr.s_addr;
-	    *port = from.sin_port;
+	    rxi_CopySockAddr(saddr, (struct sockaddr *)&from);
+
 	    if (p->header.type > 0 && p->header.type < RX_N_PACKET_TYPES) {
                 if (rx_stats_active) {
                     rx_atomic_inc(&rx_stats.packetsRead[p->header.type - 1]);
@@ -1196,8 +1196,7 @@ rxk_Listener(void)
 {
     struct rx_packet *rxp = NULL;
     int code;
-    int host, port;
-    struct sockaddr_in saddr;
+    struct sockaddr_storage saddr;
 
 #ifdef AFS_LINUX20_ENV
     rxk_ListenerPid = current->pid;
@@ -1228,11 +1227,7 @@ rxk_Listener(void)
 	    if (!rxp)
 		osi_Panic("rxk_Listener: No more Rx buffers!\n");
 	}
-	if (!(code = rxk_ReadPacket(rx_socket, rxp, &host, &port))) {
-            saddr.sin_family = AF_INET;
-            saddr.sin_addr.s_addr = host;
-            saddr.sin_port = port;
-
+	if (!(code = rxk_ReadPacket(rx_socket, rxp, (struct sockaddr *)&saddr))) {
 	    rxp = rxi_ReceivePacket(rxp, rx_socket, (struct sockaddr *)&saddr, 0, 0);
 	}
     }

@@ -93,6 +93,7 @@ cm_RankServer(cm_server_t * tsp)
     afs_uint64 perfRank = 0;
     afs_uint64 rtt = 0;
     double log_rtt;
+    struct sockaddr_in saddr;
 
     int isDown = (tsp->flags & CM_SERVERFLAG_DOWN);
     void *peerRpcStats = NULL;
@@ -130,7 +131,10 @@ cm_RankServer(cm_server_t * tsp)
         * is the network ranking.
         */
 
-        code = rx_GetLocalPeers(tsp->addr.sin_addr.s_addr, port, &tpeer);
+        rx_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&tsp->addr);
+        saddr.sin_port = port;
+
+        code = rx_GetLocalPeers((struct sockaddr *)&saddr, &tpeer);
         if (code == 0) {
             peerRpcStats = rx_CopyPeerRPCStats(opcode, tsp->addr.sin_addr.s_addr, port);
             if (peerRpcStats == NULL && tsp->type == CM_SERVER_FILE)

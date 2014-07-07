@@ -22,11 +22,10 @@ extern rx_atomic_t rx_nWaited;
 /* rx.c */
 extern void rxi_CancelDelayedAckEvent(struct rx_call *);
 extern void rxi_PacketsUnWait(void);
-extern void rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host,
-			   afs_uint32 port, int mtu);
+extern void rxi_SetPeerMtu(struct rx_peer *peer, struct sockaddr *saddr, int mtu);
 #ifdef AFS_RXERRQ_ENV
 extern void rxi_ProcessNetError(struct sock_extended_err *err,
-                                afs_uint32 addr, afs_uint16 port);
+                                struct sockaddr *saddr);
 #endif
 extern struct rx_peer *rxi_FindPeer(struct sockaddr *saddr, int create);
 extern struct rx_packet *rxi_ReceivePacket(struct rx_packet *np,

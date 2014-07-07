@@ -2878,20 +2878,15 @@ rxi_Free(void *addr, size_t size)
 }
 
 void
-rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host, afs_uint32 port, int mtu)
+rxi_SetPeerMtu(struct rx_peer *peer, struct sockaddr *saddr, int mtu)
 {
     struct rx_peer **peer_ptr = NULL, **peer_end = NULL;
     struct rx_peer *next = NULL;
     int hashIndex;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = port;
 
     if (!peer) {
 	MUTEX_ENTER(&rx_peerHashTable_lock);
-	if (port == 0) {
+	if (((struct sockaddr_in *)saddr)->sin_port == 0) {
 	    peer_ptr = &rx_peerHashTable[0];
 	    peer_end = &rx_peerHashTable[rx_hashTableSize];
 	    next = NULL;
@@ -2901,14 +2896,14 @@ rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host, afs_uint32 port, int mtu)
 		    peer = *peer_ptr;
 		for ( ; peer; peer = next) {
 		    next = peer->next;
-                    if(rxi_IsSockAddrEqual((struct sockaddr *)&saddr, (struct sockaddr *)&peer->saddr))
+                    if(rxi_IsSockAddrEqual(saddr, (struct sockaddr *)&peer->saddr))
                         break;
 		}
 	    }
 	} else {
-	    hashIndex = PEER_HASH(host, port);
+	    hashIndex = PEER_HASH(((struct sockaddr_in *)saddr)->sin_addr.s_addr, ((struct sockaddr_in *)saddr)->sin_port);
 	    for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-                if(rxi_IsSockAddrEqual((struct sockaddr *)&peer->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual((struct sockaddr *)&peer->saddr, (struct sockaddr *)&saddr))
+                if(rxi_IsSockAddrEqual((struct sockaddr *)&peer->saddr, saddr) && rxi_IsSockPortEqual((struct sockaddr *)&peer->saddr, saddr))
                     break;
 	    }
 	}
@@ -2937,7 +2932,7 @@ rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host, afs_uint32 port, int mtu)
 
         MUTEX_ENTER(&rx_peerHashTable_lock);
         peer->refCount--;
-        if (host && !port) {
+        if (((struct sockaddr_in *)saddr)->sin_addr.s_addr && !((struct sockaddr_in *)saddr)->sin_port) {
             peer = next;
 	    /* pick up where we left off */
             goto resume;
@@ -2948,20 +2943,15 @@ rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host, afs_uint32 port, int mtu)
 
 #ifdef AFS_RXERRQ_ENV
 static void
-rxi_SetPeerDead(struct sock_extended_err *err, afs_uint32 host, afs_uint16 port)
+rxi_SetPeerDead(struct sock_extended_err *err, struct sockaddr *saddr)
 {
-    int hashIndex = PEER_HASH(host, port);
+    int hashIndex = PEER_HASH(((struct sockaddr_in *)saddr)->sin_addr.s_addr, ((struct sockaddr_in *)saddr)->sin_port);
     struct rx_peer *peer;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = port;
 
     MUTEX_ENTER(&rx_peerHashTable_lock);
 
     for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-        if(rxi_IsSockAddrEqual((struct sockaddr *)&peer->saddr, (struct sockaddr *)&saddr) && rxi_IsSockPortEqual((struct sockaddr *)&peer->saddr, (struct sockaddr *)&saddr)) {
+        if(rxi_IsSockAddrEqual((struct sockaddr *)&peer->saddr, saddr) && rxi_IsSockPortEqual((struct sockaddr *)&peer->saddr, saddr)) {
             peer->refCount++;
             break;
         }
@@ -2984,11 +2974,12 @@ rxi_SetPeerDead(struct sock_extended_err *err, afs_uint32 host, afs_uint16 port)
 }
 
 void
-rxi_ProcessNetError(struct sock_extended_err *err, afs_uint32 addr, afs_uint16 port)
+rxi_ProcessNetError(struct sock_extended_err *err, struct sockaddr *saddr)
 {
 # ifdef AFS_ADAPT_PMTU
+
     if (err->ee_errno == EMSGSIZE && err->ee_info >= 68) {
-	rxi_SetPeerMtu(NULL, addr, port, err->ee_info - RX_IPUDP_SIZE);
+	rxi_SetPeerMtu(NULL, saddr, err->ee_info - RX_IPUDP_SIZE);
 	return;
     }
 # endif
@@ -2999,7 +2990,7 @@ rxi_ProcessNetError(struct sock_extended_err *err, afs_uint32 addr, afs_uint16 p
 	case ICMP_PORT_UNREACH:
 	case ICMP_NET_ANO:
 	case ICMP_HOST_ANO:
-	    rxi_SetPeerDead(err, addr, port);
+	    rxi_SetPeerDead(err, saddr);
 	    break;
 	}
     }
@@ -6423,7 +6414,7 @@ rxi_CheckCall(struct rx_call *call, int haveCTLock)
 		);
 
 	    if (ire && ire->ire_max_frag > 0)
-		rxi_SetPeerMtu(NULL, conn->peer->host, 0,
+		rxi_SetPeerMtu(NULL, (struct sockaddr *)&conn->peer->saddr,
 			       ire->ire_max_frag);
 #  if defined(GLOBAL_NETSTACKID)
 	    netstack_rele(ns);
@@ -6500,6 +6491,11 @@ mtuout:
     if (conn->msgsizeRetryErr && cerror != RX_CALL_TIMEOUT && !idle_timeout &&
         call->lastReceiveTime) {
 	int oldMTU = conn->peer->ifMTU;
+        struct sockaddr_in saddr;
+
+        saddr.sin_family = AF_INET;
+        saddr.sin_addr.s_addr = 0;
+        saddr.sin_port = 0;
 
 	/* if we thought we could send more, perhaps things got worse */
 	if (conn->peer->maxPacketSize > conn->lastPacketSize)
@@ -6510,7 +6506,7 @@ mtuout:
 	    newmtu = conn->lastPacketSize-(128+RX_IPUDP_SIZE);
 
 	/* minimum capped in SetPeerMtu */
-	rxi_SetPeerMtu(conn->peer, 0, 0, newmtu);
+	rxi_SetPeerMtu(conn->peer, (struct sockaddr *)&saddr, newmtu);
 
 	/* clean up */
 	conn->lastPacketSize = 0;
@@ -7892,22 +7888,17 @@ rx_GetServerPeers(osi_socket socket, afs_uint32 remoteAddr,
 }
 
 afs_int32
-rx_GetLocalPeers(afs_uint32 peerHost, afs_uint16 peerPort,
+rx_GetLocalPeers(struct sockaddr *saddr,
 		struct rx_debugPeer * peerStats)
 {
 	struct rx_peer *tp;
 	afs_int32 error = 1; /* default to "did not succeed" */
-	afs_uint32 hashValue = PEER_HASH(peerHost, peerPort);
-        struct sockaddr_in saddr;
-
-        saddr.sin_family = AF_INET;
-        saddr.sin_addr.s_addr = peerHost;
-        saddr.sin_port = peerPort;
+	afs_uint32 hashValue = PEER_HASH(((struct sockaddr_in *)saddr)->sin_addr.s_addr, ((struct sockaddr_in *)saddr)->sin_port);
 
 	MUTEX_ENTER(&rx_peerHashTable_lock);
 	for(tp = rx_peerHashTable[hashValue];
 	      tp != NULL; tp = tp->next) {
-                if(rxi_IsSockAddrEqual((struct sockaddr *)&tp->saddr, (struct sockaddr *)&saddr))
+                if(rxi_IsSockAddrEqual((struct sockaddr *)&tp->saddr, saddr))
                         break;
 	}
 

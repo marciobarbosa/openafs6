@@ -673,7 +673,6 @@ rxi_InitPeerParams(struct rx_peer *pp)
     int ix;
 #ifdef AFS_ADAPT_PMTU
     int sock;
-    struct sockaddr_in addr;
 #endif
 
     LOCK_IF_INIT;
@@ -721,10 +720,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 #ifdef AFS_ADAPT_PMTU
     sock=socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock != OSI_NULLSOCKET) {
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = ((struct sockaddr_in *)&pp->saddr)->sin_addr.s_addr;
-        addr.sin_port = ((struct sockaddr_in *)&pp->saddr)->sin_port;
-        if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+        if (connect(sock, (struct sockaddr *)&pp->saddr, sizeof(struct sockaddr_in)) == 0) {
             int mtu=0;
             socklen_t s = sizeof(mtu);
             if (getsockopt(sock, SOL_IP, IP_MTU, &mtu, &s)== 0) {
@@ -802,7 +798,7 @@ rxi_HandleSocketError(int socket)
     for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 	if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
 	    err = (struct sock_extended_err *)CMSG_DATA(cmsg);
-	    rxi_ProcessNetError(err, addr.sin_addr.s_addr, addr.sin_port);
+	    rxi_ProcessNetError(err, (struct sockaddr *)&addr);
 	}
     }
 

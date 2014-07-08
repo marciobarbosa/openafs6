@@ -199,7 +199,7 @@ extern u_short rx_PortOf(struct rx_peer *peer);
 #ifndef KERNEL
 typedef void (*rx_destructor_t) (void *);
 int rx_KeyCreate(rx_destructor_t);
-osi_socket rxi_GetHostUDPSocket(u_int host, u_short port);
+osi_socket rxi_GetHostUDPSocket(struct sockaddr *saddr);
 osi_socket rxi_GetUDPSocket(u_short port);
 #endif /* KERNEL */
 

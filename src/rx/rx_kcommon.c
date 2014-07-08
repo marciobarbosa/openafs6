@@ -33,7 +33,7 @@ int (*rxk_PacketArrivalProc) (struct rx_packet * ahandle, struct sockaddr_in * a
 int (*rxk_GetPacketProc) (struct rx_packet **ahandle, int asize);
 #endif
 
-osi_socket *rxk_NewSocketHost(afs_uint32 ahost, short aport);
+osi_socket *rxk_NewSocketHost(struct sockaddr *saddr);
 extern struct interfaceAddr afs_cb_interface;
 
 rxk_ports_t rxk_ports;
@@ -111,20 +111,26 @@ rxk_shutdownPorts(void)
 }
 
 osi_socket
-rxi_GetHostUDPSocket(u_int host, u_short port)
+rxi_GetHostUDPSocket(struct sockaddr *saddr)
 {
     osi_socket *sockp;
-    sockp = (osi_socket *)rxk_NewSocketHost(host, port);
+    sockp = (osi_socket *)rxk_NewSocketHost(saddr);
     if (sockp == (osi_socket *)0)
 	return OSI_NULLSOCKET;
-    rxk_AddPort(port, (char *)sockp);
+    rxk_AddPort(((struct sockaddr_in *)saddr)->sin_port, (char *)sockp);
     return (osi_socket) sockp;
 }
 
 osi_socket
 rxi_GetUDPSocket(u_short port)
 {
-    return rxi_GetHostUDPSocket(htonl(INADDR_ANY), port);
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_port = port;
+
+    return rxi_GetHostUDPSocket((struct sockaddr *)&saddr);
 }
 
 /*
@@ -796,7 +802,7 @@ rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
  * in network byte order.
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct sockaddr *saddr)
 {
     afs_int32 code;
 #ifdef AFS_DARWIN80_ENV
@@ -807,7 +813,6 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 #if (!defined(AFS_HPUX1122_ENV) && !defined(AFS_FBSD_ENV))
     struct mbuf *nam;
 #endif
-    struct sockaddr_in myaddr;
 #ifdef AFS_HPUX110_ENV
     /* prototype copied from kernel source file streams/str_proto.h */
     extern MBLKP allocb_wait(int, int);
@@ -866,12 +871,8 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
     if (code)
 	goto bad;
 
-    memset(&myaddr, 0, sizeof myaddr);
-    myaddr.sin_family = AF_INET;
-    myaddr.sin_port = aport;
-    myaddr.sin_addr.s_addr = ahost;
 #ifdef STRUCT_SOCKADDR_HAS_SA_LEN
-    myaddr.sin_len = sizeof(myaddr);
+    ((struct sockaddr_in *)saddr)->sin_len = sizeof(struct sockaddr_in);
 #endif
 
 #ifdef AFS_HPUX110_ENV
@@ -880,7 +881,7 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 	setuerror(ENOBUFS);
 	goto bad;
     }
-    memcpy((caddr_t) bindnam->b_rptr + SO_MSGOFFSET, (caddr_t) & myaddr,
+    memcpy((caddr_t) bindnam->b_rptr + SO_MSGOFFSET, (caddr_t) (struct sockaddr_in *)saddr,
 	   addrsize);
     bindnam->b_wptr = bindnam->b_rptr + (addrsize + SO_MSGOFFSET + 1);
     code = sobind(newSocket, bindnam, addrsize);
@@ -926,9 +927,9 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 #endif
 #if defined(AFS_DARWIN_ENV) || defined(AFS_FBSD_ENV)
 #if defined(AFS_FBSD_ENV)
-    code = sobind(newSocket, (struct sockaddr *)&myaddr, curthread);
+    code = sobind(newSocket, saddr, curthread);
 #else
-    code = sobind(newSocket, (struct sockaddr *)&myaddr);
+    code = sobind(newSocket, saddr);
 #endif
     if (code) {
 	dpf(("sobind fails (%d)\n", (int)code));
@@ -947,8 +948,8 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 #endif
 	goto bad;
     }
-    nam->m_len = sizeof(myaddr);
-    memcpy(mtod(nam, caddr_t), &myaddr, sizeof(myaddr));
+    nam->m_len = sizeof(struct sockaddr_in);
+    memcpy(mtod(nam, caddr_t), (struct sockaddr_in *)saddr, sizeof(struct sockaddr_in));
 #if defined(AFS_SGI65_ENV)
     BHV_PDATA(&bhv) = (void *)newSocket;
     code = sobind(&bhv, nam);
@@ -986,7 +987,13 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(0, aport);
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = 0;
+    saddr.sin_port = aport;
+
+    return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }
 
 /* free socket allocated by rxk_NewSocket */

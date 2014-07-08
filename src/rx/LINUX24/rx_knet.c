@@ -28,10 +28,9 @@
  * open and bind RX socket
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct sockaddr *saddr)
 {
     struct socket *sockp;
-    struct sockaddr_in myaddr;
     int code;
     KERNEL_SPACE_DECL;
     int pmtu = IP_PMTUDISC_DONT;
@@ -48,11 +47,8 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 	return NULL;
 
     /* Bind socket */
-    myaddr.sin_family = AF_INET;
-    myaddr.sin_addr.s_addr = ahost;
-    myaddr.sin_port = aport;
     code =
-	sockp->ops->bind(sockp, (struct sockaddr *)&myaddr, sizeof(myaddr));
+	sockp->ops->bind(sockp, saddr, sizeof(struct sockaddr_in));
 
     if (code < 0) {
 #if defined(AFS_LINUX24_ENV)
@@ -73,7 +69,13 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(htonl(INADDR_ANY), aport);
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_port = aport;
+
+    return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }
 
 /* free socket allocated by osi_NetSocket */

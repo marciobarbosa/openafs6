@@ -173,7 +173,7 @@ rx_ServerProc(void *unused)
  * we start the receiver threads.
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct sockaddr *saddr)
 {
     struct usr_socket *usockp;
 
@@ -188,7 +188,13 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(htonl(INADDR_ANY), aport);
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_port = aport;
+
+    return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }
 
 /*

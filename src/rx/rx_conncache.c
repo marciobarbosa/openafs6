@@ -50,8 +50,7 @@ afs_kmutex_t rxi_connCacheMutex;
  */
 
 typedef struct rx_connParts {
-    unsigned int hostAddr;
-    unsigned short port;
+    struct sockaddr_storage saddr;
     unsigned short service;
     struct rx_securityClass *securityObject;
     int securityIndex;
@@ -90,7 +89,8 @@ typedef struct cache_entry {
 static int
 rxi_CachedConnectionsEqual(rx_connParts_p a, rx_connParts_p b)
 {
-    return ((a->hostAddr == b->hostAddr) && (a->port == b->port)
+    return (rxi_IsSockAddrEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
+        && rxi_IsSockPortEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
 	    && (a->service == b->service)
 	    && (a->securityObject == b->securityObject)
 	    && (a->securityIndex == b->securityIndex));
@@ -180,7 +180,7 @@ rxi_GetCachedConnection(rx_connParts_p parts, struct rx_connection **conn)
 	 * Create a new connection and enter it in the cache
 	 */
 	if ((*conn =
-	     rx_NewConnection(parts->hostAddr, parts->port, parts->service,
+	     rx_NewConnectionSA((struct sockaddr *)&parts->saddr, parts->service,
 			      parts->securityObject, parts->securityIndex))) {
 	    rxi_AddCachedConnection(parts, conn);
 	} else {
@@ -232,9 +232,13 @@ rx_GetCachedConnection(unsigned int remoteAddr, unsigned short port,
 {
     struct rx_connection *conn = NULL;
     rx_connParts_t parts;
+    struct sockaddr_in saddr;
 
-    parts.hostAddr = remoteAddr;
-    parts.port = port;
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = remoteAddr;
+    saddr.sin_port = port;
+
+    rxi_CopySockAddr((struct sockaddr *)&parts.saddr, (struct sockaddr *)&saddr);
     parts.service = service;
     parts.securityObject = securityObject;
     parts.securityIndex = securityIndex;

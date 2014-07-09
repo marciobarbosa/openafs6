@@ -90,6 +90,7 @@ MainCommand(struct cmd_syndesc *as, void *arock)
     int version_flag;
     char version[64];
     afs_int32 length = 64;
+    struct sockaddr_in saddr;
 
     afs_uint32 supportedDebugValues = 0;
     afs_uint32 supportedStatValues = 0;
@@ -212,9 +213,13 @@ MainCommand(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = port;
+
     if (version_flag) {
 
-	code = rx_GetServerVersion(s, host, port, length, version);
+	code = rx_GetServerVersion(s, (struct sockaddr *)&saddr, length, version);
 	if (code < 0) {
 	    printf("get version call failed with code %d, errno %d\n", code,
 		   errno);
@@ -228,7 +233,7 @@ MainCommand(struct cmd_syndesc *as, void *arock)
     }
 
 
-    code = rx_GetServerDebug(s, host, port, &tstats, &supportedDebugValues);
+    code = rx_GetServerDebug(s, (struct sockaddr *)&saddr, &tstats, &supportedDebugValues);
     if (code < 0) {
 	printf("getstats call failed with code %d\n", code);
 	exit(1);
@@ -272,7 +277,7 @@ MainCommand(struct cmd_syndesc *as, void *arock)
 
 	    /* should gracefully handle the case where rx_stats grows */
 	    code =
-		rx_GetServerStats(s, host, port, &rxstats,
+		rx_GetServerStats(s, (struct sockaddr *)&saddr, &rxstats,
 				  &supportedStatValues);
 	    if (code < 0) {
 		printf("rxstats call failed with code %d\n", code);
@@ -323,7 +328,7 @@ MainCommand(struct cmd_syndesc *as, void *arock)
 
 	for (i = 0;; i++) {
 	    code =
-		rx_GetServerConnections(s, host, port, &nextconn, allconns,
+		rx_GetServerConnections(s, (struct sockaddr *)&saddr, &nextconn, allconns,
 					supportedDebugValues, &tconn,
 					&supportedConnValues);
 	    if (code < 0) {
@@ -530,7 +535,7 @@ MainCommand(struct cmd_syndesc *as, void *arock)
 	for (i = 0;; i++) {
 	    struct rx_debugPeer tpeer;
 	    code =
-		rx_GetServerPeers(s, host, port, &nextpeer, allconns, &tpeer,
+		rx_GetServerPeers(s, (struct sockaddr *)&saddr, &nextpeer, allconns, &tpeer,
 				  &supportedPeerValues);
 	    if (code < 0) {
 		printf("getpeer call failed with code %d\n", code);

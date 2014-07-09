@@ -104,27 +104,22 @@ extern void rx_PrintTheseStats(FILE * file, struct rx_statistics *s, int size,
 extern void rx_PrintStats(FILE * file);
 extern void rx_PrintPeerStats(FILE * file, struct rx_peer *peer);
 #endif
-extern afs_int32 rx_GetServerDebug(osi_socket socket, afs_uint32 remoteAddr,
-				   afs_uint16 remotePort,
+extern afs_int32 rx_GetServerDebug(osi_socket socket, struct sockaddr *saddr,
 				   struct rx_debugStats *stat,
 				   afs_uint32 * supportedValues);
-extern afs_int32 rx_GetServerStats(osi_socket socket, afs_uint32 remoteAddr,
-				   afs_uint16 remotePort,
+extern afs_int32 rx_GetServerStats(osi_socket socket, struct sockaddr *saddr,
 				   struct rx_statistics *stat,
 				   afs_uint32 * supportedValues);
-extern afs_int32 rx_GetServerVersion(osi_socket socket, afs_uint32 remoteAddr,
-				     afs_uint16 remotePort,
+extern afs_int32 rx_GetServerVersion(osi_socket socket, struct sockaddr *saddr,
 				     size_t version_length, char *version);
 extern afs_int32 rx_GetServerConnections(osi_socket socket,
-					 afs_uint32 remoteAddr,
-					 afs_uint16 remotePort,
+					 struct sockaddr *saddr,
 					 afs_int32 * nextConnection,
 					 int allConnections,
 					 afs_uint32 debugSupportedValues,
 					 struct rx_debugConn *conn,
 					 afs_uint32 * supportedValues);
-extern afs_int32 rx_GetServerPeers(osi_socket socket, afs_uint32 remoteAddr,
-				   afs_uint16 remotePort,
+extern afs_int32 rx_GetServerPeers(osi_socket socket, struct sockaddr *saddr,
 				   afs_int32 * nextPeer,
 				   afs_uint32 debugSupportedValues,
 				   struct rx_debugPeer *peer,

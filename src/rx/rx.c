@@ -7639,25 +7639,19 @@ MakeDebugCall(osi_socket socket, struct sockaddr *saddr,
 #endif /* RXDEBUG */
 
 afs_int32
-rx_GetServerDebug(osi_socket socket, afs_uint32 remoteAddr,
-		  afs_uint16 remotePort, struct rx_debugStats * stat,
+rx_GetServerDebug(osi_socket socket, struct sockaddr *saddr,
+                  struct rx_debugStats * stat,
 		  afs_uint32 * supportedValues)
 {
 #if defined(RXDEBUG) || defined(MAKEDEBUGCALL)
     afs_int32 rc = 0;
     struct rx_debugIn in;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = remoteAddr;
-    saddr.sin_port = remotePort;
 
     *supportedValues = 0;
     in.type = htonl(RX_DEBUGI_GETSTATS);
     in.index = 0;
 
-    rc = MakeDebugCall(socket, (struct sockaddr *)&saddr, RX_PACKET_TYPE_DEBUG,
-		       &in, sizeof(in), stat, sizeof(*stat));
+    rc = MakeDebugCall(socket, saddr, RX_PACKET_TYPE_DEBUG, &in, sizeof(in), stat, sizeof(*stat));
 
     /*
      * If the call was successful, fixup the version and indicate
@@ -7708,8 +7702,8 @@ rx_GetServerDebug(osi_socket socket, afs_uint32 remoteAddr,
 }
 
 afs_int32
-rx_GetServerStats(osi_socket socket, afs_uint32 remoteAddr,
-		  afs_uint16 remotePort, struct rx_statistics * stat,
+rx_GetServerStats(osi_socket socket, struct sockaddr *saddr, 
+                  struct rx_statistics * stat,
 		  afs_uint32 * supportedValues)
 {
 #if defined(RXDEBUG) || defined(MAKEDEBUGCALL)
@@ -7717,11 +7711,6 @@ rx_GetServerStats(osi_socket socket, afs_uint32 remoteAddr,
     struct rx_debugIn in;
     afs_int32 *lp = (afs_int32 *) stat;
     int i;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = remoteAddr;
-    saddr.sin_port = remotePort;
 
     /*
      * supportedValues is currently unused, but added to allow future
@@ -7733,7 +7722,7 @@ rx_GetServerStats(osi_socket socket, afs_uint32 remoteAddr,
     in.index = 0;
     memset(stat, 0, sizeof(*stat));
 
-    rc = MakeDebugCall(socket, (struct sockaddr *)&saddr, RX_PACKET_TYPE_DEBUG,
+    rc = MakeDebugCall(socket, saddr, RX_PACKET_TYPE_DEBUG,
 		       &in, sizeof(in), stat, sizeof(*stat));
 
     if (rc >= 0) {
@@ -7753,20 +7742,14 @@ rx_GetServerStats(osi_socket socket, afs_uint32 remoteAddr,
 }
 
 afs_int32
-rx_GetServerVersion(osi_socket socket, afs_uint32 remoteAddr,
-		    afs_uint16 remotePort, size_t version_length,
+rx_GetServerVersion(osi_socket socket, struct sockaddr *saddr,
+                    size_t version_length,
 		    char *version)
 {
 #if defined(RXDEBUG) || defined(MAKEDEBUGCALL)
     char a[1] = { 0 };
-    struct sockaddr_in saddr;
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = remoteAddr;
-    saddr.sin_port = remotePort;
-
-    return MakeDebugCall(socket, (struct sockaddr *)&saddr,
-			 RX_PACKET_TYPE_VERSION, a, 1, version,
+    return MakeDebugCall(socket, saddr, RX_PACKET_TYPE_VERSION, a, 1, version,
 			 version_length);
 #else
     return -1;
@@ -7774,8 +7757,7 @@ rx_GetServerVersion(osi_socket socket, afs_uint32 remoteAddr,
 }
 
 afs_int32
-rx_GetServerConnections(osi_socket socket, afs_uint32 remoteAddr,
-			afs_uint16 remotePort, afs_int32 * nextConnection,
+rx_GetServerConnections(osi_socket socket, struct sockaddr *saddr, afs_int32 * nextConnection,
 			int allConnections, afs_uint32 debugSupportedValues,
 			struct rx_debugConn * conn,
 			afs_uint32 * supportedValues)
@@ -7784,11 +7766,6 @@ rx_GetServerConnections(osi_socket socket, afs_uint32 remoteAddr,
     afs_int32 rc = 0;
     struct rx_debugIn in;
     int i;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = remoteAddr;
-    saddr.sin_port = remotePort;
 
     /*
      * supportedValues is currently unused, but added to allow future
@@ -7804,7 +7781,7 @@ rx_GetServerConnections(osi_socket socket, afs_uint32 remoteAddr,
     in.index = htonl(*nextConnection);
     memset(conn, 0, sizeof(*conn));
 
-    rc = MakeDebugCall(socket, (struct sockaddr *)&saddr, RX_PACKET_TYPE_DEBUG,
+    rc = MakeDebugCall(socket, saddr, RX_PACKET_TYPE_DEBUG,
 		       &in, sizeof(in), conn, sizeof(*conn));
 
     if (rc >= 0) {
@@ -7866,19 +7843,14 @@ rx_GetServerConnections(osi_socket socket, afs_uint32 remoteAddr,
 }
 
 afs_int32
-rx_GetServerPeers(osi_socket socket, afs_uint32 remoteAddr,
-		  afs_uint16 remotePort, afs_int32 * nextPeer,
+rx_GetServerPeers(osi_socket socket, struct sockaddr *saddr,
+                  afs_int32 * nextPeer,
 		  afs_uint32 debugSupportedValues, struct rx_debugPeer * peer,
 		  afs_uint32 * supportedValues)
 {
 #if defined(RXDEBUG) || defined(MAKEDEBUGCALL)
     afs_int32 rc = 0;
     struct rx_debugIn in;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = remoteAddr;
-    saddr.sin_port = remotePort;
 
     /*
      * supportedValues is currently unused, but added to allow future
@@ -7890,7 +7862,7 @@ rx_GetServerPeers(osi_socket socket, afs_uint32 remoteAddr,
     in.index = htonl(*nextPeer);
     memset(peer, 0, sizeof(*peer));
 
-    rc = MakeDebugCall(socket, (struct sockaddr *)&saddr, RX_PACKET_TYPE_DEBUG,
+    rc = MakeDebugCall(socket, saddr, RX_PACKET_TYPE_DEBUG,
 		       &in, sizeof(in), peer, sizeof(*peer));
 
     if (rc >= 0) {

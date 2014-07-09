@@ -30,6 +30,7 @@ extern int rxi_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
 
 extern void rx_SetEpoch(afs_uint32 epoch);
 extern int rx_Init(u_int port);
+extern int rx_InitHostSA(struct sockaddr *saddr);
 extern int rx_InitHost(u_int host, u_int port);
 extern void rx_SetBusyChannelError(afs_int32 onoff);
 #ifdef AFS_NT40_ENV

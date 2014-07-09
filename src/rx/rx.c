@@ -479,7 +479,7 @@ static
 rx_atomic_t rxinit_status = RX_ATOMIC_INIT(1);
 
 int
-rx_InitHost(u_int host, u_int port)
+rx_InitHostSA(struct sockaddr *saddr)
 {
 #ifdef KERNEL
     osi_timeval_t tv;
@@ -487,7 +487,6 @@ rx_InitHost(u_int host, u_int port)
     struct timeval tv;    
 #endif /* KERNEL */
     char *htable, *ptable;
-    struct sockaddr_in saddr;
 
     SPLVAR;
 
@@ -514,11 +513,7 @@ rx_InitHost(u_int host, u_int port)
     /* Allocate and initialize a socket for client and perhaps server
      * connections. */
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = port;
-
-    rx_socket = rxi_GetHostUDPSocket((struct sockaddr *)&saddr);
+    rx_socket = rxi_GetHostUDPSocket(saddr);
 
     if (rx_socket == OSI_NULLSOCKET) {
 	return RX_ADDRINUSE;
@@ -591,8 +586,8 @@ rx_InitHost(u_int host, u_int port)
 #else
     osi_GetTime(&tv);
 #endif
-    if (port) {
-	rx_port = port;
+    if (((struct sockaddr_in *)saddr)->sin_port) {
+	rx_port = ((struct sockaddr_in *)saddr)->sin_port;
     } else {
 #if defined(KERNEL) && !defined(UKERNEL)
 	/* Really, this should never happen in a real kernel */
@@ -650,6 +645,18 @@ rx_InitHost(u_int host, u_int port)
     USERPRI;
     rx_atomic_clear_bit(&rxinit_status, 0);
     return 0;
+}
+
+int
+rx_InitHost(u_int host, u_int port)
+{
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = port;
+
+    return rx_InitHostSA((struct sockaddr *)&saddr);
 }
 
 int
@@ -1065,7 +1072,6 @@ rx_NewConnectionSA(struct sockaddr *saddr, u_short sservice,
     int hashindex, i;
     afs_int32 cid;
     struct rx_connection *conn;
-    struct sockaddr_in *saddr_in = (struct sockaddr_in *)saddr;
 
 #ifdef RXDEBUG
     rx_addr_str_t buffer;
@@ -1115,7 +1121,7 @@ rx_NewConnectionSA(struct sockaddr *saddr, u_short sservice,
 
     RXS_NewConnection(securityObject, conn);
     hashindex =
-    CONN_HASH(saddr_in->sin_addr.s_addr, saddr_in->sin_port, conn->cid, conn->epoch, RX_CLIENT_CONNECTION);
+    CONN_HASH(((struct sockaddr_in *)saddr)->sin_addr.s_addr, ((struct sockaddr_in *)saddr)->sin_port, conn->cid, conn->epoch, RX_CLIENT_CONNECTION);
 
     conn->refCount++;       /* no lock required since only this thread knows... */
     conn->next = rx_connHashTable[hashindex];
@@ -1810,7 +1816,7 @@ rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
     for (i = 0; i < RX_MAX_SERVICES; i++) {
 	struct rx_service *service = rx_services[i];
 	if (service) {
-	    if (port == service->servicePort && host == service->serviceHost) {
+	    if (port == ((struct sockaddr_in *)&service->saddr)->sin_port && host == ((struct sockaddr_in *)&service->saddr)->sin_addr.s_addr) {
 		if (service->serviceId == serviceId) {
 		    /* The identical service has already been
 		     * installed; if the caller was intending to
@@ -1846,8 +1852,7 @@ rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
 	    }
 	    service = tservice;
 	    service->socket = socket;
-	    service->serviceHost = host;
-	    service->servicePort = port;
+            rxi_CopySockAddr((struct sockaddr *)&service->saddr, (struct sockaddr *)&saddr);
 	    service->serviceId = serviceId;
 	    service->serviceName = serviceName;
 	    service->nSecurityObjects = nSecurityObjects;
@@ -2206,7 +2211,7 @@ rx_GetCall(int tno, struct rx_service *cur_service, osi_socket * socketp)
 
 	rxi_calltrace(RX_CALL_START, call);
 	dpf(("rx_GetCall(port=%d, service=%d) ==> call %"AFS_PTR_FMT"\n",
-	     call->conn->service->servicePort, call->conn->service->serviceId,
+	     ((struct sockaddr_in *)&call->conn->service->saddr)->sin_port, call->conn->service->serviceId,
 	     call));
 
 	MUTEX_EXIT(&call->lock);
@@ -2367,7 +2372,7 @@ rx_GetCall(int tno, struct rx_service *cur_service, osi_socket * socketp)
 
 	rxi_calltrace(RX_CALL_START, call);
 	dpf(("rx_GetCall(port=%d, service=%d) ==> call %p\n",
-	     call->conn->service->servicePort, call->conn->service->serviceId,
+	     ((struct sockaddr_in *)&call->conn->service->saddr)->sin_port, call->conn->service->serviceId,
 	     call));
     } else {
 	dpf(("rx_GetCall(socketp=%p, *socketp=0x%x)\n", socketp, *socketp));
@@ -9466,8 +9471,6 @@ int rx_DumpCalls(FILE *outputFile, char *cookie)
 void
 rxi_CopySockAddr(struct sockaddr *saddr_dst, struct sockaddr *saddr_src)
 {
-    memset(saddr_dst, 0, sizeof(struct sockaddr_storage));
-
     switch(saddr_src->sa_family) {
         case AF_INET:
             memcpy(saddr_dst, saddr_src, sizeof(struct sockaddr_in));

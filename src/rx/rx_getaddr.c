@@ -178,7 +178,7 @@ ifm_fixversion(char *buffer, size_t *size) {
 #endif
 
 int
-rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
+rx_getAllAddr_internal(struct sockaddr buffer[], int maxSize, int loopbacks)
 {
     size_t needed;
     int mib[6];
@@ -252,7 +252,7 @@ rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
 		addrcount--;
 		continue;	/* skip aliased loopbacks as well. */
 	    } else
-		buffer[count++] = a->sin_addr.s_addr;
+		rxi_CopySockAddr(&buffer[count++], (struct sockaddr *)a);
 	    addrcount--;
 	    ifam = (struct ifa_msghdr *)((char *)ifam + ifam->ifam_msglen);
 	}
@@ -369,14 +369,22 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 int
 rx_getAllAddr(afs_uint32 buffer[], int maxSize)
 {
-    return rx_getAllAddr_internal(buffer, maxSize, 0);
+    struct sockaddr_in saddrs[maxSize];
+    int count, i;
+
+    count = rx_getAllAddr_internal((struct sockaddr *)&saddrs, maxSize, 0);
+
+    for(i = 0; i < count; i++)
+    	buffer[i] = saddrs[i].sin_addr.s_addr;
+
+    return count;
 }
 /* this function returns the total number of interface addresses
 ** the buffer has to be passed in by the caller
 */
 #else /* UKERNEL indirectly, on DARWIN or XBSD */
 static int
-rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
+rx_getAllAddr_internal(struct sockaddr buffer[], int maxSize, int loopbacks)
 {
     int s;
     int i, len, count = 0;
@@ -445,7 +453,7 @@ rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
 		dpf(("Too many interfaces..ignoring 0x%x\n",
 		       a->sin_addr.s_addr));
 	    else
-		buffer[count++] = a->sin_addr.s_addr;
+		rxi_CopySockAddr(&buffer[count++], (struct sockaddr *)a);
 	}
     }
     close(s);
@@ -455,7 +463,15 @@ rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
 int
 rx_getAllAddr(afs_uint32 buffer[], int maxSize)
 {
-    return rx_getAllAddr_internal(buffer, maxSize, 0);
+    struct sockaddr_in saddrs[maxSize];
+    int count, i;
+
+    count = rx_getAllAddr_internal((struct sockaddr *)&saddrs, maxSize, 0);
+
+    for(i = 0; i < count; i++)
+    	buffer[i] = saddrs[i].sin_addr.s_addr;
+
+    return count;
 }
 
 /* this function returns the total number of interface addresses
@@ -469,6 +485,7 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
                      afs_uint32 mtuBuffer[], int maxSize)
 {
     int i, count = 0;
+    struct sockaddr_in saddrs[1024];
 #if defined(AFS_USERSPACE_IP_ADDR)
     int s, len;
     struct ifconf ifc;
@@ -481,8 +498,9 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 #endif
 
 #if !defined(AFS_USERSPACE_IP_ADDR)
-    count = rx_getAllAddr_internal(addrBuffer, 1024, 0);
+    count = rx_getAllAddr_internal((struct sockaddr *)&saddrs, 1024, 0);
     for (i = 0; i < count; i++) {
+    	addrBuffer[i] = saddrs.sin_addr.s_addr;
 	maskBuffer[i] = htonl(0xffffffff);
 	mtuBuffer[i] = htonl(1500);
     }

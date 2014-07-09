@@ -331,8 +331,7 @@ returned with an error code of RX_CALL_DEAD ( transient error ) */
 
 struct rx_service {
     u_short serviceId;		/* Service number */
-    afs_uint32 serviceHost;	/* IP address for this service */
-    u_short servicePort;	/* UDP port for this service */
+    struct sockaddr_storage saddr; /* IP address and UDP port for this service */
     char *serviceName;		/* Name of the service */
     osi_socket socket;		/* socket structure or file descriptor */
     u_short nRequestsRunning;	/* Number of requests currently in progress */

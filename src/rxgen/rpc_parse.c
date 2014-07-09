@@ -1718,7 +1718,7 @@ ss_ProcTail_setup(definition * defp)
 	} else {
 	    f_print(fout,
 		    "\n\t\t(((afs_uint32)(ntohs(rx_ServiceIdOf(rx_ConnectionOf(z_call))) << 16)) |\n"
-		    "\t\t((afs_uint32)ntohs(rx_ServiceOf(rx_ConnectionOf(z_call))->servicePort))),\n");
+		    "\t\t((afs_uint32)ntohs(((struct sockaddr_in *)&rx_ServiceOf(rx_ConnectionOf(z_call))->saddr)->sin_port))),\n");
 	}
 	f_print(fout, "\t\t%d, %sNO_OF_STAT_FUNCS, 0);\n",
 		no_of_stat_funcs, PackagePrefix[PackageIndex]);

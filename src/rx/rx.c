@@ -1778,7 +1778,7 @@ rxi_SetCallNumberVector(struct rx_connection *aconn,
                          service name might be used for probing for
                          statistics) */
 struct rx_service *
-rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
+rx_NewServiceHost(struct sockaddr *saddr, u_short serviceId,
 		  char *serviceName, struct rx_securityClass **securityObjects,
 		  int nSecurityObjects,
 		  afs_int32(*serviceProc) (struct rx_call * acall))
@@ -1786,7 +1786,6 @@ rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
     osi_socket socket = OSI_NULLSOCKET;
     struct rx_service *tservice;    
     int i;
-    struct sockaddr_in saddr;
     SPLVAR;
 
     clock_NewTime();
@@ -1797,14 +1796,14 @@ rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
 	 serviceName);
 	return 0;
     }
-    if (port == 0) {
+    if (((struct sockaddr_in *)saddr)->sin_port == 0) {
 	if (rx_port == 0) {
 	    (osi_Msg
 	     "rx_NewService: A non-zero port must be specified on this call if a non-zero port was not provided at Rx initialization (service %s).\n",
 	     serviceName);
 	    return 0;
 	}
-	port = rx_port;
+	((struct sockaddr_in *)saddr)->sin_port = rx_port;
 	socket = rx_socket;
     }
 
@@ -1816,7 +1815,7 @@ rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
     for (i = 0; i < RX_MAX_SERVICES; i++) {
 	struct rx_service *service = rx_services[i];
 	if (service) {
-	    if (port == ((struct sockaddr_in *)&service->saddr)->sin_port && host == ((struct sockaddr_in *)&service->saddr)->sin_addr.s_addr) {
+	    if (rxi_IsSockPortEqual((struct sockaddr *)&service->saddr, saddr) && rxi_IsSockAddrEqual((struct sockaddr *)&service->saddr, saddr)) {
 		if (service->serviceId == serviceId) {
 		    /* The identical service has already been
 		     * installed; if the caller was intending to
@@ -1838,11 +1837,7 @@ rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
 		/* If we don't already have a socket (from another
 		 * service on same port) get a new one */
 
-                saddr.sin_family = AF_INET;
-                saddr.sin_addr.s_addr = host;
-                saddr.sin_port = port;
-
-                socket = rxi_GetHostUDPSocket((struct sockaddr *)&saddr);
+                socket = rxi_GetHostUDPSocket(saddr);
 
 		if (socket == OSI_NULLSOCKET) {
 		    USERPRI;
@@ -1852,7 +1847,7 @@ rx_NewServiceHost(afs_uint32 host, u_short port, u_short serviceId,
 	    }
 	    service = tservice;
 	    service->socket = socket;
-            rxi_CopySockAddr((struct sockaddr *)&service->saddr, (struct sockaddr *)&saddr);
+            rxi_CopySockAddr((struct sockaddr *)&service->saddr, saddr);
 	    service->serviceId = serviceId;
 	    service->serviceName = serviceName;
 	    service->nSecurityObjects = nSecurityObjects;
@@ -1900,7 +1895,13 @@ rx_NewService(u_short port, u_short serviceId, char *serviceName,
 	      struct rx_securityClass **securityObjects, int nSecurityObjects,
 	      afs_int32(*serviceProc) (struct rx_call * acall))
 {
-    return rx_NewServiceHost(htonl(INADDR_ANY), port, serviceId, serviceName, securityObjects, nSecurityObjects, serviceProc);
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_port = port;
+
+    return rx_NewServiceHost((struct sockaddr *)&saddr, serviceId, serviceName, securityObjects, nSecurityObjects, serviceProc);
 }
 
 /* Generic request processing loop. This routine should be called

@@ -169,6 +169,7 @@ main(int argc, char *argv[])
     afs_int32 numClasses;
     struct rx_service *service;
     afs_uint32 host = htonl(INADDR_ANY);
+    struct sockaddr_in saddr;
 
     int a = 0;
     rxkad_level level;
@@ -289,8 +290,13 @@ main(int argc, char *argv[])
     /* Instantiate a single UPDATE service.  The rxgen-generated procedure
      * which is called to decode requests is passed in here
      * (UPDATE_ExecuteRequest). */
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
     service =
-	rx_NewServiceHost(host, 0, UPDATE_SERVICEID, "UPDATE", securityClasses,
+	rx_NewServiceHost((struct sockaddr *)&saddr, UPDATE_SERVICEID, "UPDATE", securityClasses,
 			  numClasses, UPDATE_ExecuteRequest);
     if (service == (struct rx_service *)0)
 	Quit("rx_NewService");

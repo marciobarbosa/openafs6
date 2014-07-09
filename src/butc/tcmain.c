@@ -839,6 +839,7 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
     time_t tokenExpires;
     char cellName[64];
     int localauth;
+    struct sockaddr_in saddr;
     /*process arguments */
     afs_int32 portOffset = 0;
 #ifdef AFS_PTHREAD_ENV
@@ -1087,8 +1088,12 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
     service =
-	rx_NewServiceHost(host, 0, 1, "BUTC", securityObjects, 1, TC_ExecuteRequest);
+	rx_NewServiceHost((struct sockaddr *)&saddr, 1, "BUTC", securityObjects, 1, TC_ExecuteRequest);
     if (!service) {
 	TLog(0, "rx_NewService");
 	exit(1);

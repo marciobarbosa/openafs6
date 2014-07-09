@@ -245,6 +245,7 @@ main(int argc, char **argv)
     afs_uint32 host = htonl(INADDR_ANY);
     struct cmd_syndesc *opts;
     struct cmd_item *list;
+    struct sockaddr_in saddr;
 
     char *pr_dbaseName;
     char *configDir;
@@ -542,8 +543,12 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(prdir, &securityClasses, &numClasses);
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
     tservice =
-	rx_NewServiceHost(host, 0, PRSRV, "Protection Server", securityClasses,
+	rx_NewServiceHost((struct sockaddr *)&saddr, PRSRV, "Protection Server", securityClasses,
 		          numClasses, PR_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	fprintf(stderr, "ptserver: Could not create new rx service.\n");
@@ -557,7 +562,7 @@ main(int argc, char **argv)
     }
 
     tservice =
-	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats",
+	rx_NewServiceHost((struct sockaddr *)&saddr, RX_STATS_SERVICE_ID, "rpcstats",
 			  securityClasses, numClasses, RXSTATS_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	fprintf(stderr, "ptserver: Could not create new rx service.\n");

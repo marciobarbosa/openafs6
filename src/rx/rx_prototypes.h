@@ -67,7 +67,7 @@ extern struct rx_service *rx_NewService(u_short port, u_short serviceId,
 					afs_int32(*serviceProc) (struct
 								 rx_call *
 								 acall));
-extern struct rx_service *rx_NewServiceHost(afs_uint32 host, u_short port,
+extern struct rx_service *rx_NewServiceHost(struct sockaddr *saddr,
 					    u_short serviceId,
 					    char *serviceName,
 					    struct rx_securityClass

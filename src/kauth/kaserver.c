@@ -171,6 +171,7 @@ main(int argc, char *argv[])
     char clones[MAXHOSTSPERCELL];
     afs_uint32 host = ntohl(INADDR_ANY);
     char *auditFileName = NULL;
+    struct sockaddr_in saddr;
 
     struct rx_service *tservice;
     struct rx_securityClass *sca[1];
@@ -421,8 +422,12 @@ main(int argc, char *argv[])
 
     sca[RX_SECIDX_NULL] = rxnull_NewServerSecurityObject();
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
     tservice =
-	rx_NewServiceHost(host, 0, KA_AUTHENTICATION_SERVICE,
+	rx_NewServiceHost((struct sockaddr *)&saddr, KA_AUTHENTICATION_SERVICE,
 			  "AuthenticationService", sca, 1, KAA_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create Authentication rx service\n"));
@@ -433,7 +438,7 @@ main(int argc, char *argv[])
 
 
     tservice =
-	rx_NewServiceHost(host, 0, KA_TICKET_GRANTING_SERVICE, "TicketGrantingService",
+	rx_NewServiceHost((struct sockaddr *)&saddr, KA_TICKET_GRANTING_SERVICE, "TicketGrantingService",
 		      sca, 1, KAT_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create Ticket Granting rx service\n"));
@@ -447,7 +452,7 @@ main(int argc, char *argv[])
     scm[RX_SECIDX_KAD] =
 	rxkad_NewServerSecurityObject(rxkad_crypt, 0, kvno_admin_key, 0);
     tservice =
-	rx_NewServiceHost(host, 0, KA_MAINTENANCE_SERVICE, "Maintenance", scm, 3,
+	rx_NewServiceHost((struct sockaddr *)&saddr, KA_MAINTENANCE_SERVICE, "Maintenance", scm, 3,
 		      KAM_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create Maintenance rx service\n"));
@@ -458,7 +463,7 @@ main(int argc, char *argv[])
     rx_SetStackSize(tservice, 10000);
 
     tservice =
-	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats", scm, 3,
+	rx_NewServiceHost((struct sockaddr *)&saddr, RX_STATS_SERVICE_ID, "rpcstats", scm, 3,
 		      RXSTATS_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create rpc stats rx service\n"));

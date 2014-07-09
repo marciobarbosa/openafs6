@@ -764,6 +764,7 @@ main(int argc, char **argv, char **envp)
     afs_int32 numClasses;
     int DoPeerRPCStats = 0;
     int DoProcessRPCStats = 0;
+    struct sockaddr_in saddr;
 #ifndef AFS_NT40_ENV
     int nofork = 0;
     struct stat sb;
@@ -1130,7 +1131,11 @@ main(int argc, char **argv, char **envp)
 	bozo_CreatePidFile("bosserver", NULL, getpid());
     }
 
-    tservice = rx_NewServiceHost(host, 0, /* service id */ 1,
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
+    tservice = rx_NewServiceHost((struct sockaddr *)&saddr, /* service id */ 1,
 			         "bozo", securityClasses, numClasses,
 				 BOZO_ExecuteRequest);
     rx_SetMinProcs(tservice, 2);
@@ -1142,7 +1147,7 @@ main(int argc, char **argv, char **envp)
     }
 
     tservice =
-	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats",
+	rx_NewServiceHost((struct sockaddr *)&saddr, RX_STATS_SERVICE_ID, "rpcstats",
 			  securityClasses, numClasses, RXSTATS_ExecuteRequest);
     rx_SetMinProcs(tservice, 2);
     rx_SetMaxProcs(tservice, 4);

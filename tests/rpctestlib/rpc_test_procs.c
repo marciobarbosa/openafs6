@@ -142,7 +142,13 @@ init_callback_service_lwp(void *arg)
     }
 
 #if defined(RPC_TEST_GLOBAL_RX_INIT)
-    svc = rx_NewServiceHost(htonl(INADDR_ANY), htons(ctx->cb_port), 1,
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_port = htons(ctx->cb_port);
+
+    svc = rx_NewServiceHost((struct sockaddr *)&saddr, 1,
                             ctx->cb_svc_name, &sc, 1, RXAFSCB_ExecuteRequest);
 #else
     svc = rx_NewService(0, 1, ctx->cb_svc_name, &sc, 1, RXAFSCB_ExecuteRequest);

@@ -1828,6 +1828,7 @@ main(int argc, char *argv[])
     pthread_attr_t tattr;
     struct hostent *he;
     int minVnodesRequired;	/* min size of vnode cache */
+    struct sockaddr_in saddr;
 #ifndef AFS_NT40_ENV
     struct rlimit rlim;		/* max number of open file descriptors */
 #endif
@@ -2025,7 +2026,11 @@ main(int argc, char *argv[])
     afsconf_SetSecurityFlags(confDir, AFSCONF_SECOPTS_ALWAYSENCRYPT);
     afsconf_BuildServerSecurityObjects(confDir, &securityClasses, &numClasses);
 
-    tservice = rx_NewServiceHost(rx_bindhost,  /* port */ 0, /* service id */
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = rx_bindhost;
+    saddr.sin_port = 0;
+
+    tservice = rx_NewServiceHost((struct sockaddr *)&saddr, /* service id */
 				 1,	/*service name */
 				 "AFS",
 				 securityClasses, numClasses,

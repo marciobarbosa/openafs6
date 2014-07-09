@@ -362,6 +362,7 @@ main(int argc, char **argv)
     time_t currentTime;
     afs_int32 code = 0;
     afs_uint32 host = ntohl(INADDR_ANY);
+    struct sockaddr_in saddr;
 
     char  clones[MAXHOSTSPERCELL];
 
@@ -546,8 +547,12 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(BU_conf, &securityClasses, &numClasses);
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
     tservice =
-	rx_NewServiceHost(host, 0, BUDB_SERVICE, "BackupDatabase",
+	rx_NewServiceHost((struct sockaddr *)&saddr, BUDB_SERVICE, "BackupDatabase",
 			  securityClasses, numClasses, BUDB_ExecuteRequest);
 
     if (tservice == (struct rx_service *)0) {

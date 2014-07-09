@@ -383,6 +383,7 @@ main(int argc, char **argv)
     int rxpackets = 100;
     afs_uint32 host = ntohl(INADDR_ANY);
     VolumePackageOptions opts;
+    struct sockaddr_in saddr;
 
 #ifdef	AFS_AIX32_ENV
     /*
@@ -532,8 +533,13 @@ main(int argc, char **argv)
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
     if (securityClasses[0] == NULL)
 	Abort("rxnull_NewServerSecurityObject");
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
     service =
-	rx_NewServiceHost(host, 0, VOLSERVICE_ID, "VOLSER", securityClasses,
+	rx_NewServiceHost((struct sockaddr *)&saddr, VOLSERVICE_ID, "VOLSER", securityClasses,
 			  numClasses, AFSVolExecuteRequest);
     if (service == (struct rx_service *)0)
 	Abort("rx_NewService");

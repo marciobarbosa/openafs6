@@ -172,6 +172,7 @@ main(int argc, char **argv)
     char clones[MAXHOSTSPERCELL];
     afs_uint32 host = ntohl(INADDR_ANY);
     struct cmd_syndesc *opts;
+    struct sockaddr_in saddr;
 
     char *vl_dbaseName;
     char *configDir;
@@ -464,8 +465,12 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = 0;
+
     tservice =
-	rx_NewServiceHost(host, 0, USER_SERVICE_ID, "Vldb server",
+	rx_NewServiceHost((struct sockaddr *)&saddr, USER_SERVICE_ID, "Vldb server",
 			  securityClasses, numClasses,
 			  VL_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
@@ -483,7 +488,7 @@ main(int argc, char **argv)
     }
 
     tservice =
-	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats",
+	rx_NewServiceHost((struct sockaddr *)&saddr, RX_STATS_SERVICE_ID, "rpcstats",
 			  securityClasses, numClasses,
 			  RXSTATS_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {

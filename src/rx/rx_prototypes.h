@@ -290,7 +290,7 @@ extern void rxk_Listener(void);
 # ifndef UKERNEL
 extern void afs_rxevent_daemon(void);
 # endif
-extern rx_ifnet_t rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp);
+extern rx_ifnet_t rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp);
 extern void osi_StopListener(void);
 
 /* ARCH/rx_kmutex.c */

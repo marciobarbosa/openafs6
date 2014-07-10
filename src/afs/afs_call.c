@@ -1222,8 +1222,12 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	mtu = ((i == -1) ? htonl(1500) : afs_cb_interface.mtu[i]);
 # else /* AFS_USERSPACE_IP_ADDR */
 	rx_ifnet_t tifnp;
+	struct sockaddr_in saddr;
 
-	tifnp = rxi_FindIfnet(parm2, NULL);	/*  make iterative */
+	saddr.sin_family = AF_INET;
+	saddr.sin_addr.s_addr = parm2;
+
+	tifnp = rxi_FindIfnet((struct sockaddr *)&saddr, NULL);	/*  make iterative */
 	mtu = (tifnp ? rx_ifnet_mtu(tifnp) : htonl(1500));
 # endif /* else AFS_USERSPACE_IP_ADDR */
 #endif /* !AFS_SUN5_ENV */
@@ -1259,8 +1263,10 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	}
 # else /* AFS_USERSPACE_IP_ADDR */
 	rx_ifnet_t tifnp;
+	struct sockaddr_in smask;
 
-	tifnp = rxi_FindIfnet(parm2, &mask);	/* make iterative */
+	tifnp = rxi_FindIfnet((struct sockaddr *)&saddr, (struct sockaddr *)&smask);	/* make iterative */
+	mask = smask.sin_addr.s_addr;
 	if (!tifnp)
 	    code = -1;
 # endif /* else AFS_USERSPACE_IP_ADDR */

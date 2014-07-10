@@ -400,7 +400,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 	(void)rxi_GetIFInfo();
 #  endif
 
-    ifn = rxi_FindIfnet(((struct sockaddr_in *)pp->saddr)->sin_addr.s_addr, NULL);
+    ifn = rxi_FindIfnet((struct sockaddr *)&pp->saddr, NULL);
     if (ifn) {
 	rx_rto_setPeerTimeoutSecs(pp, 2);
 	pp->ifMTU = MIN(RX_MAX_PACKET_SIZE, rx_MyMaxSendSize);
@@ -732,18 +732,16 @@ rxi_GetIFInfo(void)
 #if defined(AFS_DARWIN_ENV) || defined(AFS_XBSD_ENV)
 /* Returns ifnet which best matches address */
 rx_ifnet_t
-rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
+rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
 {
-    struct sockaddr_in s, sr;
+    struct sockaddr_storage sr;
     rx_ifaddr_t ifad;
 
-    s.sin_family = AF_INET;
-    s.sin_addr.s_addr = addr;
-    ifad = rx_ifaddr_withnet((struct sockaddr *)&s);
+    ifad = rx_ifaddr_withnet(saddr);
 
-    if (ifad && maskp) {
+    if (ifad && smaskp) {
 	rx_ifaddr_netmask(ifad, (struct sockaddr *)&sr, sizeof(sr));
-	*maskp = sr.sin_addr.s_addr;
+        rxi_CopySockAddr(smaskp, (struct sockaddr *)&sr);
     }
     return (ifad ? rx_ifaddr_ifnet(ifad) : NULL);
 }
@@ -752,13 +750,12 @@ rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
 
 /* Returns ifnet which best matches address */
 rx_ifnet_t
-rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
+rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
 {
     int match_value = 0;
     extern struct in_ifaddr *in_ifaddr;
     struct in_ifaddr *ifa, *ifad = NULL;
-
-    addr = ntohl(addr);
+    afs_uint32 addr = ntohl(((struct sockaddr_in *)saddr)->sin_addr.s_addr);
 
     for (ifa = in_ifaddr; ifa; ifa = ifa->ia_next) {
 	if ((addr & ifa->ia_netmask) == ifa->ia_net) {
@@ -782,8 +779,10 @@ rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
     }				/* for all in_ifaddrs */
 
   done:
-    if (ifad && maskp)
-	*maskp = ifad->ia_subnetmask;
+    if (ifad && maskp) {
+        ((struct sockaddr_in *)smaskp)->sin_family = AF_INET;
+        ((struct sockaddr_in *)smaskp)->sin_addr.s_addr = ifad->ia_subnetmask;
+    }
     return (ifad ? ifad->ia_ifp : NULL);
 }
 #endif /* else DARWIN || XBSD */

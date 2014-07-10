@@ -1277,11 +1277,16 @@ afs_SetServerPrefs(struct srvAddr *const sa)
 #else
 #ifndef USEIFADDR
     rx_ifnet_t ifn = NULL;
-    struct in_ifaddr *ifad = (struct in_ifaddr *)0;
+    struct in_ifaddr *ifad = (struct in_ifaddr *)0; /* ? */
     struct sockaddr_in *sin;
+    struct sockaddr_in saddr, smask;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = sa->sa_ip;
 
     sa->sa_iprank = 0;
-    ifn = rxi_FindIfnet(sa->sa_ip, &ifad);
+    ifn = rxi_FindIfnet((struct sockaddr *)&saddr, (struct sockaddr *)&smask); /* ? */
+    ifad = smask.sin_addr.s_addr;
     if (ifn) {			/* local, more or less */
 #ifdef IFF_LOOPBACK
 	if (ifn->if_flags & IFF_LOOPBACK) {

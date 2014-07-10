@@ -225,20 +225,15 @@ rxi_DeleteCachedConnections(void)
  */
 
 struct rx_connection *
-rx_GetCachedConnection(unsigned int remoteAddr, unsigned short port,
+rx_GetCachedConnection(struct sockaddr *saddr,
 		       unsigned short service,
 		       struct rx_securityClass *securityObject,
 		       int securityIndex)
 {
     struct rx_connection *conn = NULL;
     rx_connParts_t parts;
-    struct sockaddr_in saddr;
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = remoteAddr;
-    saddr.sin_port = port;
-
-    rxi_CopySockAddr((struct sockaddr *)&parts.saddr, (struct sockaddr *)&saddr);
+    rxi_CopySockAddr((struct sockaddr *)&parts.saddr, saddr);
     parts.service = service;
     parts.securityObject = securityObject;
     parts.securityIndex = securityIndex;

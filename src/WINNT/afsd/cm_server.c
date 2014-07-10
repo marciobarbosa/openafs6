@@ -57,21 +57,25 @@ cm_ForceNewConnectionsAllServers(void)
 void
 cm_ServerClearRPCStats(void) {
     cm_server_t *tsp;
-    afs_uint16 port;
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
 
     lock_ObtainRead(&cm_serverLock);
     for (tsp = cm_serversAllFirstp;
 	 tsp;
 	 tsp = (cm_server_t *)osi_QNext(&tsp->allq)) {
+        saddr.sin_addr.s_addr = tsp->addr.sin_addr.s_addr;
+
         switch (tsp->type) {
         case CM_SERVER_VLDB:
-	    port = htons(7003);
-            rx_ClearPeerRPCStats(opcode_VL_ProbeServer>>32, tsp->addr.sin_addr.s_addr, port);
+	    saddr.sin_port = htons(7003);
+            rx_ClearPeerRPCStats(opcode_VL_ProbeServer>>32, (struct sockaddr *)&saddr);
 	    break;
 	case CM_SERVER_FILE:
-	    port = htons(7000);
-            rx_ClearPeerRPCStats(opcode_RXAFS_GetCapabilities>>32, tsp->addr.sin_addr.s_addr, port);
-            rx_ClearPeerRPCStats(opcode_RXAFS_GetTime>>32, tsp->addr.sin_addr.s_addr, port);
+	    saddr.sin_port = htons(7000);
+            rx_ClearPeerRPCStats(opcode_RXAFS_GetCapabilities>>32, (struct sockaddr *)&saddr);
+            rx_ClearPeerRPCStats(opcode_RXAFS_GetTime>>32, (struct sockaddr *)&saddr);
 	    break;
         }
     }
@@ -136,9 +140,9 @@ cm_RankServer(cm_server_t * tsp)
 
         code = rx_GetLocalPeers((struct sockaddr *)&saddr, &tpeer);
         if (code == 0) {
-            peerRpcStats = rx_CopyPeerRPCStats(opcode, tsp->addr.sin_addr.s_addr, port);
+            peerRpcStats = rx_CopyPeerRPCStats(opcode, (struct sockaddr *)&saddr);
             if (peerRpcStats == NULL && tsp->type == CM_SERVER_FILE)
-                peerRpcStats = rx_CopyPeerRPCStats(opcode_RXAFS_GetTime, tsp->addr.sin_addr.s_addr, port);
+                peerRpcStats = rx_CopyPeerRPCStats(opcode_RXAFS_GetTime, (struct sockaddr *)&saddr);
             if (peerRpcStats) {
                 afs_uint64 execTimeSum = _8THMSEC(RPCOpStat_ExecTimeSum(peerRpcStats));
                 afs_uint64 queueTimeSum = _8THMSEC(RPCOpStat_QTimeSum(peerRpcStats));

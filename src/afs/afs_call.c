@@ -1216,16 +1216,16 @@ afs_syscall_call(long parm, long parm2, long parm3,
     } else if (parm == AFSOP_GETMTU) {
 	afs_uint32 mtu = 0;
 #if	!defined(AFS_SUN5_ENV) && !defined(AFS_LINUX20_ENV)
-# ifdef AFS_USERSPACE_IP_ADDR
-	afs_int32 i;
-	i = rxi_Findcbi(parm2);
-	mtu = ((i == -1) ? htonl(1500) : afs_cb_interface.mtu[i]);
-# else /* AFS_USERSPACE_IP_ADDR */
-	rx_ifnet_t tifnp;
 	struct sockaddr_in saddr;
 
 	saddr.sin_family = AF_INET;
 	saddr.sin_addr.s_addr = parm2;
+# ifdef AFS_USERSPACE_IP_ADDR
+	afs_int32 i;
+	i = rxi_Findcbi((struct sockaddr *)&saddr);
+	mtu = ((i == -1) ? htonl(1500) : afs_cb_interface.mtu[i]);
+# else /* AFS_USERSPACE_IP_ADDR */
+	rx_ifnet_t tifnp;
 
 	tifnp = rxi_FindIfnet((struct sockaddr *)&saddr, NULL);	/*  make iterative */
 	mtu = (tifnp ? rx_ifnet_mtu(tifnp) : htonl(1500));
@@ -1253,9 +1253,13 @@ afs_syscall_call(long parm, long parm2, long parm3,
     } else if (parm == AFSOP_GETMASK) {	/* parm2 == addr in net order */
 	afs_uint32 mask = 0;
 #if	!defined(AFS_SUN5_ENV)
+	struct sockaddr_in saddr_;
+
+	saddr_.sin_family = AF_INET;
+	saddr_.sin_addr.s_addr = parm2;
 # ifdef AFS_USERSPACE_IP_ADDR
 	afs_int32 i;
-	i = rxi_Findcbi(parm2);
+	i = rxi_Findcbi((struct sockaddr *)&saddr_);
 	if (i != -1) {
 	    mask = afs_cb_interface.subnetmask[i];
 	} else {
@@ -1265,7 +1269,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	rx_ifnet_t tifnp;
 	struct sockaddr_in smask;
 
-	tifnp = rxi_FindIfnet((struct sockaddr *)&saddr, (struct sockaddr *)&smask);	/* make iterative */
+	tifnp = rxi_FindIfnet((struct sockaddr *)&saddr_, (struct sockaddr *)&smask);	/* make iterative */
 	mask = smask.sin_addr.s_addr;
 	if (!tifnp)
 	    code = -1;

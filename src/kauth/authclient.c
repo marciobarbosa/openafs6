@@ -212,8 +212,8 @@ ka_SingleServerConn(char *cell, char *server,	/* name of server to contact */
     }
 #ifdef AFS_PTHREAD_ENV
     serverconns[0] =
-	rx_GetCachedConnection(cellinfo.hostAddr[match].sin_addr.s_addr,
-			       cellinfo.hostAddr[match].sin_port, service, sc,
+	rx_GetCachedConnection((struct sockaddr *)&cellinfo.hostAddr[match],
+			       service, sc,
 			       si);
 #else
     serverconns[0] =
@@ -261,8 +261,8 @@ ka_AuthSpecificServersConn(int service, struct ktc_token * token,
     for (i = 0; i < cellinfo->numServers; i++)
 #ifdef AFS_PTHREAD_ENV
 	serverconns[i] =
-	    rx_GetCachedConnection(cellinfo->hostAddr[i].sin_addr.s_addr,
-				   cellinfo->hostAddr[i].sin_port, service,
+	    rx_GetCachedConnection((struct sockaddr *)&cellinfo->hostAddr[i],
+				   service,
 				   sc, si);
 #else
 	serverconns[i] =
@@ -316,8 +316,8 @@ ka_AuthServerConn(char *cell, int service, struct ktc_token * token,
     for (i = 0; i < cellinfo.numServers; i++)
 #ifdef AFS_PTHREAD_ENV
 	serverconns[i] =
-	    rx_GetCachedConnection(cellinfo.hostAddr[i].sin_addr.s_addr,
-				   cellinfo.hostAddr[i].sin_port, service, sc,
+	    rx_GetCachedConnection((struct sockaddr *)&cellinfo.hostAddr[i],
+				   service, sc,
 				   si);
 #else
 	serverconns[i] =

@@ -895,9 +895,7 @@ afsclient_CellOpen(const char *cellName, const void *tokenHandle,
 		sc[scIndex] = servers[i].sc;
 		for (j = 0; (j < info.numServers); j++) {
 		    serverconns[j] =
-			rx_GetCachedConnection(info.hostAddr[j].sin_addr.
-					       s_addr,
-					       info.hostAddr[j].sin_port,
+			rx_GetCachedConnection((struct sockaddr *)&info.hostAddr[j],
 					       servers[i].serviceId,
 					       sc[scIndex], scIndex);
 		}
@@ -2166,6 +2164,7 @@ afsclient_RPCStatOpen(const void *cellHandle, const char *serverName,
     int servAddr = 0;
     int servPort;
     struct rx_securityClass *sc;
+    struct sockaddr_in saddr;
 
     if (!CellHandleIsValid(cellHandle, &tst)) {
 	goto fail_afsclient_RPCStatOpen;
@@ -2229,8 +2228,12 @@ afsclient_RPCStatOpen(const void *cellHandle, const char *serverName,
 	sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
     }
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(servAddr);
+    saddr.sin_port = htons(servPort);
+
     *rpcStatHandleP =
-	rx_GetCachedConnection(htonl(servAddr), htons(servPort),
+	rx_GetCachedConnection((struct sockaddr *)&saddr,
 			       RX_STATS_SERVICE_ID, sc,
 			       c_handle->tokens->sc_index);
 
@@ -2286,6 +2289,7 @@ afsclient_RPCStatOpenPort(const void *cellHandle, const char *serverName,
     afs_cell_handle_p c_handle = (afs_cell_handle_p) cellHandle;
     int servAddr = 0;
     struct rx_securityClass *sc;
+    struct sockaddr_in saddr;
 
     if (!CellHandleIsValid(cellHandle, &tst)) {
 	goto fail_afsclient_RPCStatOpenPort;
@@ -2314,8 +2318,12 @@ afsclient_RPCStatOpenPort(const void *cellHandle, const char *serverName,
 	sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
     }
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(servAddr);
+    saddr.sin_port = htons(serverPort);
+
     *rpcStatHandleP =
-	rx_GetCachedConnection(htonl(servAddr), htons(serverPort),
+	rx_GetCachedConnection((struct sockaddr *)&saddr,
 			       RX_STATS_SERVICE_ID, sc,
 			       c_handle->tokens->sc_index);
 
@@ -2408,6 +2416,7 @@ afsclient_CMStatOpen(const void *cellHandle, const char *serverName,
     afs_cell_handle_p c_handle = (afs_cell_handle_p) cellHandle;
     int servAddr = 0;
     struct rx_securityClass *sc;
+    struct sockaddr_in saddr;
 
     if (!CellHandleIsValid(cellHandle, &tst)) {
 	goto fail_afsclient_CMStatOpen;
@@ -2424,8 +2433,12 @@ afsclient_CMStatOpen(const void *cellHandle, const char *serverName,
 
     sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(servAddr);
+    saddr.sin_port = htons(AFSCONF_CALLBACKPORT);
+
     *cmStatHandleP =
-	rx_GetCachedConnection(htonl(servAddr), htons(AFSCONF_CALLBACKPORT),
+	rx_GetCachedConnection((struct sockaddr *)&saddr,
 			       1, sc, c_handle->tokens->sc_index);
 
     if (*cmStatHandleP == NULL) {
@@ -2480,6 +2493,7 @@ afsclient_CMStatOpenPort(const void *cellHandle, const char *serverName,
     afs_cell_handle_p c_handle = (afs_cell_handle_p) cellHandle;
     int servAddr = 0;
     struct rx_securityClass *sc;
+    struct sockaddr_in saddr;
 
     if (!CellHandleIsValid(cellHandle, &tst)) {
 	goto fail_afsclient_CMStatOpenPort;
@@ -2496,8 +2510,12 @@ afsclient_CMStatOpenPort(const void *cellHandle, const char *serverName,
 
     sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(servAddr);
+    saddr.sin_port = htons(serverPort);
+
     *cmStatHandleP =
-	rx_GetCachedConnection(htonl(servAddr), htons(serverPort), 1, sc,
+	rx_GetCachedConnection((struct sockaddr *)&saddr, 1, sc,
 			       c_handle->tokens->sc_index);
 
     if (*cmStatHandleP == NULL) {

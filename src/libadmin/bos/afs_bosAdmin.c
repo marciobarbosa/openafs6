@@ -163,6 +163,7 @@ bos_ServerOpen(const void *cellHandle, const char *serverName,
     afs_cell_handle_p c_handle = (afs_cell_handle_p) cellHandle;
     bos_server_p bos_server = calloc(1, sizeof(bos_server_t));
     int serverAddress;
+    struct sockaddr_in saddr;
 
     /*
      * Validate parameters
@@ -192,15 +193,19 @@ bos_ServerOpen(const void *cellHandle, const char *serverName,
 	goto fail_bos_ServerOpen;
     }
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(serverAddress);
+    saddr.sin_port = htons(AFSCONF_NANNYPORT);
+
     bos_server->server =
-	rx_GetCachedConnection(htonl(serverAddress), htons(AFSCONF_NANNYPORT),
+	rx_GetCachedConnection((struct sockaddr *)&saddr,
 			       1,
 			       c_handle->tokens->afs_sc[c_handle->tokens->
 							sc_index],
 			       c_handle->tokens->sc_index);
 
     bos_server->server_encrypt =
-	rx_GetCachedConnection(htonl(serverAddress), htons(AFSCONF_NANNYPORT),
+	rx_GetCachedConnection((struct sockaddr *)&saddr,
 			       1,
 			       c_handle->tokens->afs_encrypt_sc[c_handle->
 								tokens->
@@ -208,7 +213,7 @@ bos_ServerOpen(const void *cellHandle, const char *serverName,
 			       c_handle->tokens->sc_index);
 
     bos_server->server_stats =
-	rx_GetCachedConnection(htonl(serverAddress), htons(AFSCONF_NANNYPORT),
+	rx_GetCachedConnection((struct sockaddr *)&saddr,
 			       RX_STATS_SERVICE_ID,
 			       c_handle->tokens->afs_sc[c_handle->tokens->
 							sc_index],

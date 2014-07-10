@@ -170,9 +170,9 @@ extern void rx_clearPeerRPCStats(afs_uint32 clearFlag);
 extern void rx_SetRxStatUserOk(int (*proc) (struct rx_call * call));
 extern int rx_RxStatUserOk(struct rx_call *call);
 extern void rx_ClearProcessRPCStats(afs_int32 rxInterface);
-extern void rx_ClearPeerRPCStats(afs_int32 rxInterface, afs_uint32 peerHost, afs_uint16 peerPort);
+extern void rx_ClearPeerRPCStats(afs_int32 rxInterface, struct sockaddr *saddr);
 extern void *rx_CopyProcessRPCStats(afs_uint64 op);
-extern void *rx_CopyPeerRPCStats(afs_uint64 op, afs_uint32 peerHost, afs_uint16 peerPort);
+extern void *rx_CopyPeerRPCStats(afs_uint64 op, struct sockaddr *saddr);
 extern void rx_ReleaseRPCStats(void *stats);
 extern afs_int32 rx_SetSecurityConfiguration(struct rx_service *service,
 					     rx_securityConfigVariables type,
@@ -206,8 +206,7 @@ extern int osi_GetTime(struct timeval *tv);
 
 /* rx_conncache.c */
 extern void rxi_DeleteCachedConnections(void);
-extern struct rx_connection *rx_GetCachedConnection(unsigned int remoteAddr,
-						    unsigned short port,
+extern struct rx_connection *rx_GetCachedConnection(struct sockaddr *saddr,
 						    unsigned short service,
 						    struct rx_securityClass
 						    *securityObject,
@@ -270,7 +269,7 @@ extern void rxi_InitPeerParams(struct rx_peer *pp);
 extern void shutdown_rxkernel(void);
 # ifdef AFS_USERSPACE_IP_ADDR
 extern int rxi_GetcbiInfo(void);
-extern afs_int32 rxi_Findcbi(afs_uint32 addr);
+extern afs_int32 rxi_Findcbi(struct sockaddr *saddr);
 # else
 extern int rxi_GetIFInfo(void);
 # endif

@@ -878,6 +878,7 @@ vos_ServerOpen(const void *cellHandle, const char *serverName,
     int server_address;
     struct rx_securityClass *sc[3];
     int scIndex;
+    struct sockaddr_in saddr;
 
     if (f_server == NULL) {
 	tst = ADMNOMEM;
@@ -902,11 +903,14 @@ vos_ServerOpen(const void *cellHandle, const char *serverName,
 	goto fail_vos_ServerOpen;
     }
 
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(server_address);
+    saddr.sin_port = htons(AFSCONF_VOLUMEPORT);
+
     scIndex = c_handle->tokens->sc_index;
     sc[scIndex] = c_handle->tokens->afs_sc[scIndex];
     f_server->serv =
-	rx_GetCachedConnection(htonl(server_address),
-			       htons(AFSCONF_VOLUMEPORT), VOLSERVICE_ID,
+	rx_GetCachedConnection((struct sockaddr *)&saddr, VOLSERVICE_ID,
 			       sc[scIndex], scIndex);
     if (f_server->serv != NULL) {
 	f_server->begin_magic = BEGIN_MAGIC;

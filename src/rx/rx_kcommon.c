@@ -376,7 +376,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
     afs_int32 i;
     afs_int32 mtu;
 
-    i = rxi_Findcbi(((struct sockaddr_in *)&pp->saddr)->sin_addr.s_addr);
+    i = rxi_Findcbi((struct sockaddr *)&pp->saddr);
     if (i == -1) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
 	pp->ifMTU = MIN(RX_REMOTE_PACKET_SIZE, rx_MyMaxSendSize);
@@ -546,7 +546,7 @@ rxi_GetcbiInfo(void)
  * If none is found, we return -1.
  */
 afs_int32
-rxi_Findcbi(afs_uint32 addr)
+rxi_Findcbi(struct sockaddr *saddr)
 {
     int j;
     afs_uint32 myAddr, thisAddr, netMask, subnetMask;
@@ -556,7 +556,7 @@ rxi_Findcbi(afs_uint32 addr)
     if (numMyNetAddrs == 0)
 	(void)rxi_GetcbiInfo();
 
-    myAddr = ntohl(addr);
+    myAddr = ntohl(((struct sockaddr_in *)saddr)->sin_addr.s_addr);
 
     if (IN_CLASSA(myAddr))
 	netMask = IN_CLASSA_NET;

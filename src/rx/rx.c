@@ -8387,21 +8387,16 @@ rx_ClearProcessRPCStats(afs_int32 rxInterface)
 }
 
 void
-rx_ClearPeerRPCStats(afs_int32 rxInterface, afs_uint32 peerHost, afs_uint16 peerPort)
+rx_ClearPeerRPCStats(afs_int32 rxInterface, struct sockaddr *saddr)
 {
     rx_interface_stat_p rpc_stat;
     int totalFunc, i;
     struct rx_peer * peer;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = peerHost;
-    saddr.sin_port = peerPort;
 
     if (rxInterface == -1)
         return;
 
-    peer = rxi_FindPeer((struct sockaddr *)&saddr, 0);
+    peer = rxi_FindPeer(saddr, 0);
     if (!peer)
         return;
 
@@ -8450,7 +8445,7 @@ rx_CopyProcessRPCStats(afs_uint64 op)
 }
 
 void *
-rx_CopyPeerRPCStats(afs_uint64 op, afs_uint32 peerHost, afs_uint16 peerPort)
+rx_CopyPeerRPCStats(afs_uint64 op, struct sockaddr *saddr)
 {
     rx_interface_stat_p rpc_stat;
     rx_function_entry_v1_p rpcop_stat =
@@ -8458,11 +8453,6 @@ rx_CopyPeerRPCStats(afs_uint64 op, afs_uint32 peerHost, afs_uint16 peerPort)
     int currentFunc = (op & MAX_AFS_UINT32);
     afs_int32 rxInterface = (op >> 32);
     struct rx_peer *peer;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = peerHost;
-    saddr.sin_port = peerPort;
 
     if (!rxi_monitor_peerStats)
         return NULL;
@@ -8473,7 +8463,7 @@ rx_CopyPeerRPCStats(afs_uint64 op, afs_uint32 peerHost, afs_uint16 peerPort)
     if (rpcop_stat == NULL)
         return NULL;
 
-    peer = rxi_FindPeer((struct sockaddr *)&saddr, 0);
+    peer = rxi_FindPeer(saddr, 0);
     if (!peer)
         return NULL;
 
@@ -8549,14 +8539,14 @@ rxi_AddRpcStat(struct opr_queue *stats, afs_uint32 rxInterface,
 	       afs_uint32 currentFunc, afs_uint32 totalFunc,
 	       struct clock *queueTime, struct clock *execTime,
 	       afs_uint64 bytesSent, afs_uint64 bytesRcvd, int isServer,
-	       afs_uint32 remoteHost, afs_uint32 remotePort,
+	       struct sockaddr *saddr,
 	       int addToPeerList, unsigned int *counter)
 {
     int rc = 0;
     rx_interface_stat_p rpc_stat;
 
     rpc_stat = rxi_FindRpcStat(stats, rxInterface, totalFunc, isServer,
-			       remoteHost, remotePort, addToPeerList, counter,
+			       ((struct sockaddr_in *)saddr)->sin_addr.s_addr, ((struct sockaddr_in *)saddr)->sin_port, addToPeerList, counter,
 			       1);
     if (!rpc_stat) {
 	rc = -1;
@@ -8599,6 +8589,11 @@ rxi_IncrementTimeAndCount(struct rx_peer *peer, afs_uint32 rxInterface,
 			  afs_uint64 bytesSent, afs_uint64 bytesRcvd,
 			  int isServer)
 {
+    struct sockaddr_in saddr;
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = 0xffffffff;
+    saddr.sin_port = 0xffffffff;
 
     if (!(rxi_monitor_peerStats || rxi_monitor_processStats))
         return;
@@ -8609,15 +8604,15 @@ rxi_IncrementTimeAndCount(struct rx_peer *peer, afs_uint32 rxInterface,
         MUTEX_ENTER(&peer->peer_lock);
 	rxi_AddRpcStat(&peer->rpcStats, rxInterface, currentFunc, totalFunc,
 		       queueTime, execTime, bytesSent, bytesRcvd, isServer,
-		       ((struct sockaddr_in *)&peer->saddr)->sin_addr.s_addr, 
-                       ((struct sockaddr_in *)&peer->saddr)->sin_port, 1, &rxi_rpc_peer_stat_cnt);
+		       (struct sockaddr *)&peer->saddr,
+                       1, &rxi_rpc_peer_stat_cnt);
         MUTEX_EXIT(&peer->peer_lock);
     }
 
     if (rxi_monitor_processStats) {
 	rxi_AddRpcStat(&processStats, rxInterface, currentFunc, totalFunc,
 		       queueTime, execTime, bytesSent, bytesRcvd, isServer,
-		       0xffffffff, 0xffffffff, 0, &rxi_rpc_process_stat_cnt);
+		       (struct sockaddr *)&saddr, 0, &rxi_rpc_process_stat_cnt);
     }
 
     MUTEX_EXIT(&rx_rpc_stats);

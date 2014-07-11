@@ -903,9 +903,7 @@ vos_ServerOpen(const void *cellHandle, const char *serverName,
 	goto fail_vos_ServerOpen;
     }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(server_address);
-    saddr.sin_port = htons(AFSCONF_VOLUMEPORT);
+    saddr = rx_CreateSockAddr(htonl(server_address), htons(AFSCONF_VOLUMEPORT));
 
     scIndex = c_handle->tokens->sc_index;
     sc[scIndex] = c_handle->tokens->afs_sc[scIndex];

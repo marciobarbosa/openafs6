@@ -534,9 +534,7 @@ main(int argc, char **argv)
     if (securityClasses[0] == NULL)
 	Abort("rxnull_NewServerSecurityObject");
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(host, 0);
 
     service =
 	rx_NewServiceHost((struct sockaddr *)&saddr, VOLSERVICE_ID, "VOLSER", securityClasses,

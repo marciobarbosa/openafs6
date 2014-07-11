@@ -701,10 +701,7 @@ WriteCltTrailer(char *serverName, int first, int last, FILE * itl_h)
     fprintf(itl_h,
 	    "\tstruct rx_connection *conn;\n" "\tint error=0;\n\n"
 	    "\tint i = (int) arg;\n"
-	    "\tstruct sockaddr_in saddr;\n\n"
-	    "\tsaddr.sin_family = AF_INET;\n"
-	    "\tsaddr.sin_addr.s_addr = serverAddr;\n"
-	    "\tsaddr.sin_port = serverPort;\n\n");
+	    "\tstruct sockaddr_in saddr = rx_CreateSockAddr(serverAddr, serverPort);\n\n");
 
     fprintf(itl_h,
 	    "\tconn = rx_GetCachedConnection((struct sockaddr *)&saddr,4,secClass,secIndex);\n");

@@ -204,11 +204,7 @@ main(int ac, char **av)
 	exit(1);
     }
 
-    memset((void *)&saddr, 0, sizeof(saddr));
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_port = ntohs(port);
-    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr = rx_CreateSockAddr(htonl(INADDR_ANY), ntohs(port));
 
     if (bind(sockFD, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
 	perror("bind: ");

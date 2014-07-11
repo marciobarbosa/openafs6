@@ -650,11 +650,7 @@ rx_InitHostSA(struct sockaddr *saddr)
 int
 rx_InitHost(u_int host, u_int port)
 {
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = port;
+    struct sockaddr_in saddr = rx_CreateSockAddr(host, port);
 
     return rx_InitHostSA((struct sockaddr *)&saddr);
 }
@@ -1053,13 +1049,7 @@ rx_NewConnection(afs_uint32 shost, u_short sport, u_short sservice,
 		 struct rx_securityClass *securityObject,
 		 int serviceSecurityIndex)
 {
-    struct sockaddr_in saddr;
-
-    memset(&saddr, 0, sizeof(struct sockaddr));
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = shost;
-    saddr.sin_port = sport;
+    struct sockaddr_in saddr = rx_CreateSockAddr(shost, sport);
 
     return rx_NewConnectionSA((struct sockaddr *)&saddr, sservice, securityObject, serviceSecurityIndex);
 }
@@ -1895,11 +1885,7 @@ rx_NewService(u_short port, u_short serviceId, char *serviceName,
 	      struct rx_securityClass **securityObjects, int nSecurityObjects,
 	      afs_int32(*serviceProc) (struct rx_call * acall))
 {
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    saddr.sin_port = port;
+    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), port);
 
     return rx_NewServiceHost((struct sockaddr *)&saddr, serviceId, serviceName, securityObjects, nSecurityObjects, serviceProc);
 }
@@ -6511,11 +6497,7 @@ mtuout:
     if (conn->msgsizeRetryErr && cerror != RX_CALL_TIMEOUT && !idle_timeout &&
         call->lastReceiveTime) {
 	int oldMTU = conn->peer->ifMTU;
-        struct sockaddr_in saddr;
-
-        saddr.sin_family = AF_INET;
-        saddr.sin_addr.s_addr = 0;
-        saddr.sin_port = 0;
+        struct sockaddr_in saddr = rx_CreateSockAddr(0, 0);
 
 	/* if we thought we could send more, perhaps things got worse */
 	if (conn->peer->maxPacketSize > conn->lastPacketSize)
@@ -8589,11 +8571,7 @@ rxi_IncrementTimeAndCount(struct rx_peer *peer, afs_uint32 rxInterface,
 			  afs_uint64 bytesSent, afs_uint64 bytesRcvd,
 			  int isServer)
 {
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = 0xffffffff;
-    saddr.sin_port = 0xffffffff;
+    struct sockaddr_in saddr = rx_CreateSockAddr(0xffffffff, 0xffffffff);
 
     if (!(rxi_monitor_peerStats || rxi_monitor_processStats))
         return;
@@ -9500,4 +9478,36 @@ rxi_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
         is_equal = 1;
 
     return is_equal;
+}
+
+/* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
+struct sockaddr_in
+rx_CreateSockAddr(unsigned int host, short port)
+{
+    struct sockaddr_in saddr;
+
+    memset(&saddr, 0, sizeof(struct sockaddr_in));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = host;
+    saddr.sin_port = port;
+
+    return saddr;
+}
+
+/* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
+unsigned int
+rx_IpSockAddr(struct sockaddr *saddr)
+{
+    struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr;
+
+    return saddr4->sin_addr.s_addr;
+}
+
+/* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
+short
+rx_PortSockAddr(struct sockaddr *saddr)
+{
+    struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr4;
+
+    return saddr4->sin_port;
 }

@@ -3032,10 +3032,7 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
 
 	interfaces[j] = host->interface->interface[i];
 
-    memset(&saddr, 0, sizeof(struct sockaddr_in));
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = interfaces[j].addr;
-    saddr.sin_port = interfaces[j].port;
+        saddr = rx_CreateSockAddr(interfaces[j].addr, interfaces[j].port);
 
 	conns[j] =
 	    rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
@@ -3135,10 +3132,7 @@ MultiProbeAlternateAddress_r(struct host *host)
 
 	interfaces[j] = host->interface->interface[i];
 
-    memset(&saddr, 0, sizeof(struct sockaddr_in));
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = interfaces[j].addr;
-    saddr.sin_port = interfaces[j].port;
+        saddr = rx_CreateSockAddr(interfaces[j].addr, interfaces[j].port);
 
 	conns[j] =
 	    rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);

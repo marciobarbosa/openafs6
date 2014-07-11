@@ -313,10 +313,7 @@ hpr_Initialize(struct ubik_client **uclient)
 
     memset(serverconns, 0, sizeof(serverconns));        /* terminate list!!! */
     for (i = 0; i < info.numServers; i++) {
-        memset(&saddr, 0, sizeof(struct sockaddr_in));
-        saddr.sin_family = AF_INET;
-        saddr.sin_addr.s_addr = info.hostAddr[i].sin_addr.s_addr;
-        saddr.sin_port = info.hostAddr[i].sin_port;
+        saddr = rx_CreateSockAddr(info.hostAddr[i].sin_addr.s_addr, info.hostAddr[i].sin_port);
 
         serverconns[i] =
             rx_NewConnectionSA((struct sockaddr *)&saddr, PRSRV, sc, scIndex);
@@ -717,15 +714,10 @@ h_Alloc_r(struct rx_connection *r_con)
 static void
 h_SetupCallbackConn_r(struct host * host)
 {
-    struct sockaddr_in saddr;
+    struct sockaddr_in saddr = rx_CreateSockAddr(host->host, host->port);
 
     if (!sc)
 	sc = rxnull_NewClientSecurityObject();
-
-    memset(&saddr, 0, sizeof(struct sockaddr_in));
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host->host;
-    saddr.sin_port = host->port;
 
     host->callback_rxcon =
 	rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
@@ -1363,7 +1355,7 @@ reconcileHosts_r(afs_uint32 addr, afs_uint16 port, struct host *newHost,
     afsUUID *newHostUuid = &nulluuid;
     afsUUID *oldHostUuid = &nulluuid;
     char hoststr[16];
-    struct sockaddr_in saddr;
+    struct sockaddr_in saddr = rx_CreateSockAddr(addr, port);
 
     ViceLog(125,
 	    ("reconcileHosts_r: addr %s:%d newHost %" AFS_PTR_FMT " oldHost %"
@@ -1376,11 +1368,6 @@ reconcileHosts_r(afs_uint32 addr, afs_uint16 port, struct host *newHost,
     if (!sc) {
 	sc = rxnull_NewClientSecurityObject();
     }
-
-    memset(&saddr, 0, sizeof(struct sockaddr_in));
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = addr;
-    saddr.sin_port = port;
 
     cb = rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
     rx_SetConnDeadTime(cb, 50);
@@ -1956,10 +1943,7 @@ h_GetHost_r(struct rx_connection *tcon)
 	    if (!sc)
                 sc = rxnull_NewClientSecurityObject();
 
-            memset(&saddr, 0, sizeof(struct sockaddr_in));
-            saddr.sin_family = AF_INET;
-            saddr.sin_addr.s_addr = haddr;
-            saddr.sin_port = hport;
+            saddr = rx_CreateSockAddr(haddr, hport);
 
             cb_in = rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
             rx_SetConnDeadTime(cb_in, 50);

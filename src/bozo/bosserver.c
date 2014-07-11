@@ -1131,9 +1131,7 @@ main(int argc, char **argv, char **envp)
 	bozo_CreatePidFile("bosserver", NULL, getpid());
     }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(host, 0);
 
     tservice = rx_NewServiceHost((struct sockaddr *)&saddr, /* service id */ 1,
 			         "bozo", securityClasses, numClasses,

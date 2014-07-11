@@ -291,9 +291,7 @@ main(int argc, char *argv[])
      * which is called to decode requests is passed in here
      * (UPDATE_ExecuteRequest). */
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(host, 0);
 
     service =
 	rx_NewServiceHost((struct sockaddr *)&saddr, UPDATE_SERVICEID, "UPDATE", securityClasses,

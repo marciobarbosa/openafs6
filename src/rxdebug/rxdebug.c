@@ -213,9 +213,7 @@ MainCommand(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = port;
+    saddr = rx_CreateSockAddr(host, port);
 
     if (version_flag) {
 

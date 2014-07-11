@@ -28,6 +28,12 @@ extern char *rx_PrintSockAddr(rx_addr_str_t buffer, struct sockaddr *saddr);
 extern int rxi_IsSockAddrEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
 extern int rxi_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
 
+/* these functions are not permanent! they are used to help in the migration process from IPv4 to IPv6 */
+extern struct sockaddr_in rx_CreateSockAddr(unsigned int host, short port);
+extern unsigned int rx_IpSockAddr(struct sockaddr *saddr);
+extern short rx_PortSockAddr(struct sockaddr *saddr);
+/* not permanet functions */
+
 extern void rx_SetEpoch(afs_uint32 epoch);
 extern int rx_Init(u_int port);
 extern int rx_InitHostSA(struct sockaddr *saddr);

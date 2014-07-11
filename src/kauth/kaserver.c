@@ -422,9 +422,7 @@ main(int argc, char *argv[])
 
     sca[RX_SECIDX_NULL] = rxnull_NewServerSecurityObject();
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(host, 0);
 
     tservice =
 	rx_NewServiceHost((struct sockaddr *)&saddr, KA_AUTHENTICATION_SERVICE,

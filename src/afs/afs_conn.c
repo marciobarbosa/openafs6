@@ -496,11 +496,8 @@ afs_ConnBySA(struct srvAddr *sap, unsigned short aport, afs_int32 acell,
 	if (glocked)
             AFS_GUNLOCK();
 
-    memset(&saddr, 0, sizeof(struct sockaddr_in));
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = sap->sa_ip;
-    saddr.sin_port = aport;
-    
+    saddr = rx_CreateSockAddr(sap->sa_ip, aport);
+
     tc->id = rx_NewConnectionSA((struct sockaddr *)&saddr, service, csec, isec);
 	if (glocked)
             AFS_GLOCK();

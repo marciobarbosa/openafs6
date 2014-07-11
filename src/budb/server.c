@@ -547,9 +547,7 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(BU_conf, &securityClasses, &numClasses);
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(host, 0);
 
     tservice =
 	rx_NewServiceHost((struct sockaddr *)&saddr, BUDB_SERVICE, "BackupDatabase",

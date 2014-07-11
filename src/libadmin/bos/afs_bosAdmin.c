@@ -193,9 +193,7 @@ bos_ServerOpen(const void *cellHandle, const char *serverName,
 	goto fail_bos_ServerOpen;
     }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(serverAddress);
-    saddr.sin_port = htons(AFSCONF_NANNYPORT);
+    saddr = rx_CreateSockAddr(htonl(serverAddress), htons(AFSCONF_NANNYPORT));
 
     bos_server->server =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,

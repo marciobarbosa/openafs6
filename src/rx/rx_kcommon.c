@@ -124,11 +124,7 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
 osi_socket
 rxi_GetUDPSocket(u_short port)
 {
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    saddr.sin_port = port;
+    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), port);
 
     return rxi_GetHostUDPSocket((struct sockaddr *)&saddr);
 }
@@ -986,11 +982,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = 0;
-    saddr.sin_port = aport;
+    struct sockaddr_in saddr = rx_CreateSockAddr(0, aport);
 
     return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }

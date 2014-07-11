@@ -2026,9 +2026,7 @@ main(int argc, char *argv[])
     afsconf_SetSecurityFlags(confDir, AFSCONF_SECOPTS_ALWAYSENCRYPT);
     afsconf_BuildServerSecurityObjects(confDir, &securityClasses, &numClasses);
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = rx_bindhost;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(rx_bindhost, 0);
 
     tservice = rx_NewServiceHost((struct sockaddr *)&saddr, /* service id */
 				 1,	/*service name */

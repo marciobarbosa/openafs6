@@ -5832,15 +5832,10 @@ TryLocalVLServer(char *avolid, struct VolumeInfo *avolinfo)
     struct vldbentry tve;
     struct rx_securityClass *vlSec;
     afs_int32 code;
-    struct sockaddr_in saddr;
+    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(0x7f000001), htons(7003));
 
     if (!vlConn) {
 	vlSec = rxnull_NewClientSecurityObject();
-
-	memset(&saddr, 0, sizeof(struct sockaddr_in));
-	saddr.sin_family = AF_INET;
-	saddr.sin_addr.s_addr = htonl(0x7f000001);
-	saddr.sin_port = htons(7003);
 
 	vlConn =
 	    rx_NewConnectionSA((struct sockaddr *)&saddr, 52, vlSec, 0);
@@ -6876,10 +6871,7 @@ SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr)
     if ( *addr != thost->interface->addr[i] )
 	goto Bad_CallBackRxConnAddr;
 
-	memset(&saddr, 0, sizeof(struct sockaddr_in));
-	saddr.sin_family = AF_INET;
-	saddr.sin_addr.s_addr = thost->interface->addr[i];
-	saddr.sin_port = thost->port;
+    saddr = rx_CreateSockAddr(thost->interface->addr[i], thost->port);
 
     conn = rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
     rx_SetConnDeadTime(conn, 2);

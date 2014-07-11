@@ -2368,7 +2368,7 @@ util_RXDebugVersion(rxdebugHandle_p handle, rxdebugVersion_p version,
     int rc = 0;
     afs_status_t tst = 0;
     int code;
-    struct sockaddr_in saddr;
+    struct sockaddr_in saddr = rx_CreateSockAddr(handle->ipAddr, handle->udpPort);
 
     if (handle == NULL) {
 	tst = ADMRXDEBUGHANDLENULL;
@@ -2379,10 +2379,6 @@ util_RXDebugVersion(rxdebugHandle_p handle, rxdebugVersion_p version,
 	tst = ADMRXDEBUGVERSIONNULL;
 	goto fail_util_RXDebugVersion;
     }
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = handle->ipAddr;
-    saddr.sin_port = handle->udpPort;
 
     code =
 	rx_GetServerVersion(handle->sock, (struct sockaddr *)&saddr,
@@ -2485,7 +2481,7 @@ util_RXDebugBasicStats(rxdebugHandle_p handle, struct rx_debugStats *stats,
     int rc = 0;
     afs_status_t tst = 0;
     int code;
-    struct sockaddr_in saddr;
+    struct sockaddr_in saddr = rx_CreateSockAddr(handle->ipAddr, handle->udpPort);
 
     if (handle == NULL) {
 	tst = ADMRXDEBUGHANDLENULL;
@@ -2496,10 +2492,6 @@ util_RXDebugBasicStats(rxdebugHandle_p handle, struct rx_debugStats *stats,
 	tst = ADMRXDEBUGSTATSNULL;
 	goto fail_util_RXDebugBasicStats;
     }
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = handle->ipAddr;
-    saddr.sin_port = handle->udpPort;
 
     code =
 	rx_GetServerDebug(handle->sock, (struct sockaddr *)&saddr,
@@ -2549,7 +2541,7 @@ util_RXDebugRxStats(rxdebugHandle_p handle, struct rx_statistics *stats,
     afs_status_t tst = 0;
     int code;
     afs_uint32 tsupported;
-    struct sockaddr_in saddr;
+    struct sockaddr_in saddr = rx_CreateSockAddr(handle->ipAddr, handle->udpPort);
 
     if (handle == NULL) {
 	tst = ADMRXDEBUGHANDLENULL;
@@ -2578,10 +2570,6 @@ util_RXDebugRxStats(rxdebugHandle_p handle, struct rx_statistics *stats,
 	tst = ADMCLIENTRXDEBUGNOTSUPPORTED;
 	goto fail_util_RXDebugRxStats;
     }
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = handle->ipAddr;
-    saddr.sin_port = handle->udpPort;
 
     code =
 	rx_GetServerStats(handle->sock, (struct sockaddr *)&saddr,
@@ -2625,11 +2613,7 @@ RXDebugConnsFromServer(void *rpc_specific, int slot, int *last_item,
     int code;
     afs_status_t tst = 0;
     rxdebug_conn_get_p t = (rxdebug_conn_get_p) rpc_specific;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = t->handle->ipAddr;
-    saddr.sin_port = t->handle->udpPort;
+    struct sockaddr_in saddr = rx_CreateSockAddr(t->handle->ipAddr, t->handle->udpPort);
 
     /*
      * Get the next entry the list of connections
@@ -2896,11 +2880,7 @@ RXDebugPeersFromServer(void *rpc_specific, int slot, int *last_item,
     int code;
     afs_status_t tst = 0;
     rxdebug_peer_get_p t = (rxdebug_peer_get_p) rpc_specific;
-    struct sockaddr_in saddr;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = t->handle->ipAddr;
-    saddr.sin_port = t->handle->udpPort;
+    struct sockaddr_in saddr = rx_CreateSockAddr(t->handle->ipAddr, t->handle->udpPort);
 
     /*
      * Get the next entry the list of peers

@@ -2228,9 +2228,7 @@ afsclient_RPCStatOpen(const void *cellHandle, const char *serverName,
 	sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
     }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(servAddr);
-    saddr.sin_port = htons(servPort);
+    saddr = rx_CreateSockAddr(htonl(servAddr), htons(servPort));
 
     *rpcStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,
@@ -2318,9 +2316,7 @@ afsclient_RPCStatOpenPort(const void *cellHandle, const char *serverName,
 	sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
     }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(servAddr);
-    saddr.sin_port = htons(serverPort);
+    saddr = rx_CreateSockAddr(htonl(servAddr), htons(serverPort));
 
     *rpcStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,
@@ -2433,9 +2429,7 @@ afsclient_CMStatOpen(const void *cellHandle, const char *serverName,
 
     sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(servAddr);
-    saddr.sin_port = htons(AFSCONF_CALLBACKPORT);
+    saddr = rx_CreateSockAddr(htonl(servAddr), htons(AFSCONF_CALLBACKPORT));
 
     *cmStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,
@@ -2510,9 +2504,7 @@ afsclient_CMStatOpenPort(const void *cellHandle, const char *serverName,
 
     sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(servAddr);
-    saddr.sin_port = htons(serverPort);
+    saddr = rx_CreateSockAddr(htonl(servAddr), htons(serverPort));
 
     *cmStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr, 1, sc,

@@ -465,9 +465,7 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(host, 0);
 
     tservice =
 	rx_NewServiceHost((struct sockaddr *)&saddr, USER_SERVICE_ID, "Vldb server",

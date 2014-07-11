@@ -1088,9 +1088,7 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = host;
-    saddr.sin_port = 0;
+    saddr = rx_CreateSockAddr(host, 0);
 
     service =
 	rx_NewServiceHost((struct sockaddr *)&saddr, 1, "BUTC", securityObjects, 1, TC_ExecuteRequest);

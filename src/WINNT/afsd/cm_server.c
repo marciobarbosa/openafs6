@@ -59,21 +59,18 @@ cm_ServerClearRPCStats(void) {
     cm_server_t *tsp;
     struct sockaddr_in saddr;
 
-    saddr.sin_family = AF_INET;
-
     lock_ObtainRead(&cm_serverLock);
     for (tsp = cm_serversAllFirstp;
 	 tsp;
 	 tsp = (cm_server_t *)osi_QNext(&tsp->allq)) {
-        saddr.sin_addr.s_addr = tsp->addr.sin_addr.s_addr;
 
         switch (tsp->type) {
         case CM_SERVER_VLDB:
-	    saddr.sin_port = htons(7003);
+            saddr = rx_CreateSockAddr(tsp->addr.sin_addr.s_addr, htons(7003));
             rx_ClearPeerRPCStats(opcode_VL_ProbeServer>>32, (struct sockaddr *)&saddr);
 	    break;
 	case CM_SERVER_FILE:
-	    saddr.sin_port = htons(7000);
+            saddr = rx_CreateSockAddr(tsp->addr.sin_addr.s_addr, htons(7000));
             rx_ClearPeerRPCStats(opcode_RXAFS_GetCapabilities>>32, (struct sockaddr *)&saddr);
             rx_ClearPeerRPCStats(opcode_RXAFS_GetTime>>32, (struct sockaddr *)&saddr);
 	    break;

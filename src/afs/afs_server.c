@@ -1279,11 +1279,8 @@ afs_SetServerPrefs(struct srvAddr *const sa)
     rx_ifnet_t ifn = NULL;
     struct in_ifaddr *ifad = (struct in_ifaddr *)0; /* ? */
     struct sockaddr_in *sin;
-    struct sockaddr_in saddr, smask;
-
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = sa->sa_ip;
-
+    struct sockaddr_in smask, saddr = rx_CreateSockAddr(sa->sa_ip, 0);
+    
     sa->sa_iprank = 0;
     ifn = rxi_FindIfnet((struct sockaddr *)&saddr, (struct sockaddr *)&smask); /* ? */
     ifad = smask.sin_addr.s_addr;

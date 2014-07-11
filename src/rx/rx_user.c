@@ -102,14 +102,14 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
 #endif
 
 #if !defined(AFS_NT40_ENV)
-    if (ntohs(((struct sockaddr_in *)saddr)->sin_port) >= IPPORT_RESERVED && ntohs(((struct sockaddr_in *)saddr)->sin_port) < IPPORT_USERRESERVED) {
+    if (ntohs(rx_PortSockAddr(saddr)) >= IPPORT_RESERVED && ntohs(rx_PortSockAddr(saddr)) < IPPORT_USERRESERVED) {
 /*	(osi_Msg "%s*WARNING* port number %d is not a reserved port number.  Use port numbers above %d\n", name, port, IPPORT_USERRESERVED);
 */ ;
     }
-    if (ntohs(((struct sockaddr_in *)saddr)->sin_port) > 0 && ntohs(((struct sockaddr_in *)saddr)->sin_port) < IPPORT_RESERVED && geteuid() != 0) {
+    if (ntohs(rx_PortSockAddr(saddr)) > 0 && ntohs(rx_PortSockAddr(saddr)) < IPPORT_RESERVED && geteuid() != 0) {
 	(osi_Msg
 	 "%sport number %d is a reserved port number which may only be used by root.  Use port numbers above %d\n",
-	 name, ntohs(((struct sockaddr_in *)saddr)->sin_port), IPPORT_USERRESERVED);
+	 name, ntohs(rx_PortSockAddr(saddr)), IPPORT_USERRESERVED);
 	goto error;
     }
 #endif
@@ -687,7 +687,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 
     /* try to second-guess IP, and identify which link is most likely to
      * be used for traffic to/from this host. */
-    ppaddr = ntohl(((struct sockaddr_in *)&pp->saddr)->sin_addr.s_addr);
+    ppaddr = ntohl(rx_IpSockAddr((struct sockaddr *)&pp->saddr));
 
     pp->ifMTU = 0;
     rx_rto_setPeerTimeoutSecs(pp, 2);

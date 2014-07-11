@@ -117,7 +117,7 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
     sockp = (osi_socket *)rxk_NewSocketHost(saddr);
     if (sockp == (osi_socket *)0)
 	return OSI_NULLSOCKET;
-    rxk_AddPort(((struct sockaddr_in *)saddr)->sin_port, (char *)sockp);
+    rxk_AddPort(rx_PortSockAddr(saddr), (char *)sockp);
     return (osi_socket) sockp;
 }
 
@@ -422,7 +422,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 #else /* AFS_SUN5_ENV */
     afs_int32 mtu;
 
-    mtu = rxi_FindIfMTU(((struct sockaddr_in *)pp->saddr)->sin_addr.s_addr);
+    mtu = rxi_FindIfMTU(rx_IpSockAddr((struct sockaddr *)&pp->saddr));
 
     if (mtu <= 0) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
@@ -552,7 +552,7 @@ rxi_Findcbi(struct sockaddr *saddr)
     if (numMyNetAddrs == 0)
 	(void)rxi_GetcbiInfo();
 
-    myAddr = ntohl(((struct sockaddr_in *)saddr)->sin_addr.s_addr);
+    myAddr = ntohl(rx_IpSockAddr(saddr));
 
     if (IN_CLASSA(myAddr))
 	netMask = IN_CLASSA_NET;
@@ -751,7 +751,7 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
     int match_value = 0;
     extern struct in_ifaddr *in_ifaddr;
     struct in_ifaddr *ifa, *ifad = NULL;
-    afs_uint32 addr = ntohl(((struct sockaddr_in *)saddr)->sin_addr.s_addr);
+    afs_uint32 addr = ntohl(rx_IpSockAddr(saddr));
 
     for (ifa = in_ifaddr; ifa; ifa = ifa->ia_next) {
 	if ((addr & ifa->ia_netmask) == ifa->ia_net) {

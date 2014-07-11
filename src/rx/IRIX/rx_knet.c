@@ -336,7 +336,7 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
     if (numMyNetAddrs == 0)
 	(void)rxi_GetIFInfo();
 
-    ppaddr = ntohl(((struct sockaddr_in *)saddr)->sin_addr.s_addr);
+    ppaddr = ntohl(rx_IpSockAddr(saddr));
     ifad = (struct in_ifaddr *)&hashinfo_inaddr;
 
     (void)hash_enum(&hashinfo_inaddr, rxi_MatchIfnet, HTF_INET,

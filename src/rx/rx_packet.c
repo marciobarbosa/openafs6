@@ -1848,8 +1848,8 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 		for (tc = rx_connHashTable[i]; tc; tc = tc->next) {
 		    if ((all || rxi_IsConnInteresting(tc))
 			&& tin.index-- <= 0) {
-			tconn.host = ((struct sockaddr_in *)&tc->peer->saddr)->sin_addr.s_addr;
-			tconn.port = ((struct sockaddr_in *)&tc->peer->saddr)->sin_port;
+			tconn.host = rx_IpSockAddr((struct sockaddr *)&tc->peer->saddr);
+			tconn.port = rx_PortSockAddr((struct sockaddr *)&tc->peer->saddr);
 			tconn.cid = htonl(tc->cid);
 			tconn.epoch = htonl(tc->epoch);
 			tconn.serial = htonl(tc->serial);
@@ -1959,8 +1959,8 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
                         MUTEX_EXIT(&rx_peerHashTable_lock);
 
                         MUTEX_ENTER(&tp->peer_lock);                        
-			tpeer.host = ((struct sockaddr_in *)&tp->saddr)->sin_addr.s_addr;
-			tpeer.port = ((struct sockaddr_in *)&tp->saddr)->sin_port;
+			tpeer.host = rx_IpSockAddr((struct sockaddr *)&tp->saddr);
+			tpeer.port = rx_PortSockAddr((struct sockaddr *)&tp->saddr);
 			tpeer.ifMTU = htons(tp->ifMTU);
 			tpeer.idleWhen = htonl(tp->idleWhen);
 			tpeer.refCount = htons(tp->refCount);
@@ -2304,8 +2304,8 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
 #ifdef RXDEBUG
     }
     dpf(("%c %d %s: %x.%u.%u.%u.%u.%u.%u flags %d, packet %"AFS_PTR_FMT" len %d\n",
-          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(((struct sockaddr_in *)&peer->saddr)->sin_addr.s_addr),
-          ntohs(((struct sockaddr_in *)&peer->saddr)->sin_port), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
+          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(rx_IpSockAddr((struct sockaddr *)&peer->saddr)),
+          ntohs(rx_PortSockAddr((struct sockaddr *)&peer->saddr)), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
           p->header.seq, p->header.flags, p, p->length));
 #endif
     if (rx_stats_active) {
@@ -2493,8 +2493,8 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
     osi_Assert(p != NULL);
 
     dpf(("%c %d %s: %x.%u.%u.%u.%u.%u.%u flags %d, packet %"AFS_PTR_FMT" len %d\n",
-          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(((struct sockaddr_in *)&peer->saddr)->sin_addr.s_addr),
-          ntohs(((struct sockaddr_in *)&peer->saddr)->sin_port), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
+          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(rx_IpSockAddr((struct sockaddr *)&peer->saddr)),
+          ntohs(rx_PortSockAddr((struct sockaddr *)&peer->saddr)), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
           p->header.seq, p->header.flags, p, p->length));
 
 #endif

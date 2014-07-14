@@ -52,9 +52,9 @@ afs_uint32 rxi_tempAddr = 0;	/* default attempt */
 
 /* set the advisory noise */
 void
-rxi_setaddr(afs_uint32 x)
+rxi_setaddr(struct sockaddr *x)
 {
-    rxi_tempAddr = x;
+    rxi_tempAddr = rx_IpSockAddr(x);
 }
 
 /* get approx to net addr */
@@ -70,7 +70,7 @@ rxi_getaddr(void)
 
 /* to satisfy those who call setaddr */
 void
-rxi_setaddr(afs_uint32 x)
+rxi_setaddr(struct sockaddr *x)
 {
 }
 
@@ -138,7 +138,8 @@ static_inline int
 rxi_IsLoopbackIface(struct sockaddr_in *a, unsigned long flags)
 {
     afs_uint32 addr = ntohl(a->sin_addr.s_addr);
-    if (rx_IsLoopbackAddr(addr)) {
+    struct sockaddr_in saddr = rx_CreateSockAddr(addr, 0);
+    if (rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 	return 1;
     }
     if ((flags & IFF_LOOPBACK) && ((addr & 0xff000000) == 0x7f000000)) {
@@ -275,6 +276,7 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
     struct rt_addrinfo info;
     char *buf, *lim, *next;
     int count = 0, addrcount = 0;
+    struct sockaddr_in saddr;
 
     mib[0] = CTL_NET;
     mib[1] = PF_ROUTE;
@@ -334,7 +336,9 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 	    }
 	    a = (struct sockaddr_in *) info.rti_info[RTAX_IFA];
 
-	    if (!rx_IsLoopbackAddr(ntohl(a->sin_addr.s_addr))) {
+	    saddr = rx_CreateSockAddr(ntohl(a->sin_addr.s_addr), 0);
+
+	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 		if (count >= maxSize) {	/* no more space */
 		    dpf(("Too many interfaces..ignoring 0x%x\n",
 			   a->sin_addr.s_addr));
@@ -486,6 +490,7 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 {
     int i, count = 0;
     struct sockaddr_in saddrs[1024];
+    struct sockaddr_in saddr;
 #if defined(AFS_USERSPACE_IP_ADDR)
     int s, len;
     struct ifconf ifc;
@@ -540,7 +545,9 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 		continue;	/* ignore this address */
 	    }
 
-            if (rx_IsLoopbackAddr(ntohl(a->sin_addr.s_addr)))
+	    saddr = rx_CreateSockAddr(ntohl(a->sin_addr.s_addr), 0);
+
+            if (rx_IsLoopbackAddr((struct sockaddr *)&saddr))
                 continue;   /* skip loopback address as well. */
 
 	    if (count >= maxSize) {	/* no more space */

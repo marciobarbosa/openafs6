@@ -19,6 +19,7 @@ afstest_IsLoopbackNetworkDefault(void)
     char hostname[MAXHOSTCHARS];
     afs_uint32 addr;
     struct hostent *host;
+    struct sockaddr_in saddr;
 
     gethostname(hostname, sizeof(hostname));
     host = gethostbyname(hostname);
@@ -27,7 +28,9 @@ afstest_IsLoopbackNetworkDefault(void)
     }
     memcpy(&addr, host->h_addr, sizeof(addr));
 
-    return(rx_IsLoopbackAddr(ntohl(addr)));
+    saddr = rx_CreateSockAddr(ntohl(addr), 0);
+
+    return(rx_IsLoopbackAddr((struct sockaddr *)&saddr));
 }
 
 /*!

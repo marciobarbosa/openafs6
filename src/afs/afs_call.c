@@ -1111,6 +1111,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	/* pass in the host address to the rx package */
 	int rxbind = 0;
 	int refresh = 0;
+	struct sockaddr_in saddr;
 
 	afs_int32 count = parm2;
 	afs_int32 *buffer =
@@ -1172,7 +1173,8 @@ afs_syscall_call(long parm, long parm2, long parm3,
 		afs_cb_interface.mtu[i] = (parm5 ? mtubuffer[i] : htonl(1500));
 #endif
 	    }
-	    rxi_setaddr(buffer[0]);
+	    saddr = rx_CreateSockAddr(buffer[0], 0);
+	    rxi_setaddr((struct sockaddr *)&saddr);
 	    if (!refresh) {
 		if (rxbind)
 		    rx_bindhost = buffer[0];

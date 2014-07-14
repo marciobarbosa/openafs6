@@ -369,6 +369,7 @@ filterAddrs(afs_uint32 addr1[], afs_uint32 addr2[], afs_uint32 mask1[],
     afs_uint32 tmask[MAXIPADDRS];
     afs_uint32 tmtu[MAXIPADDRS];
     int count = 0, i = 0, j = 0, found = 0;
+    struct sockaddr_in saddr;
 
     opr_Assert(addr1);
     opr_Assert(addr2);
@@ -386,8 +387,10 @@ filterAddrs(afs_uint32 addr1[], afs_uint32 addr2[], afs_uint32 mask1[],
 	    }
 	}
 
+	saddr = rx_CreateSockAddr(addr1[i], 0);
+
 	/* Always mask loopback address */
-	if (found && rx_IsLoopbackAddr(addr1[i]))
+	if (found && rx_IsLoopbackAddr((struct sockaddr *)&saddr))
 	    found = 0;
 
 	if (found) {

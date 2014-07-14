@@ -279,9 +279,9 @@ osi_Free(void *x, afs_int32 size)
 #define	ADDRSPERSITE	16
 
 
-static afs_uint32 rxi_NetAddrs[ADDRSPERSITE];	/* host order */
+static struct sockaddr_storage rxi_NetAddrs[ADDRSPERSITE];	/* host order */
 static int myNetMTUs[ADDRSPERSITE];
-static int myNetMasks[ADDRSPERSITE];
+static struct sockaddr_storage myNetMasks[ADDRSPERSITE];
 static int myNetFlags[ADDRSPERSITE];
 static u_int rxi_numNetAddrs;
 static int Inited = 0;
@@ -296,9 +296,9 @@ rxi_getaddr(void)
     /* we don't want to use the loopback adapter which is first */
     /* this is a bad bad hack */
     if (rxi_numNetAddrs > 1)
-	return htonl(rxi_NetAddrs[1]);
+	return htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[1]));
     else if (rxi_numNetAddrs > 0)
-	return htonl(rxi_NetAddrs[0]);
+	return htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[0]));
     else
 	return 0;
 }
@@ -318,7 +318,7 @@ rx_getAllAddr(afs_uint32 * buffer, int maxSize)
 
     for (count = 0; offset < rxi_numNetAddrs && maxSize > 0;
 	 count++, offset++, maxSize--)
-	buffer[count] = htonl(rxi_NetAddrs[offset]);
+	buffer[count] = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset]));
 
     return count;
 }
@@ -340,8 +340,8 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
     for (count = 0;
          offset < rxi_numNetAddrs && maxSize > 0;
          count++, offset++, maxSize--) {
-	addrBuffer[count] = htonl(rxi_NetAddrs[offset]);
-	maskBuffer[count] = htonl(myNetMasks[offset]);
+	addrBuffer[count] = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset]));
+	maskBuffer[count] = htonl(rx_IpSockAddr((struct sockaddr *)&myNetMasks[offset]));
 	mtuBuffer[count]  = htonl(myNetMTUs[offset]);
     }
     return count;
@@ -367,6 +367,8 @@ rx_GetIFInfo(void)
     u_int maxsize;
     u_int rxsize;
     afs_uint32 i;
+    afs_uint32 rxi_NetAddrs_32[ADDRSPERSITE];
+    afs_uint32 myNetMasks_32[ADDRSPERSITE];
 
     LOCK_IF_INIT;
     if (Inited) {
@@ -384,10 +386,18 @@ rx_GetIFInfo(void)
 
     LOCK_IF;
     rxi_numNetAddrs = ADDRSPERSITE;
-    (void)syscfg_GetIFInfo(&rxi_numNetAddrs, rxi_NetAddrs,
-                           myNetMasks, myNetMTUs, myNetFlags);
+    (void)syscfg_GetIFInfo(&rxi_numNetAddrs, rxi_NetAddrs_32,
+                           myNetMasks_32, myNetMTUs, myNetFlags);
 
     for (i = 0; i < rxi_numNetAddrs; i++) {
+        memset(&rxi_NetAddrs[i], 0, sizeof(struct sockaddr_storage));
+        ((struct sockaddr_in *)&rxi_NetAddrs[i])->sin_family = AF_INET;
+        ((struct sockaddr_in *)&rxi_NetAddrs[i])->sin_addr.s_addr = rxi_NetAddrs_32[i];
+
+        memset(&myNetMasks[i], 0, sizeof(struct sockaddr_storage));
+        ((struct sockaddr_in *)&myNetMasks[i])->sin_family = AF_INET;
+        ((struct sockaddr_in *)&myNetMasks[i])->sin_addr.s_addr = myNetMasks_32[i];
+
         rxsize = rxi_AdjustIfMTU(myNetMTUs[i] - RX_IPUDP_SIZE);
         maxsize =
             rxi_nRecvFrags * rxsize + (rxi_nRecvFrags - 1) * UDP_HDR_SIZE;
@@ -416,15 +426,15 @@ rx_GetIFInfo(void)
 #endif
 
 static afs_uint32
-fudge_netmask(afs_uint32 addr)
+fudge_netmask(struct sockaddr *addr)
 {
     afs_uint32 msk;
 
-    if (IN_CLASSA(addr))
+    if (IN_CLASSA(rx_IpSockAddr(addr)))
 	msk = IN_CLASSA_NET;
-    else if (IN_CLASSB(addr))
+    else if (IN_CLASSB(rx_IpSockAddr(addr)))
 	msk = IN_CLASSB_NET;
-    else if (IN_CLASSC(addr))
+    else if (IN_CLASSC(rx_IpSockAddr(addr)))
 	msk = IN_CLASSC_NET;
     else
 	msk = 0;
@@ -529,13 +539,15 @@ rx_GetIFInfo(void)
 	a = (struct sockaddr_in *)&ifr->ifr_addr;
 	if (a->sin_family != AF_INET)
 	    continue;
-	rxi_NetAddrs[rxi_numNetAddrs] = ntohl(a->sin_addr.s_addr);
-	if (rx_IsLoopbackAddr(rxi_NetAddrs[rxi_numNetAddrs])) {
+        memset(&rxi_NetAddrs[rxi_numNetAddrs], 0, sizeof(struct sockaddr_storage));
+        ((struct sockaddr_in *)&rxi_NetAddrs[rxi_numNetAddrs])->sin_family = AF_INET;
+	((struct sockaddr_in *)&rxi_NetAddrs[rxi_numNetAddrs])->sin_addr.s_addr = ntohl(a->sin_addr.s_addr);
+	if (rx_IsLoopbackAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])) {
 	    /* we don't really care about "localhost" */
 	    continue;
 	}
 	for (j = 0; j < rxi_numNetAddrs; j++) {
-	    if (rxi_NetAddrs[j] == rxi_NetAddrs[rxi_numNetAddrs])
+	    if (rxi_IsSockAddrEqual((struct sockaddr *)&rxi_NetAddrs[j], (struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]))
 		break;
 	}
 	if (j < rxi_numNetAddrs)
@@ -571,22 +583,27 @@ rx_GetIFInfo(void)
 	 * following code.  Fortunately, AIX is the one operating system in
 	 * which the subsequent ioctl works reliably. */
 	if (rxi_syscallp) {
+            afs_uint32 mask;
+            memset(&myNetMasks[rxi_numNetAddrs], 0, sizeof(struct sockaddr_storage));
+
 	    if ((*rxi_syscallp) (20 /*AFSOP_GETMTU */ ,
-				 htonl(rxi_NetAddrs[rxi_numNetAddrs]),
+				 htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])),
 				 &(myNetMTUs[rxi_numNetAddrs]))) {
 		/* fputs(stderr, "syscall error GETMTU\n");
 		 * perror(ifr->ifr_name); */
 		myNetMTUs[rxi_numNetAddrs] = 0;
 	    }
 	    if ((*rxi_syscallp) (42 /*AFSOP_GETMASK */ ,
-				 htonl(rxi_NetAddrs[rxi_numNetAddrs]),
-				 &(myNetMasks[rxi_numNetAddrs]))) {
+				 htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])),
+				 &mask)) {
 		/* fputs(stderr, "syscall error GETMASK\n");
-		 * perror(ifr->ifr_name); */
-		myNetMasks[rxi_numNetAddrs] = 0;
+		 * perror(ifr->ifr_name); */                
+                ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
+		((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr = 0;
 	    } else
-		myNetMasks[rxi_numNetAddrs] =
-		    ntohl(myNetMasks[rxi_numNetAddrs]);
+                ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
+		((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr =
+		    ntohl(mask);
 	    /* fprintf(stderr, "if %s mask=0x%x\n",
 	     * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	}
@@ -606,14 +623,16 @@ rx_GetIFInfo(void)
 #endif
 	}
 
-	if (myNetMasks[rxi_numNetAddrs] == 0) {
-	    myNetMasks[rxi_numNetAddrs] =
-		fudge_netmask(rxi_NetAddrs[rxi_numNetAddrs]);
+	if (rx_IpSockAddr((struct sockaddr *)&myNetMasks[rxi_numNetAddrs]) == 0) {
+            ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
+	    ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr =
+		fudge_netmask((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]);
 #ifdef SIOCGIFNETMASK
 	    res = ioctl(s, SIOCGIFNETMASK, ifr);
 	    if (res == 0) {
 		a = (struct sockaddr_in *)&ifr->ifr_addr;
-		myNetMasks[rxi_numNetAddrs] = ntohl(a->sin_addr.s_addr);
+                ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
+		((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr = ntohl(a->sin_addr.s_addr);
 		/* fprintf(stderr, "if %s subnetmask=0x%x\n",
 		 * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	    } else {
@@ -623,7 +642,7 @@ rx_GetIFInfo(void)
 #endif
 	}
 
-	if (!rx_IsLoopbackAddr(rxi_NetAddrs[rxi_numNetAddrs])) {	/* ignore lo0 */
+	if (!rx_IsLoopbackAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])) {	/* ignore lo0 */
 	    int maxsize;
 	    maxsize =
 		rxi_nRecvFrags * (myNetMTUs[rxi_numNetAddrs] - RX_IP_SIZE);
@@ -697,7 +716,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 
     LOCK_IF;
     for (ix = 0; ix < rxi_numNetAddrs; ++ix) {
-	if ((rxi_NetAddrs[ix] & myNetMasks[ix]) == (ppaddr & myNetMasks[ix])) {
+	if ((rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[ix]) & rx_IpSockAddr((struct sockaddr *)&myNetMasks[ix])) == (ppaddr & rx_IpSockAddr((struct sockaddr *)&myNetMasks[ix]))) {
 #ifdef IFF_POINTOPOINT
 	    if (myNetFlags[ix] & IFF_POINTOPOINT)
 		rx_rto_setPeerTimeoutSecs(pp, 4);

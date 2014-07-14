@@ -43,7 +43,7 @@ int rxk_initDone = 0;
 
 #if !defined(AFS_SUN5_ENV) && !defined(AFS_SGI62_ENV)
 #define ADDRSPERSITE 16
-static afs_uint32 myNetAddrs[ADDRSPERSITE];
+static struct sockaddr_storage myNetAddrs[ADDRSPERSITE];
 static int myNetMTUs[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
 #endif
@@ -497,6 +497,7 @@ rxi_GetcbiInfo(void)
     afs_uint32 ifinaddr;
     afs_uint32 addrs[ADDRSPERSITE];
     int mtus[ADDRSPERSITE];
+    struct sockaddr_in saddr;
 
     memset((void *)addrs, 0, sizeof(addrs));
     memset((void *)mtus, 0, sizeof(mtus));
@@ -508,7 +509,7 @@ rxi_GetcbiInfo(void)
 	    afs_cb_interface.mtu[i] = htonl(1500);
 	rxmtu = (ntohl(afs_cb_interface.mtu[i]) - RX_IPUDP_SIZE);
 	ifinaddr = ntohl(afs_cb_interface.addr_in[i]);
-	if (myNetAddrs[i] != ifinaddr)
+	if (rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
 	    different++;
 
 	mtus[i] = rxmtu;
@@ -517,7 +518,8 @@ rxi_GetcbiInfo(void)
 	    rxmtu * rxi_nRecvFrags + ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
 	maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
 	addrs[i++] = ifinaddr;
-	if (!rx_IsLoopbackAddr(ifinaddr) && (maxmtu > rx_maxReceiveSize)) {
+        saddr = rx_CreateSockAddr(ifinaddr, 0);
+	if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && (maxmtu > rx_maxReceiveSize)) {
 	    rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
 	    rx_maxReceiveSize = MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
 	}
@@ -531,7 +533,8 @@ rxi_GetcbiInfo(void)
     if (different) {
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-	    myNetAddrs[j] = addrs[j];
+            ((struct sockaddr_in *)&myNetAddrs[j])->sin_family = AF_INET;
+	    ((struct sockaddr_in *)&myNetAddrs[j])->sin_addr.s_addr = addrs[j];
 	}
     }
     return different;
@@ -607,6 +610,7 @@ rxi_GetIFInfo(void)
     afs_uint32 addrs[ADDRSPERSITE];
     int mtus[ADDRSPERSITE];
     afs_uint32 ifinaddr;
+    struct sockaddr_in saddr;
 #if defined(AFS_DARWIN80_ENV)
     errno_t t;
     unsigned int count;
@@ -633,7 +637,7 @@ rxi_GetIFInfo(void)
 			sin = (struct sockaddr_in *)&sout;
 			rxmtu = rx_ifnet_mtu(rx_ifaddr_ifnet(ifads[j])) - RX_IPUDP_SIZE;
 			ifinaddr = ntohl(sin->sin_addr.s_addr);
-			if (myNetAddrs[i] != ifinaddr) {
+			if (rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
 			    different++;
 			}
 			mtus[i] = rxmtu;
@@ -643,7 +647,8 @@ rxi_GetIFInfo(void)
 			    ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
 			maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
 			addrs[i++] = ifinaddr;
-			if (!rx_IsLoopbackAddr(ifinaddr) &&
+                        saddr = rx_CreateSockAddr(ifinaddr);
+			if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) &&
 			    (maxmtu > rx_maxReceiveSize)) {
 			    rx_maxReceiveSize =
 				MIN(RX_MAX_PACKET_SIZE, maxmtu);
@@ -690,7 +695,7 @@ rxi_GetIFInfo(void)
 		ifinaddr =
 		    ntohl(((struct sockaddr_in *)IFADDR2SA(ifad))->sin_addr.
 			  s_addr);
-		if (myNetAddrs[i] != ifinaddr) {
+		if (rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
 		    different++;
 		}
 		mtus[i] = rxmtu;
@@ -700,7 +705,8 @@ rxi_GetIFInfo(void)
 		    ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
 		maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
 		addrs[i++] = ifinaddr;
-		if (!rx_IsLoopbackAddr(ifinaddr) && (maxmtu > rx_maxReceiveSize)) {
+                saddr = rx_CreateSockAddr(ifinaddr, 0);
+		if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && (maxmtu > rx_maxReceiveSize)) {
 		    rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
 		    rx_maxReceiveSize =
 			MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
@@ -719,7 +725,8 @@ rxi_GetIFInfo(void)
 	int l;
 	for (l = 0; l < i; l++) {
 	    myNetMTUs[l] = mtus[l];
-	    myNetAddrs[l] = addrs[l];
+            ((struct sockaddr_in *)&myNetAddrs[l])->sin_family = AF_INET;
+	    ((struct sockaddr_in *)&myNetAddrs[l])->sin_addr.s_addr = addrs[l];
 	}
     }
     return different;

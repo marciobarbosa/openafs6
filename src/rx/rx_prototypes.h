@@ -239,7 +239,7 @@ extern int rxevent_RaiseEvents(struct clock *next);
 
 
 /* rx_getaddr.c */
-extern void rxi_setaddr(afs_uint32 x);
+extern void rxi_setaddr(struct sockaddr *x);
 extern afs_uint32 rxi_getaddr(void);
 extern int rx_getAllAddr(afs_uint32 * buffer, int maxSize);
 extern int rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[],
@@ -330,7 +330,7 @@ extern void osi_StopNetIfPoller(void);
 extern struct afs_ifinfo afsifinfo[ADDRSPERSITE];
 # endif
 extern void osi_StopListener(void);
-extern int rxi_FindIfMTU(afs_uint32 addr);
+extern int rxi_FindIfMTU(struct sockaddr *addr);
 # if defined(UKERNEL)
 extern void rxi_ListenerProc(osi_socket usockp, int *tnop,
 			     struct rx_call **newcallp);

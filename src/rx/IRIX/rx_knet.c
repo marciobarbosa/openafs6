@@ -286,7 +286,7 @@ rxk_init(void)
  * RX IP address routines.
  */
 
-static afs_uint32 myNetAddrs[ADDRSPERSITE];
+static struct sockaddr_storage myNetAddrs[ADDRSPERSITE];
 static int myNetMTUs[ADDRSPERSITE];
 static int myNetFlags[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
@@ -363,6 +363,7 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     struct ifnet *ifnp;
     afs_uint32 ifinaddr;
     afs_uint32 rxmtu;
+    struct sockaddr_in saddr;
 
     if (i >= ADDRSPERSITE)
 	return 0;
@@ -370,14 +371,16 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     ifnp = iap->ia_ifp;
     rxmtu = (ifnp->if_mtu - RX_IPUDP_SIZE);
     ifinaddr = ntohl(iap->ia_addr.sin_addr.s_addr);
-    if (myNetAddrs[i] != ifinaddr) {
-	myNetAddrs[i] = ifinaddr;
+    if (rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
+    	((struct sockaddr_in *)&myNetAddrs[i])->sin_family = AF_INET;
+	((struct sockaddr_in *)&myNetAddrs[i])->sin_addr.s_addr = ifinaddr;
 	myNetMTUs[i] = rxmtu;
 	different++;
 	*(int *)arg1 = different;
     }
+    saddr = rx_CreateSockAddr(ifinaddr, 0);
     rxmtu = rxmtu * rxi_nRecvFrags + ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
-    if (!rx_IsLoopbackAddr(ifinaddr) && (rxmtu > rx_maxReceiveSize)) {
+    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && (rxmtu > rx_maxReceiveSize)) {
 	rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, rxmtu);
 	rx_maxReceiveSize = MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
     }

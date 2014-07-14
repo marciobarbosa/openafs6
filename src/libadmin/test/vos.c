@@ -1627,6 +1627,7 @@ GetServer(char *aname)
     int b1, b2, b3, b4;
     afs_int32 code;
     char hostname[MAXHOSTCHARS];
+    struct sockaddr_in saddr;
 
     code = sscanf(aname, "%d.%d.%d.%d", &b1, &b2, &b3, &b4);
     if (code == 4) {
@@ -1639,7 +1640,9 @@ GetServer(char *aname)
 	memcpy(&addr, th->h_addr, sizeof(addr));
     }
 
-    if (rx_IsLoopbackAddr(ntohl(addr))) {	/* local host */
+    saddr = rx_CreateSockAddr(ntohl(addr), 0);
+
+    if (rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {	/* local host */
 	code = gethostname(hostname, MAXHOSTCHARS);
 	if (code)
 	    return 0;

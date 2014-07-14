@@ -4151,6 +4151,7 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
     char hoststr[16];
     char uuidstr[128];
     afs_uint16 port7001 = htons(7001);
+    struct sockaddr_in saddr;
 
     opr_Assert(host);
     opr_Assert(interf);
@@ -4206,7 +4207,8 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
      * for this connection might not be 7001.
      */
     for (i = 0, count = 0, found = 0; i < number; i++) {
-	if (rx_IsLoopbackAddr(interf->addr_in[i])) {
+        saddr = rx_CreateSockAddr(interf->addr_in[i], 0);
+	if (rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 	    continue;
 	}
 	interf->addr_in[i] = htonl(interf->addr_in[i]);

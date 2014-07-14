@@ -97,11 +97,13 @@ rxkad_AllocCID(struct rx_securityClass *aobj, struct rx_connection *aconn)
     struct rxkad_cprivate *tcp;
     struct rxkad_cidgen tgen;
     static afs_int32 counter = 0;	/* not used anymore */
+    struct sockaddr_storage saddr;
 
     LOCK_CUID;
     if (Cuid[0] == 0) {
 	afs_uint32 xor[2];
-	tgen.ipAddr = rxi_getaddr();	/* comes back in net order */
+        saddr = rxi_getaddr();  /* comes back in net order */
+	tgen.ipAddr = rx_IpSockAddr((struct sockaddr *)&saddr);
 	clock_GetTime(&tgen.time);	/* changes time1 and time2 */
 	tgen.time.sec = htonl(tgen.time.sec);
 	tgen.time.usec = htonl(tgen.time.usec);

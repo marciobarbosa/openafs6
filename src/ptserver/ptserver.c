@@ -246,6 +246,8 @@ main(int argc, char **argv)
     struct cmd_syndesc *opts;
     struct cmd_item *list;
     struct sockaddr_in saddr;
+    struct sockaddr_in saddrs[ADDRSPERSITE];
+    int i;
 
     char *pr_dbaseName;
     char *configDir;
@@ -507,7 +509,9 @@ main(int argc, char **argv)
 					  AFSDIR_SERVER_NETRESTRICT_FILEPATH);
 	} else
 	{
-	    ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+	    ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
+            for(i = 0; i < ccode; i++)
+                SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
 	}
 	if (ccode == 1) {
 	    host = SHostAddrs[0];

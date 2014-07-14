@@ -765,6 +765,7 @@ main(int argc, char **argv, char **envp)
     int DoPeerRPCStats = 0;
     int DoProcessRPCStats = 0;
     struct sockaddr_in saddr;
+    struct sockaddr_in saddrs[ADDRSPERSITE];
 #ifndef AFS_NT40_ENV
     int nofork = 0;
     struct stat sb;
@@ -1071,7 +1072,9 @@ main(int argc, char **argv, char **envp)
 	                                  AFSDIR_SERVER_NETINFO_FILEPATH,
 	                                  AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else {
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
+            for(i = 0; i < ccode; i++)
+            	SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1)
             host = SHostAddrs[0];

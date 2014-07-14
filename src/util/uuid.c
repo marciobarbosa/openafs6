@@ -409,6 +409,9 @@ uuid_get_address(uuid_address_p_t addr)
     afs_int32 code;
     afs_uint32 addr1 = 0;
     struct hostent *he = NULL;
+#ifdef UKERNEL
+    struct sockaddr_storage saddr;
+#endif
 
     code = gethostname(hostName1, 64);
     if (!code)
@@ -417,8 +420,10 @@ uuid_get_address(uuid_address_p_t addr)
     if (he)
 	memcpy(&addr1, he->h_addr_list[0], 4);
 #ifdef UKERNEL
-    else
-	addr1=rxi_getaddr();
+    else {
+        saddr = rxi_getaddr();
+	addr1 = rx_IpSockAddr((struct sockaddr *)&saddr);
+    }
 #endif
 
     if (!addr1) {

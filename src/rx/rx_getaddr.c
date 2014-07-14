@@ -48,17 +48,17 @@
 #ifdef KERNEL
 /* only used for generating random noise */
 
-afs_uint32 rxi_tempAddr = 0;	/* default attempt */
+struct sockaddr_storage rxi_tempAddr;	/* default attempt */
 
 /* set the advisory noise */
 void
 rxi_setaddr(struct sockaddr *x)
 {
-    rxi_tempAddr = rx_IpSockAddr(x);
+    rxi_CopySockAddr((struct sockaddr *)&rxi_tempAddr, x);
 }
 
 /* get approx to net addr */
-afs_uint32
+struct sockaddr_storage
 rxi_getaddr(void)
 {
     return rxi_tempAddr;
@@ -87,17 +87,21 @@ rxi_setaddr(struct sockaddr *x)
 /* Return our internet address as a long in network byte order.  Returns zero
  * if it can't find one.
  */
-afs_uint32
+struct sockaddr_storage
 rxi_getaddr(void)
 {
-    afs_uint32 buffer[1024];
+    struct sockaddr_storage buffer[1024];
     int count;
 
-    count = rx_getAllAddr(buffer, 1024);
-    if (count > 0)
-	return buffer[0];	/* returns the first address */
-    else
-	return count;
+    count = rx_getAllAddr((struct sockaddr *)buffer, 1024);
+
+    if (count <= 0) {
+    	memset(&buffer[0], 0, sizeof(struct sockaddr_storage));
+    	((struct sockaddr_in *)&buffer[0])->sin_family = AF_INET;
+    	((struct sockaddr_in *)&buffer[0])->sin_addr.s_addr = 0;
+    }
+
+    return buffer[0];	/* returns the first address */
 }
 
 #endif /* !KERNEL */
@@ -263,7 +267,7 @@ rx_getAllAddr_internal(struct sockaddr buffer[], int maxSize, int loopbacks)
 }
 
 int
-rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
+rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 		     afs_uint32 mtuBuffer[], int maxSize)
 {
     int s;
@@ -345,12 +349,15 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 		} else {
 		    struct ifreq ifr;
 
-		    addrBuffer[count] = a->sin_addr.s_addr;
+		    rxi_CopySockAddr(&addrBuffer[count], (struct sockaddr *)a);
 		    a = (struct sockaddr_in *) info.rti_info[RTAX_NETMASK];
 		    if (a)
-			maskBuffer[count] = a->sin_addr.s_addr;
-		    else
-			maskBuffer[count] = htonl(0xffffffff);
+			rxi_CopySockAddr(&maskBuffer[count], (struct sockaddr *)a);
+		    else {
+			memset(&maskBuffer[count], 0, sizeof(struct sockaddr_in));
+			((struct sockaddr_in *)&maskBuffer[count])->sin_family = AF_INET;
+			((struct sockaddr_in *)&maskBuffer[count])->sin_addr.s_addr = htonl(0xffffffff);
+		    }
 		    memset(&ifr, 0, sizeof(ifr));
 		    ifr.ifr_addr.sa_family = AF_INET;
 		    strncpy(ifr.ifr_name, sdl->sdl_data, sdl->sdl_nlen);
@@ -371,17 +378,9 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 
 
 int
-rx_getAllAddr(afs_uint32 buffer[], int maxSize)
+rx_getAllAddr(struct sockaddr buffer[], int maxSize)
 {
-    struct sockaddr_in saddrs[maxSize];
-    int count, i;
-
-    count = rx_getAllAddr_internal((struct sockaddr *)&saddrs, maxSize, 0);
-
-    for(i = 0; i < count; i++)
-    	buffer[i] = saddrs[i].sin_addr.s_addr;
-
-    return count;
+    return rx_getAllAddr_internal(buffer, maxSize, 0);
 }
 /* this function returns the total number of interface addresses
 ** the buffer has to be passed in by the caller
@@ -465,17 +464,9 @@ rx_getAllAddr_internal(struct sockaddr buffer[], int maxSize, int loopbacks)
 }
 
 int
-rx_getAllAddr(afs_uint32 buffer[], int maxSize)
+rx_getAllAddr(struct sockaddr buffer[], int maxSize)
 {
-    struct sockaddr_in saddrs[maxSize];
-    int count, i;
-
-    count = rx_getAllAddr_internal((struct sockaddr *)&saddrs, maxSize, 0);
-
-    for(i = 0; i < count; i++)
-    	buffer[i] = saddrs[i].sin_addr.s_addr;
-
-    return count;
+    return rx_getAllAddr_internal(buffer, maxSize, 0);
 }
 
 /* this function returns the total number of interface addresses
@@ -485,11 +476,10 @@ rx_getAllAddr(afs_uint32 buffer[], int maxSize)
  * by afsi_SetServerIPRank().
  */
 int
-rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
+rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
                      afs_uint32 mtuBuffer[], int maxSize)
 {
     int i, count = 0;
-    struct sockaddr_in saddrs[1024];
     struct sockaddr_in saddr;
 #if defined(AFS_USERSPACE_IP_ADDR)
     int s, len;
@@ -503,10 +493,9 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 #endif
 
 #if !defined(AFS_USERSPACE_IP_ADDR)
-    count = rx_getAllAddr_internal((struct sockaddr *)&saddrs, 1024, 0);
+    count = rx_getAllAddr_internal(addrBuffer, 1024, 0);
     for (i = 0; i < count; i++) {
-    	addrBuffer[i] = saddrs.sin_addr.s_addr;
-	maskBuffer[i] = htonl(0xffffffff);
+	maskBuffer[i] = rx_CreateSockAddr(htonl(0xffffffff), 0);
 	mtuBuffer[i] = htonl(1500);
     }
     return count;
@@ -555,15 +544,16 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 		       a->sin_addr.s_addr));
 		continue;
 	    }
-
-	    addrBuffer[count] = a->sin_addr.s_addr;
+	    
+	    rxi_CopySockAddr(&addrBuffer[count], (struct sockaddr *)a);
 
 	    if (ioctl(s, SIOCGIFNETMASK, (caddr_t) ifr) < 0) {
 		perror("SIOCGIFNETMASK");
-		maskBuffer[count] = htonl(0xffffffff);
+		memset(&maskBuffer[count], 0, sizeof(struct sockaddr_in));
+		((struct sockaddr_in *)&maskBuffer[count])->sin_family = AF_INET;
+		((struct sockaddr_in *)&maskBuffer[count])->sin_addr.s_addr = htonl(0xffffffff);
 	    } else {
-		maskBuffer[count] = (((struct sockaddr_in *)
-				      (&ifr->ifr_addr))->sin_addr).s_addr;
+		rxi_CopySockAddr(&maskBuffer[count], &ifr->ifr_addr);
 	    }
 
 	    mtuBuffer[count] = htonl(1500);

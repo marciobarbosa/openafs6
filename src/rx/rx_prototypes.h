@@ -240,10 +240,10 @@ extern int rxevent_RaiseEvents(struct clock *next);
 
 /* rx_getaddr.c */
 extern void rxi_setaddr(struct sockaddr *x);
-extern afs_uint32 rxi_getaddr(void);
-extern int rx_getAllAddr(afs_uint32 * buffer, int maxSize);
-extern int rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[],
-			  	 afs_uint32 maskBuffer[],
+extern struct sockaddr_storage rxi_getaddr(void);
+extern int rx_getAllAddr(struct sockaddr buffer[], int maxSize);
+extern int rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[],
+			  	 struct sockaddr maskBuffer[],
 				 afs_uint32 mtuBuffer[],
 				 int maxSize);
 

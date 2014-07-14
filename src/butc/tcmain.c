@@ -840,6 +840,8 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
     char cellName[64];
     int localauth;
     struct sockaddr_in saddr;
+    struct sockaddr_in saddrs[ADDRSPERSITE];
+    int i;
     /*process arguments */
     afs_int32 portOffset = 0;
 #ifdef AFS_PTHREAD_ENV
@@ -1045,7 +1047,9 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else
 	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
+            for(i = 0; i < ccode; i++)
+            	SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1)
             host = SHostAddrs[0];

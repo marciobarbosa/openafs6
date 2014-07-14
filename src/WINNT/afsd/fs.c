@@ -4415,7 +4415,7 @@ SetClientAddrsCmd(struct cmd_syndesc *as, void *arock)
     struct ViceIoctl blob;
     struct setspref *ssp;
     int sizeUsed = 0, i, flag;
-    afs_int32 existingAddr[1024];	/* existing addresses on this host */
+    struct sockaddr_in existingAddr[1024];	/* existing addresses on this host */ /* saddr */
     int existNu;
     int error = 0;
 
@@ -4431,7 +4431,7 @@ SetClientAddrsCmd(struct cmd_syndesc *as, void *arock)
     }
 
     /* extract all existing interface addresses */
-    existNu = rx_getAllAddr(existingAddr, 1024);
+    existNu = rx_getAllAddr((struct sockaddr *)existingAddr, 1024);
     if (existNu < 0)
 	return 1;
 
@@ -4449,8 +4449,8 @@ SetClientAddrsCmd(struct cmd_syndesc *as, void *arock)
 	    continue;
 	}
 	/* see if it is an address that really exists */
-	for (flag = 0, i = 0; i < existNu; i++)
-	    if (existingAddr[i] == addr) {
+	for (flag = 0, i = 0; i < existNu; i++) /* should have {} ? */
+	    if (rx_IpSockAddr((struct sockaddr *)&existingAddr[i]) == addr) {
 		flag = 1;
 		break;
 	    }

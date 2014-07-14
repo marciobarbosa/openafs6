@@ -118,6 +118,8 @@ parseNetRestrictFile_int(afs_uint32 outAddrs[], afs_uint32 * mask,
     int lineNo, usedfile = 0;
     afs_uint32 i, neaddrs, nOutaddrs;
     afs_uint32 addr, eAddrs[MAXIPADDRS], eMask[MAXIPADDRS], eMtu[MAXIPADDRS];
+    struct sockaddr_in saddrs[MAXIPADDRS], smasks[MAXIPADDRS];
+    int j;
 
     opr_Assert(outAddrs);
     opr_Assert(reason);
@@ -133,7 +135,11 @@ parseNetRestrictFile_int(afs_uint32 outAddrs[], afs_uint32 * mask,
     strcpy(reason, "");
 
     /* get all network interfaces from the kernel */
-    neaddrs = rx_getAllAddrMaskMtu(eAddrs, eMask, eMtu, MAXIPADDRS);
+    neaddrs = rx_getAllAddrMaskMtu((struct sockaddr *)saddrs, (struct sockaddr *)smasks, eMtu, MAXIPADDRS);
+    for(j = 0; j < neaddrs; j++) {
+    	eAddrs[j] = rx_IpSockAddr((struct sockaddr *)&saddrs[j]);
+    	eMask[j] = rx_IpSockAddr((struct sockaddr *)&smasks[j]);
+    }
     if (neaddrs <= 0) {
 	sprintf(reason, "No existing IP interfaces found");
 	return -1;
@@ -231,8 +237,8 @@ ParseNetInfoFile_int(afs_uint32 * final, afs_uint32 * mask, afs_uint32 * mtu,
 		     int fakeonly)
 {
 
-    afs_uint32 existingAddr[MAXIPADDRS], existingMask[MAXIPADDRS],
-	existingMtu[MAXIPADDRS];
+    struct sockaddr_in existingAddr[MAXIPADDRS], existingMask[MAXIPADDRS];
+    afs_uint32 existingMtu[MAXIPADDRS];
     char line[MAX_NETFILE_LINE];
     FILE *fp;
     int i, existNu, count = 0;
@@ -248,7 +254,7 @@ ParseNetInfoFile_int(afs_uint32 * final, afs_uint32 * mask, afs_uint32 * mtu,
 
     /* get all network interfaces from the kernel */
     existNu =
-	rx_getAllAddrMaskMtu(existingAddr, existingMask, existingMtu,
+	rx_getAllAddrMaskMtu((struct sockaddr *)existingAddr, (struct sockaddr *)existingMask, existingMtu,
 			      MAXIPADDRS);
     if (existNu < 0)
 	return existNu;
@@ -261,8 +267,8 @@ ParseNetInfoFile_int(afs_uint32 * final, afs_uint32 * mask, afs_uint32 * mtu,
 		"Failed to open %s(%s)\nUsing all configured addresses\n",
 		fileName, strerror(errno));
 	for (i = 0; i < existNu; i++) {
-	    final[i] = existingAddr[i];
-	    mask[i] = existingMask[i];
+	    final[i] = rx_IpSockAddr((struct sockaddr *)&existingAddr[i]);
+	    mask[i] = rx_IpSockAddr((struct sockaddr *)&existingMask[i]);
 	    mtu[i] = existingMtu[i];
 	}
 	return existNu;
@@ -298,7 +304,7 @@ ParseNetInfoFile_int(afs_uint32 * final, afs_uint32 * mask, afs_uint32 * mtu,
 
 	/* See if it is an address that really exists */
 	for (i = 0; i < existNu; i++) {
-	    if (existingAddr[i] == addr)
+	    if (rx_IpSockAddr((struct sockaddr *)&existingAddr[i]) == addr)
 		break;
 	}
 	if ((i >= existNu) && (!fake))
@@ -327,8 +333,8 @@ ParseNetInfoFile_int(afs_uint32 * final, afs_uint32 * mask, afs_uint32 * mtu,
 	    mtu[count] = htonl(1500);
 	    count++;
 	} else if (!fakeonly) {
-	    final[count] = existingAddr[i];
-	    mask[count] = existingMask[i];
+	    final[count] = rx_IpSockAddr((struct sockaddr *)&existingAddr[i]);
+	    mask[count] = rx_IpSockAddr((struct sockaddr *)&existingMask[i]);
 	    mtu[count] = existingMtu[i];
 	    count++;
 	}
@@ -339,8 +345,8 @@ ParseNetInfoFile_int(afs_uint32 * final, afs_uint32 * mask, afs_uint32 * mtu,
 	sprintf(reason,
 		"Error in reading/parsing Interface file\nUsing all configured interface addresses \n");
 	for (i = 0; i < existNu; i++) {
-	    final[i] = existingAddr[i];
-	    mask[i] = existingMask[i];
+	    final[i] = rx_IpSockAddr((struct sockaddr *)&existingAddr[i]);
+	    mask[i] = rx_IpSockAddr((struct sockaddr *)&existingMask[i]);
 	    mtu[i] = existingMtu[i];
 	}
 	return existNu;

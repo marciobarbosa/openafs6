@@ -623,7 +623,9 @@ static int
 verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 		       afs_uint32 aservers[]) {
     afs_uint32 myAddr[UBIK_MAX_INTERFACE_ADDR], *servList, tmpAddr;
+    struct sockaddr_in saddrs[UBIK_MAX_INTERFACE_ADDR];
     afs_uint32 myAddr2[UBIK_MAX_INTERFACE_ADDR];
+    struct sockaddr_in saddrs2[UBIK_MAX_INTERFACE_ADDR];
     char hoststr[16];
     int tcount, count, found, i, j, totalServers, start, end, usednetfiles =
 	0;
@@ -655,7 +657,9 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 	usednetfiles++;
     } else {
 	/* get all my interface addresses in net byte order */
-	count = rx_getAllAddr(myAddr, UBIK_MAX_INTERFACE_ADDR);
+	count = rx_getAllAddr((struct sockaddr *)saddrs, UBIK_MAX_INTERFACE_ADDR);
+	for(i = 0; i < count; i++)
+	    myAddr[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
     }
 
     if (count <= 0) {		/* no address found */
@@ -681,7 +685,9 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 	if (usednetfiles) {
 	    /* take the address we did get, then see if ame was masked */
 	    *ame = myAddr[0];
-	    tcount = rx_getAllAddr(myAddr2, UBIK_MAX_INTERFACE_ADDR);
+	    tcount = rx_getAllAddr((struct sockaddr *)saddrs2, UBIK_MAX_INTERFACE_ADDR);
+	    for(i = 0; i < tcount; i++)
+	    	myAddr2[i] = rx_IpSockAddr((struct sockaddr *)&saddrs2[i]);
 	    if (tcount <= 0) {	/* no address found */
 		ubik_print("ubik: No network addresses found, aborting..\n");
 		return UBADHOST;

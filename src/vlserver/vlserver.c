@@ -173,6 +173,8 @@ main(int argc, char **argv)
     afs_uint32 host = ntohl(INADDR_ANY);
     struct cmd_syndesc *opts;
     struct sockaddr_in saddr;
+    struct sockaddr_in saddrs[ADDRSPERSITE];
+    int i;
 
     char *vl_dbaseName;
     char *configDir;
@@ -426,7 +428,9 @@ main(int argc, char **argv)
         } else
 #endif
 	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
+            for(i = 0; i < ccode; i++)
+                SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1) {
             host = SHostAddrs[0];

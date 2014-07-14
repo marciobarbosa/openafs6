@@ -287,20 +287,30 @@ static u_int rxi_numNetAddrs;
 static int Inited = 0;
 
 #if defined(AFS_NT40_ENV)
-int
+struct sockaddr_storage
 rxi_getaddr(void)
 {
+    struct sockaddr_storage saddr;
     /* The IP address list can change so we must query for it */
     rx_GetIFInfo();
 
     /* we don't want to use the loopback adapter which is first */
     /* this is a bad bad hack */
-    if (rxi_numNetAddrs > 1)
-	return htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[1]));
-    else if (rxi_numNetAddrs > 0)
-	return htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[0]));
-    else
-	return 0;
+    if (rxi_numNetAddrs > 1) {
+        rxi_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[1]);
+        ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[1]));
+    }
+    else if (rxi_numNetAddrs > 0) {
+	rxi_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[0]);
+        ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[0]));
+    }
+    else {
+        memset(&saddr, 0, sizeof(struct sockaddr_storage));
+        ((struct sockaddr_in *)&saddr)->sin_family = AF_INET;
+	((struct sockaddr_in *)&saddr)->sin_addr.s_addr = 0;
+    }
+
+    return saddr;
 }
 
 /*
@@ -309,7 +319,7 @@ rxi_getaddr(void)
 ** maxSize - max number of interfaces to return.
 */
 int
-rx_getAllAddr(afs_uint32 * buffer, int maxSize)
+rx_getAllAddr(struct sockaddr buffer[], int maxSize)
 {
     int count = 0, offset = 0;
 
@@ -317,8 +327,11 @@ rx_getAllAddr(afs_uint32 * buffer, int maxSize)
     rx_GetIFInfo();
 
     for (count = 0; offset < rxi_numNetAddrs && maxSize > 0;
-	 count++, offset++, maxSize--)
-	buffer[count] = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset]));
+	 count++, offset++, maxSize--) {
+        memset(&buffer[count], 0, sizeof(struct sockaddr_in));
+        ((struct sockaddr_in *)&buffer[count])->sin_family = AF_INET;
+        ((struct sockaddr_in *)&buffer[count])->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset]));
+    }
 
     return count;
 }
@@ -329,7 +342,7 @@ rx_getAllAddr(afs_uint32 * buffer, int maxSize)
  * in network byte order.
  */
 int
-rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
+rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
                      afs_uint32 mtuBuffer[], int maxSize)
 {
     int count = 0, offset = 0;
@@ -340,8 +353,8 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
     for (count = 0;
          offset < rxi_numNetAddrs && maxSize > 0;
          count++, offset++, maxSize--) {
-	addrBuffer[count] = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset]));
-	maskBuffer[count] = htonl(rx_IpSockAddr((struct sockaddr *)&myNetMasks[offset]));
+	addrBuffer[count] = rx_CreateSockAddr(htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset])), 0);
+	maskBuffer[count] = rx_CreateSockAddr(htonl(rx_IpSockAddr((struct sockaddr *)&myNetMasks[offset])), 0);
 	mtuBuffer[count]  = htonl(myNetMTUs[offset]);
     }
     return count;

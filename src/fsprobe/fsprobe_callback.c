@@ -40,10 +40,13 @@ struct interfaceAddr afs_cb_interface;
 static int
 init_afs_cb(void)
 {
-    int count;
+    int count, i;
+    struct sockaddr_in saddrs[AFS_MAX_INTERFACE_ADDR];
 
     afs_uuid_create(&afs_cb_interface.uuid);
-    count = rx_getAllAddr((afs_uint32 *) &afs_cb_interface.addr_in, AFS_MAX_INTERFACE_ADDR);
+    count = rx_getAllAddr((struct sockaddr *)saddrs, AFS_MAX_INTERFACE_ADDR);
+    for(i = 0; i < count; i++)
+        afs_cb_interface.addr_in[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
     if (count <= 0)
 	afs_cb_interface.numberOfInterfaces = 0;
     else

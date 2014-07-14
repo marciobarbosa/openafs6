@@ -1749,6 +1749,8 @@ afs_int32
 SetupVL(void)
 {
     afs_int32 code;
+    struct sockaddr_in saddrs[ADDRSPERSITE];
+    int i;
 
     if (AFSDIR_SERVER_NETRESTRICT_FILEPATH || AFSDIR_SERVER_NETINFO_FILEPATH) {
 	/*
@@ -1770,7 +1772,9 @@ SetupVL(void)
 	FS_HostAddr_cnt = (afs_uint32) code;
     } else
     {
-	FS_HostAddr_cnt = rx_getAllAddr(FS_HostAddrs, ADDRSPERSITE);
+	FS_HostAddr_cnt = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
+        for(i = 0; i < FS_HostAddr_cnt; i++)
+            FS_HostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
     }
 
     if (FS_HostAddr_cnt == 1 && rxBind == 1)

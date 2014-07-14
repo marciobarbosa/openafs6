@@ -172,6 +172,7 @@ main(int argc, char *argv[])
     afs_uint32 host = ntohl(INADDR_ANY);
     char *auditFileName = NULL;
     struct sockaddr_in saddr;
+    struct sockaddr_in saddrs[ADDRSPERSITE];
 
     struct rx_service *tservice;
     struct rx_securityClass *sca[1];
@@ -395,7 +396,9 @@ main(int argc, char *argv[])
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else
 	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
+            for(i = 0; i < ccode; i++)
+                SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1) {
             host = SHostAddrs[0];

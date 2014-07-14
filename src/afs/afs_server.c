@@ -818,6 +818,7 @@ afs_random(void)
 {
     static afs_int32 state = 0;
     int i;
+    struct sockaddr_storage saddr;
 
     AFS_STATCNT(afs_random);
     if (!state) {
@@ -827,7 +828,8 @@ afs_random(void)
 	 * 0xfffffff0 was changed to (~0 << 4) since it works no matter how many
 	 * bits are in a tv_usec
 	 */
-	state = (t.tv_usec & (~0 << 4)) + (rxi_getaddr() & 0xff);
+	saddr = rxi_getaddr();
+	state = (t.tv_usec & (~0 << 4)) + (rx_IpSockAddr((struct sockaddr *)&saddr) & 0xff);
 	state += (t.tv_sec & 0xff);
 	for (i = 0; i < 30; i++) {
 	    ranstage(state);

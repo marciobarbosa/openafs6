@@ -139,14 +139,17 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 #endif
 
 static_inline int
-rxi_IsLoopbackIface(struct sockaddr_in *a, unsigned long flags)
-{
-    afs_uint32 addr = ntohl(a->sin_addr.s_addr);
-    struct sockaddr_in saddr = rx_CreateSockAddr(addr, 0);
+rxi_IsLoopbackIface(struct sockaddr *a, unsigned long flags)
+{    
+    struct sockaddr_in saddr;
+
+    rxi_CopySockAddr((struct sockaddr *)&saddr, a);
+    saddr.sin_addr.s_addr = ntohl(saddr.sin_addr.s_addr);
+
     if (rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 	return 1;
     }
-    if ((flags & IFF_LOOPBACK) && ((addr & 0xff000000) == 0x7f000000)) {
+    if ((flags & IFF_LOOPBACK) && ((rx_IpSockAddr((struct sockaddr *)&saddr) & 0xff000000) == 0x7f000000)) {
 	return 1;
     }
     return 0;
@@ -250,7 +253,7 @@ rx_getAllAddr_internal(struct sockaddr buffer[], int maxSize, int loopbacks)
 	    if (count >= maxSize)	/* no more space */
 		dpf(("Too many interfaces..ignoring 0x%x\n",
 		       a->sin_addr.s_addr));
-	    else if (!loopbacks && rxi_IsLoopbackIface(a, ifm->ifm_flags)) {
+	    else if (!loopbacks && rxi_IsLoopbackIface((struct sockaddr *)a, ifm->ifm_flags)) {
 		addrcount--;
 		continue;	/* skip loopback address as well. */
 	    } else if (loopbacks && ifm->ifm_flags & IFF_LOOPBACK) {
@@ -446,7 +449,7 @@ rx_getAllAddr_internal(struct sockaddr buffer[], int maxSize, int loopbacks)
 	}
 	if (a->sin_addr.s_addr != 0) {
             if (!loopbacks) {
-                if (rxi_IsLoopbackIface(a, ifr->ifr_flags))
+                if (rxi_IsLoopbackIface((struct sockaddr *)a, ifr->ifr_flags))
 		    continue;	/* skip loopback address as well. */
             } else {
                 if (ifr->ifr_flags & IFF_LOOPBACK)

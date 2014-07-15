@@ -479,7 +479,7 @@ static
 rx_atomic_t rxinit_status = RX_ATOMIC_INIT(1);
 
 int
-rx_InitHostSA(struct sockaddr *saddr)
+rx_InitHost(struct sockaddr *saddr)
 {
 #ifdef KERNEL
     osi_timeval_t tv;
@@ -648,17 +648,11 @@ rx_InitHostSA(struct sockaddr *saddr)
 }
 
 int
-rx_InitHost(u_int host, u_int port)
-{
-    struct sockaddr_in saddr = rx_CreateSockAddr(host, port);
-
-    return rx_InitHostSA((struct sockaddr *)&saddr);
-}
-
-int
 rx_Init(u_int port)
 {
-    return rx_InitHost(htonl(INADDR_ANY), port);
+    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), port);
+
+    return rx_InitHost((struct sockaddr *)&saddr);
 }
 
 /* RTT Timer
@@ -8279,9 +8273,8 @@ rxi_ClearRPCOpStat(rx_function_entry_v1_p rpc_stat)
 
 static rx_interface_stat_p
 rxi_FindRpcStat(struct opr_queue *stats, afs_uint32 rxInterface,
-		afs_uint32 totalFunc, int isServer, afs_uint32 remoteHost,
-		afs_uint32 remotePort, int addToPeerList,
-		unsigned int *counter, int create)
+		afs_uint32 totalFunc, int isServer, struct sockaddr *saddr,
+                int addToPeerList, unsigned int *counter, int create)
 {
     rx_interface_stat_p rpc_stat = NULL;
     struct opr_queue *cursor;
@@ -8332,8 +8325,8 @@ rxi_FindRpcStat(struct opr_queue *stats, afs_uint32 rxInterface,
 	*counter += totalFunc;
 	for (i = 0; i < totalFunc; i++) {
 	    rxi_ClearRPCOpStat(&(rpc_stat->stats[i]));
-	    rpc_stat->stats[i].remote_peer = remoteHost;
-	    rpc_stat->stats[i].remote_port = remotePort;
+	    rpc_stat->stats[i].remote_peer = rx_IpSockAddr(saddr);
+	    rpc_stat->stats[i].remote_port = rx_PortSockAddr(saddr);
 	    rpc_stat->stats[i].remote_is_server = isServer;
 	    rpc_stat->stats[i].interfaceId = rxInterface;
 	    rpc_stat->stats[i].func_total = totalFunc;
@@ -8352,13 +8345,14 @@ rx_ClearProcessRPCStats(afs_int32 rxInterface)
 {
     rx_interface_stat_p rpc_stat;
     int totalFunc, i;
+    struct sockaddr_in saddr = rx_CreateSockAddr(0, 0);
 
     if (rxInterface == -1)
         return;
 
     MUTEX_ENTER(&rx_rpc_stats);
     rpc_stat = rxi_FindRpcStat(&processStats, rxInterface, 0, 0,
-			       0, 0, 0, 0, 0);
+			       (struct sockaddr *)&saddr, 0, 0, 0);
     if (rpc_stat) {
 	totalFunc = rpc_stat->stats[0].func_total;
 	for (i = 0; i < totalFunc; i++)
@@ -8374,6 +8368,7 @@ rx_ClearPeerRPCStats(afs_int32 rxInterface, struct sockaddr *saddr)
     rx_interface_stat_p rpc_stat;
     int totalFunc, i;
     struct rx_peer * peer;
+    struct sockaddr_in saddr_in = rx_CreateSockAddr(0, 0);
 
     if (rxInterface == -1)
         return;
@@ -8384,7 +8379,7 @@ rx_ClearPeerRPCStats(afs_int32 rxInterface, struct sockaddr *saddr)
 
     MUTEX_ENTER(&rx_rpc_stats);
     rpc_stat = rxi_FindRpcStat(&peer->rpcStats, rxInterface, 0, 1,
-			       0, 0, 0, 0, 0);
+			       (struct sockaddr *)&saddr_in, 0, 0, 0);
     if (rpc_stat) {
 	totalFunc = rpc_stat->stats[0].func_total;
 	for (i = 0; i < totalFunc; i++)
@@ -8402,6 +8397,7 @@ rx_CopyProcessRPCStats(afs_uint64 op)
 	rxi_Alloc(sizeof(rx_function_entry_v1_t));
     int currentFunc = (op & MAX_AFS_UINT32);
     afs_int32 rxInterface = (op >> 32);
+    struct sockaddr_in saddr = rx_CreateSockAddr(0, 0);
 
     if (!rxi_monitor_processStats)
         return NULL;
@@ -8414,7 +8410,7 @@ rx_CopyProcessRPCStats(afs_uint64 op)
 
     MUTEX_ENTER(&rx_rpc_stats);
     rpc_stat = rxi_FindRpcStat(&processStats, rxInterface, 0, 0,
-			       0, 0, 0, 0, 0);
+			       (struct sockaddr *)&saddr, 0, 0, 0);
     if (rpc_stat)
 	memcpy(rpcop_stat, &(rpc_stat->stats[currentFunc]),
 	       sizeof(rx_function_entry_v1_t));
@@ -8435,6 +8431,7 @@ rx_CopyPeerRPCStats(afs_uint64 op, struct sockaddr *saddr)
     int currentFunc = (op & MAX_AFS_UINT32);
     afs_int32 rxInterface = (op >> 32);
     struct rx_peer *peer;
+    struct sockaddr_in saddr_in = rx_CreateSockAddr(0, 0);
 
     if (!rxi_monitor_peerStats)
         return NULL;
@@ -8451,7 +8448,7 @@ rx_CopyPeerRPCStats(afs_uint64 op, struct sockaddr *saddr)
 
     MUTEX_ENTER(&rx_rpc_stats);
     rpc_stat = rxi_FindRpcStat(&peer->rpcStats, rxInterface, 0, 1,
-			       0, 0, 0, 0, 0);
+			       (struct sockaddr *)&saddr_in, 0, 0, 0);
     if (rpc_stat)
 	memcpy(rpcop_stat, &(rpc_stat->stats[currentFunc]),
 	       sizeof(rx_function_entry_v1_t));
@@ -8528,7 +8525,7 @@ rxi_AddRpcStat(struct opr_queue *stats, afs_uint32 rxInterface,
     rx_interface_stat_p rpc_stat;
 
     rpc_stat = rxi_FindRpcStat(stats, rxInterface, totalFunc, isServer,
-			       rx_IpSockAddr(saddr), rx_PortSockAddr(saddr), addToPeerList, counter,
+			       saddr, addToPeerList, counter,
 			       1);
     if (!rpc_stat) {
 	rc = -1;
@@ -9482,7 +9479,7 @@ rxi_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
 
 /* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
 struct sockaddr_in
-rx_CreateSockAddr(unsigned int host, short port)
+rx_CreateSockAddr(unsigned int host, unsigned int port)
 {
     struct sockaddr_in saddr;
 

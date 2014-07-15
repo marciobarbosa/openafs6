@@ -522,7 +522,8 @@ main(int argc, char **argv)
         }
         if (ccode == 1) {
             host = SHostAddrs[0];
-	    rx_InitHost(host, htons(AFSCONF_BUDBPORT));
+            saddr = rx_CreateSockAddr(host, htons(AFSCONF_BUDBPORT));
+	    rx_InitHost((struct sockaddr *)&saddr);
 	}
     }
 

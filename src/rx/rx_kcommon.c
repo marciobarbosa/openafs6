@@ -758,12 +758,11 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
     int match_value = 0;
     extern struct in_ifaddr *in_ifaddr;
     struct in_ifaddr *ifa, *ifad = NULL;
-    afs_uint32 addr = ntohl(rx_IpSockAddr(saddr));
 
     for (ifa = in_ifaddr; ifa; ifa = ifa->ia_next) {
-	if ((addr & ifa->ia_netmask) == ifa->ia_net) {
-	    if ((addr & ifa->ia_subnetmask) == ifa->ia_subnet) {
-		if (IA_SIN(ifa)->sin_addr.s_addr == addr) {	/* ie, ME!!!  */
+	if ((ntohl(rx_IpSockAddr(saddr)) & ifa->ia_netmask) == ifa->ia_net) {
+	    if ((ntohl(rx_IpSockAddr(saddr)) & ifa->ia_subnetmask) == ifa->ia_subnet) {
+		if (IA_SIN(ifa)->sin_addr.s_addr == ntohl(rx_IpSockAddr(saddr))) {	/* ie, ME!!!  */
 		    match_value = 4;
 		    ifad = ifa;
 		    goto done;

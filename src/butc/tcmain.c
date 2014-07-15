@@ -1054,8 +1054,8 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
         if (ccode == 1)
             host = SHostAddrs[0];
     }
-
-    code = rx_InitHost(host, htons(BC_TAPEPORT + portOffset));
+    saddr = rx_CreateSockAddr(host, htons(BC_TAPEPORT + portOffset));
+    code = rx_InitHost((struct sockaddr *)&saddr);
     if (code) {
 	TapeLog(0, 0, code, 0, "rx init failed on port %u\n",
 		BC_TAPEPORT + portOffset);

@@ -97,6 +97,7 @@ static int
 afs_InitSetup(int preallocs)
 {
     int code;
+    struct sockaddr_in saddr;
 
     if (afs_InitSetup_done)
 	return EAGAIN;
@@ -127,7 +128,8 @@ afs_InitSetup(int preallocs)
     /* start RX */
     if(!afscall_set_rxpck_received)
     rx_extraPackets = AFS_NRXPACKETS;	/* smaller # of packets */
-    code = rx_InitHost(rx_bindhost, htons(7001));
+    saddr = rx_CreateSockAddr(rx_bindhost, htons(7001));
+    code = rx_InitHost((struct sockaddr *)&saddr);
     if (code) {
 	afs_warn("AFS: RX failed to initialize %d).\n", code);
 	return code;

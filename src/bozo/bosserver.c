@@ -1081,7 +1081,8 @@ main(int argc, char **argv, char **envp)
     }
     for (i = 0; i < 10; i++) {
 	if (rxBind) {
-	    code = rx_InitHost(host, htons(AFSCONF_NANNYPORT));
+	    saddr = rx_CreateSockAddr(host, htons(AFSCONF_NANNYPORT));
+	    code = rx_InitHost((struct sockaddr *)&saddr);
 	} else {
 	    code = rx_Init(htons(AFSCONF_NANNYPORT));
 	}

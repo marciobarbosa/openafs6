@@ -519,7 +519,8 @@ main(int argc, char **argv)
 	     * again by the ubik init stuff, it doesn't really matter
 	     * -- klm
 	     */
-	    rx_InitHost(host, htons(AFSCONF_PROTPORT));
+            saddr = rx_CreateSockAddr(host, htons(AFSCONF_PROTPORT));
+	    rx_InitHost((struct sockaddr *)&saddr);
 	}
     }
 

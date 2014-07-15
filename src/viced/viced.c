@@ -2011,7 +2011,8 @@ main(int argc, char *argv[])
 	rx_SetUdpBufSize(udpBufSize);	/* set the UDP buffer size for receive */
     rx_bindhost = SetupVL();
 
-    if (rx_InitHost(rx_bindhost, (int)htons(7000)) < 0) {
+    saddr = rx_CreateSockAddr(rx_bindhost, (int)htons(7000));
+    if (rx_InitHost((struct sockaddr *)&saddr) < 0) {
 	ViceLog(0, ("Cannot initialize RX\n"));
 	exit(1);
     }

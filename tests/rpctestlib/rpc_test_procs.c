@@ -182,8 +182,8 @@ afs_int32 init_callback_service(rpc_test_request_ctx *ctx)
 
 #if !defined(RPC_TEST_GLOBAL_RX_INIT)
 #if 0
-    code = rx_InitHost(ctx->cb_listen_addr.addr_in[0],
-                       (int) htons(ctx->cb_port));
+    struct sockaddr_in saddr = rx_CreateSockAddr(ctx->cb_listen_addr.addr_in[0], (int) htons(ctx->cb_port));
+    code = rx_InitHost((struct sockaddr *)&saddr);
 #else
     code = rx_Init((int) htons(ctx->cb_port));
 #endif

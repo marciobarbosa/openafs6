@@ -283,7 +283,8 @@ main(int argc, char *argv[])
 
     /* Initialize Rx, telling it port number this server will use for its
      * single service */
-    if (rx_InitHost(host, htons(AFSCONF_UPDATEPORT)) < 0)
+    saddr = rx_CreateSockAddr(host, htons(AFSCONF_UPDATEPORT));
+    if (rx_InitHost((struct sockaddr *)&saddr) < 0)
 	Quit("rx_init");
 
     afsconf_BuildServerSecurityObjects(cdir, &securityClasses, &numClasses);

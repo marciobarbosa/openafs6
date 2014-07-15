@@ -485,8 +485,8 @@ main(int argc, char **argv)
         if (ccode == 1)
             host = SHostAddrs[0];
     }
-
-    code = rx_InitHost(host, (int)htons(AFSCONF_VOLUMEPORT));
+    saddr = rx_CreateSockAddr(host, (int)htons(AFSCONF_VOLUMEPORT));
+    code = rx_InitHost((struct sockaddr *)&saddr);
     if (code) {
 	fprintf(stderr, "rx init failed on socket AFSCONF_VOLUMEPORT %u\n",
 		AFSCONF_VOLUMEPORT);

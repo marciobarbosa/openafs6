@@ -56,10 +56,9 @@ struct host {
     struct host *next, *prev;	/* linked list of all hosts */
     struct rx_connection *callback_rxcon;	/* rx callback connection */
     afs_uint32 refCount; /* reference count */
-    afs_uint32 host;		/* IP address of host interface that is
-				 * currently being used, in network
-				 * byte order */
-    afs_uint16 port;		/* port address of host */
+    struct sockaddr_storage saddr; /* IP address of host interface and port number
+				    * that is currently being used, in network
+				    * byte order */
     char Console;		/* XXXX This host is a console */
     unsigned short hostFlags;		/*  bit map */
     char InSameNetwork;		/*Is host's addr in the same network as
@@ -269,6 +268,9 @@ struct host *(hosttableptrs[h_MAXHOSTTABLES]);	/* Used by h_itoh */
 
 #define rxr_HostOf(aconn) \
     rx_HostOf(rx_PeerOf((struct rx_connection *)(aconn)))
+
+#define rxr_SockAddrOf(aconn) \
+    rx_SockAddrOf(rx_PeerOf((struct rx_connection *)(aconn)))
 
 #define HCPS_INPROGRESS			0x01	/*set when CPS is being updated */
 #define HCPS_WAITING			0x02	/*waiting for CPS to get updated */

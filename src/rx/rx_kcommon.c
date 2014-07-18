@@ -744,7 +744,7 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
 
     if (ifad && smaskp) {
 	rx_ifaddr_netmask(ifad, (struct sockaddr *)&sr, sizeof(sr));
-        rxi_CopySockAddr(smaskp, (struct sockaddr *)&sr);
+        rx_CopySockAddr(smaskp, (struct sockaddr *)&sr);
     }
     return (ifad ? rx_ifaddr_ifnet(ifad) : NULL);
 }
@@ -1158,7 +1158,7 @@ rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct sockaddr *saddr)
 	    /* Extract packet header. */
 	    rxi_DecodePacketHeader(p);
 
-	    rxi_CopySockAddr(saddr, (struct sockaddr *)&from);
+	    rx_CopySockAddr(saddr, (struct sockaddr *)&from);
 
 	    if (p->header.type > 0 && p->header.type < RX_N_PACKET_TYPES) {
                 if (rx_stats_active) {

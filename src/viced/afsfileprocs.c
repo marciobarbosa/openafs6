@@ -357,7 +357,7 @@ CallPreamble(struct rx_call *acall, int activecall, struct AFSFid *Fid,
     afs_int32 viceid = -1;
     int retry_flag = 1;
     int code = 0;
-    char hoststr[16], hoststr2[16];
+    rx_addr_str_t hoststr, hoststr2;
     struct ubik_client *uclient;
     *ahostp = NULL;
 
@@ -425,32 +425,28 @@ CallPreamble(struct rx_call *acall, int activecall, struct AFSFid *Fid,
     h_Lock_r(thost);
     if (thost->hostFlags & HOSTDELETED) {
 	ViceLog(3,
-		("Discarded a packet for deleted host %s:%d\n",
-		 afs_inet_ntoa_r(thost->host, hoststr), ntohs(thost->port)));
+		("Discarded a packet for deleted host %s\n",
+		 rx_PrintSockAddr((struct sockaddr *)&thost->saddr, hoststr)));
 	code = VBUSY;		/* raced, so retry */
     } else if ((thost->hostFlags & VENUSDOWN)
 	       || (thost->hostFlags & HFE_LATER)) {
 	if (BreakDelayedCallBacks_r(thost)) {
 	    ViceLog(0,
-		    ("BreakDelayedCallbacks FAILED for host %s:%d which IS UP.  Connection from %s:%d.  Possible network or routing failure.\n",
-		     afs_inet_ntoa_r(thost->host, hoststr), ntohs(thost->port), afs_inet_ntoa_r(rxr_HostOf(*tconn), hoststr2),
-		     ntohs(rxr_PortOf(*tconn))));
+		    ("BreakDelayedCallbacks FAILED for host %s which IS UP.  Connection from %s.  Possible network or routing failure.\n",
+		     rx_PrintSockAddr((struct sockaddr *)&thost->saddr, hoststr), rx_PrintSockAddr(rxr_SockAddrOf(*tconn), hoststr2))); 
 	    if (MultiProbeAlternateAddress_r(thost)) {
 		ViceLog(0,
-			("MultiProbe failed to find new address for host %s:%d\n",
-			 afs_inet_ntoa_r(thost->host, hoststr),
-			 ntohs(thost->port)));
+			("MultiProbe failed to find new address for host %s\n",
+			 rx_PrintSockAddr((struct sockaddr *)&thost->saddr, hoststr)));
 		code = -1;
 	    } else {
 		ViceLog(0,
-			("MultiProbe found new address for host %s:%d\n",
-			 afs_inet_ntoa_r(thost->host, hoststr),
-			 ntohs(thost->port)));
+			("MultiProbe found new address for host %s\n",
+			 rx_PrintSockAddr((struct sockaddr *)&thost->saddr, hoststr)));
 		if (BreakDelayedCallBacks_r(thost)) {
 		    ViceLog(0,
-			    ("BreakDelayedCallbacks FAILED AGAIN for host %s:%d which IS UP.  Connection from %s:%d.  Possible network or routing failure.\n",
-			      afs_inet_ntoa_r(thost->host, hoststr), ntohs(thost->port), afs_inet_ntoa_r(rxr_HostOf(*tconn), hoststr2),
-			      ntohs(rxr_PortOf(*tconn))));
+			    ("BreakDelayedCallbacks FAILED AGAIN for host %s which IS UP.  Connection from %s.  Possible network or routing failure.\n",
+			      rx_PrintSockAddr((struct sockaddr *)&thost->saddr, hoststr), rx_PrintSockAddr(rxr_SockAddrOf(*tconn), hoststr2)));
 		    code = -1;
 		}
 	    }
@@ -489,22 +485,19 @@ CallPostamble(struct rx_connection *aconn, afs_int32 ret,
 	    if (ahost != thost) {
 		    /* host/client recycle */
 		    char hoststr[16], hoststr2[16];
-		    ViceLog(0, ("CallPostamble: ahost %s:%d (%p) != thost "
-				"%s:%d (%p)\n",
-				afs_inet_ntoa_r(ahost->host, hoststr),
-				ntohs(ahost->port),
+		    ViceLog(0, ("CallPostamble: ahost %s (%p) != thost "
+				"%s (%p)\n",
+				rx_PrintSockAddr((struct sockaddr *)&ahost->saddr, hoststr),
 				ahost,
-				afs_inet_ntoa_r(thost->host, hoststr2),
-				ntohs(thost->port),
+				rx_PrintSockAddr((struct sockaddr *)&thost->saddr, hoststr2),
 				thost));
 	    }
 	    /* return the reference taken in CallPreamble */
 	    h_Release_r(ahost);
     } else {
 	    char hoststr[16];
-	    ViceLog(0, ("CallPostamble: null ahost for thost %s:%d (%p)\n",
-			afs_inet_ntoa_r(thost->host, hoststr),
-			ntohs(thost->port),
+	    ViceLog(0, ("CallPostamble: null ahost for thost %s (%p)\n",
+			rx_PrintSockAddr((struct sockaddr *)&thost->saddr, hoststr),
 			thost));
     }
 
@@ -767,10 +760,9 @@ GetRights(struct client *client, struct acl_accessList *ACL,
     if (!client->host->hcps.prlist_len || !client->host->hcps.prlist_val) {
 	char hoststr[16];
 	ViceLog(5,
-		("CheckRights: len=%u, for host=%s:%d\n",
+		("CheckRights: len=%u, for host=%s\n",
 		 client->host->hcps.prlist_len,
-		 afs_inet_ntoa_r(client->host->host, hoststr),
-		 ntohs(client->host->port)));
+		 rx_PrintSockAddr((struct sockaddr *)&client->host->saddr, hoststr)));
     } else
 	acl_CheckRights(ACL, &client->host->hcps, &hrights);
     H_UNLOCK;

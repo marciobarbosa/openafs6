@@ -1066,7 +1066,7 @@ rx_NewConnectionSA(struct sockaddr *saddr, u_short sservice,
     clock_NewTime();
     dpf(("rx_NewConnection(host %s, service %u, securityObject %p, "
      "serviceSecurityIndex %d)\n",
-        rx_PrintSockAddr(buffer, saddr) , sservice, securityObject,
+        rx_PrintSockAddr(saddr, buffer) , sservice, securityObject,
      serviceSecurityIndex));
 
     /* Vasilsi said: "NETPRI protects Cid and Alloc", but can this be true in
@@ -1831,7 +1831,7 @@ rx_NewServiceHost(struct sockaddr *saddr, u_short serviceId,
 	    }
 	    service = tservice;
 	    service->socket = socket;
-            rxi_CopySockAddr((struct sockaddr *)&service->saddr, saddr);
+            rx_CopySockAddr((struct sockaddr *)&service->saddr, saddr);
 	    service->serviceId = serviceId;
 	    service->serviceName = serviceName;
 	    service->nSecurityObjects = nSecurityObjects;
@@ -3090,7 +3090,7 @@ rxi_FindPeer(struct sockaddr *saddr, int create)
     if (!pp) {
 	if (create) {
 	    pp = rxi_AllocPeer();	/* This bzero's *pp */
-            rxi_CopySockAddr((struct sockaddr *)&pp->saddr, saddr);
+            rx_CopySockAddr((struct sockaddr *)&pp->saddr, saddr);
 #ifdef AFS_RXERRQ_ENV
 	    rx_atomic_set(&pp->neterrs, 0);
 #endif
@@ -9412,7 +9412,7 @@ int rx_DumpCalls(FILE *outputFile, char *cookie)
 
 /* this function copies the content of saddr_src into saddr_dst */
 void
-rxi_CopySockAddr(struct sockaddr *saddr_dst, struct sockaddr *saddr_src)
+rx_CopySockAddr(struct sockaddr *saddr_dst, struct sockaddr *saddr_src)
 {
     switch(saddr_src->sa_family) {
         case AF_INET:
@@ -9424,10 +9424,10 @@ rxi_CopySockAddr(struct sockaddr *saddr_dst, struct sockaddr *saddr_src)
     }
 }
 
-/* this function returns the formatted address of addr */
+/* this function returns the formatted address and port of saddr */
 char *
-rx_PrintSockAddr(rx_addr_str_t buffer, struct sockaddr *saddr)
-{   
+rx_PrintSockAddr(struct sockaddr *saddr, rx_addr_str_t buffer)
+{
     buffer[0] = '\0';
 
 #ifndef KERNEL
@@ -9435,9 +9435,12 @@ rx_PrintSockAddr(rx_addr_str_t buffer, struct sockaddr *saddr)
     switch(saddr->sa_family) {
         case AF_INET:
             inet_ntop(AF_INET, (void *)&((struct sockaddr_in *)saddr)->sin_addr, buffer, sizeof(rx_addr_str_t));
+            sprintf(buffer + strlen(buffer), "%s%d%s", ":", ntohs(((struct sockaddr_in*)saddr)->sin_port), "\0");
             break;
         case AF_INET6:
-            inet_ntop(AF_INET6, (void *)&((struct sockaddr_in6 *)saddr)->sin6_addr, buffer, sizeof(rx_addr_str_t));
+            sprintf(buffer, "%s", "[");
+            inet_ntop(AF_INET6, (void *)&((struct sockaddr_in6 *)saddr)->sin6_addr, buffer + 1, sizeof(rx_addr_str_t) - 1);
+            sprintf(buffer + strlen(buffer), "%s%d%s", "]:", ntohs(((struct sockaddr_in6*)saddr)->sin6_port), "\0");
             break;
     }
 
@@ -9489,6 +9492,19 @@ rx_CreateSockAddr(unsigned int host, unsigned int port)
     saddr.sin_port = port;
 
     return saddr;
+}
+
+/* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
+void
+rx_SetSockAddr(unsigned int host, unsigned int port, struct sockaddr *saddr)
+{
+    struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr;
+
+    memset(saddr4, 0, sizeof(struct sockaddr_in));
+
+    saddr4->sin_family = AF_INET;
+    saddr4->sin_addr.s_addr = host;
+    saddr4->sin_port = port;
 }
 
 /* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */

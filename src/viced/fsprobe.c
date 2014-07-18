@@ -39,7 +39,7 @@ pxclient_Initialize(int auth, afs_int32 serverAddr)
     sc = rxnull_NewClientSecurityObject();
 
     serverconns[0] =
-	rx_NewConnectionSA((struct sockaddr_in *)&saddr, 1, sc, scIndex);
+	rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, scIndex);
 
     code = ubik_ClientInit(serverconns, &cstruct);
 

@@ -233,7 +233,7 @@ rx_GetCachedConnection(struct sockaddr *saddr,
     struct rx_connection *conn = NULL;
     rx_connParts_t parts;
 
-    rxi_CopySockAddr((struct sockaddr *)&parts.saddr, saddr);
+    rx_CopySockAddr((struct sockaddr *)&parts.saddr, saddr);
     parts.service = service;
     parts.securityObject = securityObject;
     parts.securityIndex = securityIndex;

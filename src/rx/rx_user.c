@@ -297,11 +297,11 @@ rxi_getaddr(void)
     /* we don't want to use the loopback adapter which is first */
     /* this is a bad bad hack */
     if (rxi_numNetAddrs > 1) {
-        rxi_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[1]);
+        rx_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[1]);
         ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[1]));
     }
     else if (rxi_numNetAddrs > 0) {
-	rxi_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[0]);
+	rx_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[0]);
         ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[0]));
     }
     else {

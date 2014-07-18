@@ -107,6 +107,7 @@ extern void rx_RecordCallStatistics(struct rx_call *call,
 /* Peer management */
 extern afs_uint32 rx_HostOf(struct rx_peer *peer);
 extern u_short rx_PortOf(struct rx_peer *peer);
+extern struct sockaddr *rx_SockAddrOf(struct rx_peer *peer);
 
 /* Packets */
 

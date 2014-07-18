@@ -1476,7 +1476,7 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *saddr)
 		&& (random() % 100 < rx_intentionallyDroppedOnReadPer100)) {
 	rxi_DecodePacketHeader(p);
 
-	rxi_CopySockAddr(saddr, (struct sockaddr *)&from);
+	rx_CopySockAddr(saddr, (struct sockaddr *)&from);
 
 	dpf(("Dropped %d %s: %x.%u.%u.%u.%u.%u.%u flags %d len %d\n",
 	      p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(((struct sockaddr_in *)&from)->sin_addr.s_addr), 
@@ -1493,7 +1493,7 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *saddr)
 	/* Extract packet header. */
 	rxi_DecodePacketHeader(p);
 
-        rxi_CopySockAddr(saddr, (struct sockaddr *)&from);
+        rx_CopySockAddr(saddr, (struct sockaddr *)&from);
 	
 	if (rx_stats_active
 	    && p->header.type > 0 && p->header.type < RX_N_PACKET_TYPES) {

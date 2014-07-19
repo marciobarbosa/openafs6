@@ -740,13 +740,12 @@ MultiBreakCallBack_r(struct cbstruct cba[], int ncbas,
 			if (ShowProblems) {
 			    ViceLog(7,
 				    ("BCB: Failed on file %u.%u.%u, "
-				     "Host %p (%s:%d) is down\n",
+				     "Host %p (%s) is down\n",
 				     afidp->AFSCBFids_val->Volume,
 				     afidp->AFSCBFids_val->Vnode,
 				     afidp->AFSCBFids_val->Unique,
                                      hp,
-				     afs_inet_ntoa_r(hp->host, hoststr),
-				     ntohs(hp->port)));
+				     rx_PrintSockAddr((struct sockaddr *)&hp->saddr, hoststr)));
 			}
 
 			H_LOCK;
@@ -814,8 +813,8 @@ BreakCallBack(struct host *xhost, AFSFid * fid, int flag)
 
     if (xhost)
 	ViceLog(7,
-		("BCB: BreakCallBack(Host %p all but %s:%d, (%u,%u,%u))\n",
-		 xhost, afs_inet_ntoa_r(xhost->host, hoststr), ntohs(xhost->port),
+		("BCB: BreakCallBack(Host %p all but %s, (%u,%u,%u))\n",
+		 xhost, rx_PrintSockAddr((struct sockaddr *)&xhost->saddr, hoststr),
 		 fid->Volume, fid->Vnode, fid->Unique));
     else
 	ViceLog(7,
@@ -866,9 +865,8 @@ BreakCallBack(struct host *xhost, AFSFid * fid, int flag)
 		    ViceLog(0, ("BCB: BOGUS! cb->hhead is NULL!\n"));
 		} else if (thishost->hostFlags & VENUSDOWN) {
 		    ViceLog(7,
-			    ("BCB: %p (%s:%d) is down; delaying break call back\n",
-			     thishost, afs_inet_ntoa_r(thishost->host, hoststr),
-			     ntohs(thishost->port)));
+			    ("BCB: %p (%s) is down; delaying break call back\n",
+			     thishost, rx_PrintSockAddr((struct sockaddr *)&thishost->saddr, hoststr)));
 		    cb->status = CB_DELAYED;
 		} else {
 		    if (!(thishost->hostFlags & HOSTDELETED)) {
@@ -931,8 +929,8 @@ DeleteCallBack(struct host *host, AFSFid * fid)
     pcb = FindCBPtr(fe, host);
     if (!*pcb) {
 	ViceLog(8,
-		("DCB: No call back for host %p (%s:%d), (%u, %u, %u)\n",
-		 host, afs_inet_ntoa_r(host->host, hoststr), ntohs(host->port),
+		("DCB: No call back for host %p (%s), (%u, %u, %u)\n",
+		 host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr),
 		 fid->Volume, fid->Vnode, fid->Unique));
 	h_Unlock_r(host);
 	H_UNLOCK;
@@ -1053,16 +1051,14 @@ BreakDelayedCallBacks_r(struct host *host)
 	    if (ShowProblems) {
 		ViceLog(0,
 			("CB: Call back connect back failed (in break delayed) "
-			 "for Host %p (%s:%d)\n",
-			 host, afs_inet_ntoa_r(host->host, hoststr),
-			 ntohs(host->port)));
+			 "for Host %p (%s)\n",
+			 host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
 	    }
 	    host->hostFlags |= VENUSDOWN;
 	} else {
 	    ViceLog(25,
-		    ("InitCallBackState success on %p (%s:%d)\n",
-		     host, afs_inet_ntoa_r(host->host, hoststr),
-		     ntohs(host->port)));
+		    ("InitCallBackState success on %p (%s)\n",
+		     host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
 	    /* reset was done successfully */
 	    host->hostFlags |= RESETDONE;
 	    host->hostFlags &= ~VENUSDOWN;
@@ -1100,19 +1096,17 @@ BreakDelayedCallBacks_r(struct host *host)
 		int i;
 		if (ShowProblems) {
 		    ViceLog(0,
-			    ("CB: XCallBackBulk failed, Host %p (%s:%d); "
+			    ("CB: XCallBackBulk failed, Host %p (%s); "
 			     "callback list follows:\n",
-                             host, afs_inet_ntoa_r(host->host, hoststr),
-			     ntohs(host->port)));
+                             host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
 		}
 		for (i = 0; i < nfids; i++) {
 		    if (ShowProblems) {
 			ViceLog(0,
-				("CB: Host %p (%s:%d), file %u.%u.%u "
+				("CB: Host %p (%s), file %u.%u.%u "
 				 "(part of bulk callback)\n",
-				 host, afs_inet_ntoa_r(host->host, hoststr),
-				 ntohs(host->port), fids[i].Volume,
-				 fids[i].Vnode, fids[i].Unique));
+				 host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr),
+				 fids[i].Volume, fids[i].Vnode, fids[i].Unique));
 		    }
 		    /* used to do this:
 		     * AddCallBack1_r(host, &fids[i], itot(thead[i]), CB_DELAYED, 1);
@@ -1152,9 +1146,8 @@ MultiBreakVolumeCallBack_r(struct host *host,
         /* Do not care if the host is now HOSTDELETED */
 	if (ShowProblems) {
 	    ViceLog(0,
-		    ("BVCB: volume callback for Host %p (%s:%d) failed\n",
-		     host, afs_inet_ntoa_r(host->host, hoststr),
-		     ntohs(host->port)));
+		    ("BVCB: volume callback for Host %p (%s) failed\n",
+		     host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
 	}
 	DeleteAllCallBacks_r(host, deletefe);	/* Delete all callback state
 						 * rather than attempting to
@@ -1329,10 +1322,9 @@ BreakLaterCallBacks(void)
 		/* leave flag for MultiBreakVolumeCallBack to clear */
 	    } else {
 		ViceLog(125,
-			("Found host %p (%s:%d) non-DELAYED cb for %u:%u:%" AFS_VOLID_FMT "\n",
-			 host, afs_inet_ntoa_r(host->host, hoststr),
-			 ntohs(host->port), fe->vnode, fe->unique,
-			 afs_printable_VolumeId_lu(fe->volid)));
+			("Found host %p (%s) non-DELAYED cb for %u:%u:%" AFS_VOLID_FMT "\n",
+			 host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr),
+			 fe->vnode, fe->unique, afs_printable_VolumeId_lu(fe->volid)));
 	    }
 	}
 	myfe = fe;
@@ -1393,10 +1385,9 @@ CleanupTimedOutCallBacks_r(void)
 		cb = itocb(cbi);
 		cbi = cb->tnext;
 		ViceLog(8,
-			("CCB: deleting timed out call back %x (%s:%d), (%" AFS_VOLID_FMT ",%u,%u)\n",
-                         h_itoh(cb->hhead)->host,
-                         afs_inet_ntoa_r(h_itoh(cb->hhead)->host, hoststr),
-			 h_itoh(cb->hhead)->port,
+			("CCB: deleting timed out call back %x (%s), (%" AFS_VOLID_FMT ",%u,%u)\n",
+                         rx_IpSockAddr((struct sockaddr *)&h_itoh(cb->hhead)->saddr),
+                         rx_PrintSockAddr((struct sockaddr *)&h_itoh(cb->hhead)->saddr, hoststr),
 			 afs_printable_VolumeId_lu(itofe(cb->fhead)->volid),
 			 itofe(cb->fhead)->vnode, itofe(cb->fhead)->unique));
 		HDel(cb);
@@ -1604,8 +1595,8 @@ ClearHostCallbacks_r(struct host *hp, int locked)
     struct rx_connection *cb_conn = NULL;
 
     ViceLog(5,
-	    ("GSS: Delete longest inactive host %p (%s:%d)\n",
-             hp, afs_inet_ntoa_r(hp->host, hoststr), ntohs(hp->port)));
+	    ("GSS: Delete longest inactive host %p (%s)\n",
+             hp, rx_PrintSockAddr((struct sockaddr *)&hp->saddr, hoststr)));
 
     if ((hp->hostFlags & HOSTDELETED)) {
 	/* hp could go away after reacquiring H_LOCK in h_NBLock_r, so we can't
@@ -3026,8 +3017,8 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
     /* initialize alternate rx connections */
     for (i = 0, j = 0; i < host->interface->numberOfInterfaces; i++) {
 	/* this is the current primary address */
-	if (host->host == host->interface->interface[i].addr &&
-	    host->port == host->interface->interface[i].port)
+	if (rx_IpSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].addr &&
+	    rx_PortSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].port)
 	    continue;
 
 	interfaces[j] = host->interface->interface[i];
@@ -3043,8 +3034,8 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
 
     opr_Assert(j);			/* at least one alternate address */
     ViceLog(125,
-	    ("Starting multibreakcall back on all addr for host %p (%s:%d)\n",
-             host, afs_inet_ntoa_r(host->host, hoststr), ntohs(host->port)));
+	    ("Starting multibreakcall back on all addr for host %p (%s)\n",
+             host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
     H_UNLOCK;
     multi_Rx(conns, j) {
 	multi_RXAFSCB_CallBack(afidp, &tc);
@@ -3057,9 +3048,8 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
 	    /* add then remove */
 	    addInterfaceAddr_r(host, interfaces[multi_i].addr,
 	                             interfaces[multi_i].port);
-	    removeInterfaceAddr_r(host, host->host, host->port);
-	    host->host = interfaces[multi_i].addr;
-	    host->port = interfaces[multi_i].port;
+	    removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr));
+            rx_SetSockAddr(interfaces[multi_i].addr, interfaces[multi_i].port, (struct sockaddr *)&host->saddr);
 	    connSuccess = conns[multi_i];
 	    rx_SetConnDeadTime(host->callback_rxcon, 50);
 	    rx_SetConnHardDeadTime(host->callback_rxcon, AFS_HARDDEADTIME);
@@ -3126,8 +3116,8 @@ MultiProbeAlternateAddress_r(struct host *host)
     /* initialize alternate rx connections */
     for (i = 0, j = 0; i < host->interface->numberOfInterfaces; i++) {
 	/* this is the current primary address */
-	if (host->host == host->interface->interface[i].addr &&
-	    host->port == host->interface->interface[i].port)
+	if (rx_IpSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].addr &&
+	    rx_PortSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].port)
 	    continue;
 
 	interfaces[j] = host->interface->interface[i];
@@ -3143,9 +3133,8 @@ MultiProbeAlternateAddress_r(struct host *host)
 
     opr_Assert(j);			/* at least one alternate address */
     ViceLog(125,
-	    ("Starting multiprobe on all addr for host %p (%s:%d)\n",
-             host, afs_inet_ntoa_r(host->host, hoststr),
-             ntohs(host->port)));
+	    ("Starting multiprobe on all addr for host %p (%s)\n",
+             host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
     H_UNLOCK;
     multi_Rx(conns, j) {
 	multi_RXAFSCB_ProbeUuid(&host->interface->uuid);
@@ -3158,9 +3147,8 @@ MultiProbeAlternateAddress_r(struct host *host)
 	    /* add then remove */
 	    addInterfaceAddr_r(host, interfaces[multi_i].addr,
 	                             interfaces[multi_i].port);
-	    removeInterfaceAddr_r(host, host->host, host->port);
-	    host->host = interfaces[multi_i].addr;
-	    host->port = interfaces[multi_i].port;
+	    removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr));
+            rx_SetSockAddr(interfaces[multi_i].addr, interfaces[multi_i].port, (struct sockaddr *)&host->saddr);
 	    connSuccess = conns[multi_i];
 	    rx_SetConnDeadTime(host->callback_rxcon, 50);
 	    rx_SetConnHardDeadTime(host->callback_rxcon, AFS_HARDDEADTIME);

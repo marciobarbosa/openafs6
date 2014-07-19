@@ -3294,7 +3294,7 @@ h_stateVerifyHost(struct host * h, void* rock)
 	if (h_stateVerifyUuidHash(state, h)) {
 	    state->bail = 1;
 	}
-    } else if (h_stateVerifyAddrHash(state, h, h->host, h->port, 1)) {
+    } else if (h_stateVerifyAddrHash(state, h, rx_IpSockAddr((struct sockaddr *)&h->saddr), rx_PortSockAddr((struct sockaddr *)&h->saddr), 1)) {
 	state->bail = 1;
     }
 
@@ -3492,8 +3492,8 @@ h_stateSaveHost(struct host * host, void* rock)
 
     if (h_isBusy_r(host)) {
 	char hoststr[16];
-	ViceLog(1, ("Not saving host %s:%d to disk; host appears busy\n",
-	            afs_inet_ntoa_r(host->host, hoststr), (int)ntohs(host->port)));
+	ViceLog(1, ("Not saving host %s to disk; host appears busy\n",
+	            rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
 	/* Make sure we don't try to save callbacks to disk for this host, or
 	 * we'll get confused on restore */
 	DeleteAllCallBacks_r(host, 1);
@@ -3651,13 +3651,13 @@ h_stateRestoreHost(struct fs_dump_state * state)
     h_diskEntryToHost_r(&hdsk, host);
     h_SetupCallbackConn_r(host);
 
-    h_AddHostToAddrHashTable_r(host->host, host->port, host);
+    h_AddHostToAddrHashTable_r(rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr), host);
     if (ifp) {
 	int i;
 	for (i = ifp->numberOfInterfaces-1; i >= 0; i--) {
             if (ifp->interface[i].valid &&
-                !(ifp->interface[i].addr == host->host &&
-                  ifp->interface[i].port == host->port)) {
+                !(ifp->interface[i].addr == rx_IpSockAddr((struct sockaddr *)&host->saddr) &&
+                  ifp->interface[i].port == rx_PortSockAddr((struct sockaddr *)&host->saddr))) {
                 h_AddHostToAddrHashTable_r(ifp->interface[i].addr,
                                            ifp->interface[i].port,
                                            host);
@@ -3686,8 +3686,8 @@ h_stateRestoreHost(struct fs_dump_state * state)
 static void
 h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
 {
-    out->host = in->host;
-    out->port = in->port;
+    out->host = rx_IpSockAddr((struct sockaddr *)&in->saddr);
+    out->port = rx_PortSockAddr((struct sockaddr *)&in->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
     out->hcpsfailed = in->hcpsfailed;
@@ -3707,8 +3707,7 @@ h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
 static void
 h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out)
 {
-    out->host = in->host;
-    out->port = in->port;
+    rx_SetSockAddr(in->host, in->port, (struct sockaddr *)&out->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
     out->hcpsfailed = in->hcpsfailed;

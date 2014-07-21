@@ -713,13 +713,11 @@ h_Alloc_r(struct rx_connection *r_con)
 static void
 h_SetupCallbackConn_r(struct host * host)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr));
-
     if (!sc)
 	sc = rxnull_NewClientSecurityObject();
 
     host->callback_rxcon =
-	rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
+	rx_NewConnectionSA((struct sockaddr *)&host->saddr, 1, sc, 0);
     rx_SetConnDeadTime(host->callback_rxcon, 50);
     rx_SetConnHardDeadTime(host->callback_rxcon, AFS_HARDDEADTIME);
 }
@@ -930,9 +928,9 @@ h_TossStuff_r(struct host *host)
                  * in the hash table.
                  */
                 if (hostAddrPort.valid &&
-                    (rx_IpSockAddr((struct sockaddr *)&host->saddr) != hostAddrPort.addr ||
-                     rx_PortSockAddr((struct sockaddr *)&host->saddr) != hostAddrPort.port))
-                    h_DeleteHostFromAddrHashTable_r(hostAddrPort.addr, hostAddrPort.port, host);
+                    (!rx_IsSockAddrEqual((struct sockaddr *)&host->saddr, (struct sockaddr *)&hostAddrPort.saddr) ||
+                     !rx_IsSockPortEqual((struct sockaddr *)&host->saddr, (struct sockaddr *)&hostAddrPort.saddr)))
+                    h_DeleteHostFromAddrHashTable_r(rx_IpSockAddr((struct sockaddr *)&hostAddrPort.saddr), rx_PortSockAddr((struct sockaddr *)&hostAddrPort.saddr), host);
 	    }
 	    free(host->interface);
 	    host->interface = NULL;
@@ -1219,8 +1217,8 @@ invalidateInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port)
     interface = host->interface;
     number = host->interface->numberOfInterfaces;
     for (i = 0; i < number; i++) {
-	if (interface->interface[i].addr == addr &&
-	    interface->interface[i].port == port) {
+	if (rx_IpSockAddr((struct sockaddr *)&interface->interface[i].saddr) == addr &&
+	    rx_PortSockAddr((struct sockaddr *)&interface->interface[i].saddr) == port) {
             if (interface->interface[i].valid) {
                 h_DeleteHostFromAddrHashTable_r(addr, port, host);
 		interface->interface[i].valid = 0;
@@ -1274,11 +1272,10 @@ removeAddress_r(struct host *host, afs_uint32 addr, afs_uint16 port)
             for (i=0; i < host->interface->numberOfInterfaces; i++) {
                 if (host->interface->interface[i].valid) {
                     ViceLog(25,
-                             ("Removed address for host %" AFS_PTR_FMT " (%s), new primary interface %s:%d.\n",
+                             ("Removed address for host %" AFS_PTR_FMT " (%s), new primary interface %s.\n",
                                host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr),
-                               afs_inet_ntoa_r(host->interface->interface[i].addr, hoststr2),
-                               ntohs(host->interface->interface[i].port)));
-                    rx_SetSockAddr(host->interface->interface[i].addr, host->interface->interface[i].port, (struct sockaddr *)&host->saddr);
+                               rx_PrintSockAddr((struct sockaddr *)&host->interface->interface[i].saddr, hoststr2)));
+                    rx_CopySockAddr((struct sockaddr *)&host->saddr, (struct sockaddr *)&host->interface->interface[i].saddr);
                     h_AddHostToAddrHashTable_r(rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr), host);
                     break;
                 }
@@ -1516,8 +1513,8 @@ addInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port)
      */
     number = host->interface->numberOfInterfaces;
     for (i = 0; i < number; i++) {
-	if (host->interface->interface[i].addr == addr &&
-             host->interface->interface[i].port == port) {
+	if (rx_IpSockAddr((struct sockaddr *)&host->interface->interface[i].saddr) == addr &&
+             rx_PortSockAddr((struct sockaddr *)&host->interface->interface[i].saddr) == port) {
 	    ViceLog(125,
 		    ("addInterfaceAddr : found host %" AFS_PTR_FMT " (%s) adding %s:%d%s\n",
 		     host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr),
@@ -1549,8 +1546,7 @@ addInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port)
 	interface->interface[i] = host->interface->interface[i];
 
     /* Add the new valid interface */
-    interface->interface[number].addr = addr;
-    interface->interface[number].port = port;
+    rx_SetSockAddr(addr, port, (struct sockaddr *)&interface->interface[number].saddr);
     interface->interface[number].valid = 1;
     h_AddHostToAddrHashTable_r(addr, port, host);
     free(host->interface);
@@ -1588,8 +1584,8 @@ removeInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port)
     interface = host->interface;
     number = host->interface->numberOfInterfaces;
     for (i = 0; i < number; i++) {
-	if (interface->interface[i].addr == addr &&
-	    interface->interface[i].port == port) {
+	if (rx_IpSockAddr((struct sockaddr *)&interface->interface[i].saddr) == addr &&
+	    rx_PortSockAddr((struct sockaddr *)&interface->interface[i].saddr) == port) {
 	    if (interface->interface[i].valid)
 		h_DeleteHostFromAddrHashTable_r(addr, port, host);
 	    number--;
@@ -2316,15 +2312,15 @@ h_GetHost_r(struct rx_connection *tcon)
 			    struct Interface *interface = oldHost->interface;
 			    int number = oldHost->interface->numberOfInterfaces;
 			    for (i = 0; i < number; i++) {
-				if (interface->interface[i].addr == haddr &&
-				    interface->interface[i].port != hport) {
+				if (rx_IpSockAddr((struct sockaddr *)&interface->interface[i].saddr) == haddr &&
+				    rx_PortSockAddr((struct sockaddr *)&interface->interface[i].saddr) != hport) {
 				    /*
 				     * We have just been contacted by a client
 				     * that has been seen from behind a NAT
 				     * and at least one other address.
 				     */
 				    removeInterfaceAddr_r(oldHost, haddr,
-							  interface->interface[i].port);
+							  rx_PortSockAddr((struct sockaddr *)&interface->interface[i].saddr));
 				    break;
 				}
 			    }
@@ -3081,9 +3077,8 @@ h_DumpHost(struct host *host, void *rock)
     if (host->interface)
 	for (i = 0; i < host->interface->numberOfInterfaces; i++) {
 	    char hoststr[16];
-	    sprintf(tmpStr, " %s:%d",
-		     afs_inet_ntoa_r(host->interface->interface[i].addr, hoststr),
-		     ntohs(host->interface->interface[i].port));
+	    sprintf(tmpStr, " %s",
+		     rx_PrintSockAddr((struct sockaddr *)&host->interface->interface[i].saddr, hoststr));
 	    (void)STREAM_WRITE(tmpStr, strlen(tmpStr), 1, file);
 	}
     sprintf(tmpStr, "] refCount:%d hostFlags:%hu\n", host->refCount, host->hostFlags);
@@ -3285,8 +3280,8 @@ h_stateVerifyHost(struct host * h, void* rock)
 
     if (h->interface) {
 	for (i = h->interface->numberOfInterfaces-1; i >= 0; i--) {
-	    if (h_stateVerifyAddrHash(state, h, h->interface->interface[i].addr,
-				      h->interface->interface[i].port,
+	    if (h_stateVerifyAddrHash(state, h, rx_IpSockAddr((struct sockaddr *)&h->interface->interface[i].saddr),
+				      rx_PortSockAddr((struct sockaddr *)&h->interface->interface[i].saddr),
 				      h->interface->interface[i].valid)) {
 		state->bail = 1;
 	    }
@@ -3656,10 +3651,10 @@ h_stateRestoreHost(struct fs_dump_state * state)
 	int i;
 	for (i = ifp->numberOfInterfaces-1; i >= 0; i--) {
             if (ifp->interface[i].valid &&
-                !(ifp->interface[i].addr == rx_IpSockAddr((struct sockaddr *)&host->saddr) &&
-                  ifp->interface[i].port == rx_PortSockAddr((struct sockaddr *)&host->saddr))) {
-                h_AddHostToAddrHashTable_r(ifp->interface[i].addr,
-                                           ifp->interface[i].port,
+                !(rx_IsSockAddrEqual((struct sockaddr *)&ifp->interface[i].saddr, (struct sockaddr *)&host->saddr) &&
+                  rx_IsSockPortEqual((struct sockaddr *)&ifp->interface[i].saddr, (struct sockaddr *)&host->saddr))) {
+                h_AddHostToAddrHashTable_r(rx_IpSockAddr((struct sockaddr *)&ifp->interface[i].saddr),
+                                           rx_PortSockAddr((struct sockaddr *)&ifp->interface[i].saddr),
                                            host);
             }
 	}
@@ -4224,19 +4219,17 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
 	    ViceLogThenPanic(0, ("Failed malloc in initInterfaceAddr_r 2\n"));
 	}
 	interface->numberOfInterfaces = count + 1;
-	interface->interface[count].addr = myAddr;
-	interface->interface[count].port = myPort;
+        rx_CopySockAddr((struct sockaddr *)&interface->interface[count].saddr, (struct sockaddr *)&host->saddr);
         interface->interface[count].valid = 1;
     }
 
     for (i = 0; i < count; i++) {
 
-        interface->interface[i].addr = interf->addr_in[i];
 	/* We store the port as 7001 because the addresses reported by
 	 * TellMeAboutYourself and WhoAreYou RPCs are only valid if they
 	 * are coming from fully connected hosts (no NAT/PATs)
 	 */
-	interface->interface[i].port = port7001;
+        rx_SetSockAddr(interf->addr_in[i], port7001, (struct sockaddr *)&interface->interface[i].saddr);
         interface->interface[i].valid =
             (interf->addr_in[i] == myAddr && port7001 == myPort) ? 1 : 0;
     }
@@ -4253,9 +4246,8 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
 
 	ViceLog(125, ("--- uuid %s\n", uuidstr));
 	for (i = 0; i < host->interface->numberOfInterfaces; i++) {
-	    ViceLog(125, ("--- alt address %s:%d\n",
-			  afs_inet_ntoa_r(host->interface->interface[i].addr, hoststr),
-			  ntohs(host->interface->interface[i].port)));
+	    ViceLog(125, ("--- alt address %s\n",
+			  rx_PrintSockAddr((struct sockaddr *)&host->interface->interface[i].saddr, hoststr)));
 	}
     }
 
@@ -4309,8 +4301,7 @@ printInterfaceAddr(struct host *host, int level)
             ViceLog(level, ("no-addresses "));
 	} else {
             for (i = 0; i < number; i++)
-                ViceLog(level, ("%s:%d ", afs_inet_ntoa_r(host->interface->interface[i].addr, hoststr),
-                                ntohs(host->interface->interface[i].port)));
+                ViceLog(level, ("%s ", rx_PrintSockAddr((struct sockaddr *)&host->interface->interface[i].saddr, hoststr)));
         }
     }
     ViceLog(level, ("\n"));

@@ -560,7 +560,7 @@ rx_GetIFInfo(void)
 	    continue;
 	}
 	for (j = 0; j < rxi_numNetAddrs; j++) {
-	    if (rxi_IsSockAddrEqual((struct sockaddr *)&rxi_NetAddrs[j], (struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]))
+	    if (rx_IsSockAddrEqual((struct sockaddr *)&rxi_NetAddrs[j], (struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]))
 		break;
 	}
 	if (j < rxi_numNetAddrs)

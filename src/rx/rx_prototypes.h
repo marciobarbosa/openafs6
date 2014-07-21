@@ -25,8 +25,8 @@ extern void rx_rto_setPeerTimeoutSecs(struct rx_peer *, int secs);
 typedef char rx_addr_str_t[55];
 extern void rx_CopySockAddr(struct sockaddr *saddr_dst, struct sockaddr *saddr_src);
 extern char *rx_PrintSockAddr(struct sockaddr *saddr, rx_addr_str_t buffer);
-extern int rxi_IsSockAddrEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
-extern int rxi_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
+extern int rx_IsSockAddrEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
+extern int rx_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
 
 /* these functions are not permanent! they are used to help in the migration process from IPv4 to IPv6 */
 extern struct sockaddr_in rx_CreateSockAddr(unsigned int host, unsigned int port);

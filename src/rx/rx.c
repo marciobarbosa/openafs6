@@ -1799,7 +1799,7 @@ rx_NewServiceHost(struct sockaddr *saddr, u_short serviceId,
     for (i = 0; i < RX_MAX_SERVICES; i++) {
 	struct rx_service *service = rx_services[i];
 	if (service) {
-	    if (rxi_IsSockPortEqual((struct sockaddr *)&service->saddr, saddr) && rxi_IsSockAddrEqual((struct sockaddr *)&service->saddr, saddr)) {
+	    if (rx_IsSockPortEqual((struct sockaddr *)&service->saddr, saddr) && rx_IsSockAddrEqual((struct sockaddr *)&service->saddr, saddr)) {
 		if (service->serviceId == serviceId) {
 		    /* The identical service has already been
 		     * installed; if the caller was intending to
@@ -2896,14 +2896,14 @@ rxi_SetPeerMtu(struct rx_peer *peer, struct sockaddr *saddr, int mtu)
 		    peer = *peer_ptr;
 		for ( ; peer; peer = next) {
 		    next = peer->next;
-                    if(rxi_IsSockAddrEqual(saddr, (struct sockaddr *)&peer->saddr))
+                    if(rx_IsSockAddrEqual(saddr, (struct sockaddr *)&peer->saddr))
                         break;
 		}
 	    }
 	} else {
 	    hashIndex = PEER_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr));
 	    for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-                if(rxi_IsSockAddrEqual((struct sockaddr *)&peer->saddr, saddr) && rxi_IsSockPortEqual((struct sockaddr *)&peer->saddr, saddr))
+                if(rx_IsSockAddrEqual((struct sockaddr *)&peer->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&peer->saddr, saddr))
                     break;
 	    }
 	}
@@ -2951,7 +2951,7 @@ rxi_SetPeerDead(struct sock_extended_err *err, struct sockaddr *saddr)
     MUTEX_ENTER(&rx_peerHashTable_lock);
 
     for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-        if(rxi_IsSockAddrEqual((struct sockaddr *)&peer->saddr, saddr) && rxi_IsSockPortEqual((struct sockaddr *)&peer->saddr, saddr)) {
+        if(rx_IsSockAddrEqual((struct sockaddr *)&peer->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&peer->saddr, saddr)) {
             peer->refCount++;
             break;
         }
@@ -3084,7 +3084,7 @@ rxi_FindPeer(struct sockaddr *saddr, int create)
     hashIndex = PEER_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr));
     MUTEX_ENTER(&rx_peerHashTable_lock);
     for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
-        if(rxi_IsSockAddrEqual((struct sockaddr *)&pp->saddr, saddr) && rxi_IsSockPortEqual((struct sockaddr *)&pp->saddr, saddr))
+        if(rx_IsSockAddrEqual((struct sockaddr *)&pp->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&pp->saddr, saddr))
             break;
     }
     if (!pp) {
@@ -3151,9 +3151,9 @@ rxi_FindConnection(osi_socket socket, struct sockaddr *saddr,
 		MUTEX_EXIT(&rx_connHashTable_lock);
 		return (struct rx_connection *)0;
 	    }
-            if(rxi_IsSockAddrEqual((struct sockaddr *)&pp->saddr, saddr) && rxi_IsSockPortEqual((struct sockaddr *)&pp->saddr, saddr))
+            if(rx_IsSockAddrEqual((struct sockaddr *)&pp->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&pp->saddr, saddr))
                 break;
-	    if (type == RX_CLIENT_CONNECTION && rxi_IsSockPortEqual((struct sockaddr *)&pp->saddr, saddr))
+	    if (type == RX_CLIENT_CONNECTION && rx_IsSockPortEqual((struct sockaddr *)&pp->saddr, saddr))
 		break;
 	    /* So what happens when it's a callback connection? */
 	    if (		/*type == RX_CLIENT_CONNECTION && */
@@ -7889,7 +7889,7 @@ rx_GetLocalPeers(struct sockaddr *saddr,
 	MUTEX_ENTER(&rx_peerHashTable_lock);
 	for(tp = rx_peerHashTable[hashValue];
 	      tp != NULL; tp = tp->next) {
-                if(rxi_IsSockAddrEqual((struct sockaddr *)&tp->saddr, saddr))
+                if(rx_IsSockAddrEqual((struct sockaddr *)&tp->saddr, saddr))
                         break;
 	}
 
@@ -9451,7 +9451,7 @@ rx_PrintSockAddr(struct sockaddr *saddr, rx_addr_str_t buffer)
 
 /* this function returns 1 (true) if addr1 is equal to addr2; 0 (false) otherwise */
 int
-rxi_IsSockAddrEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
+rx_IsSockAddrEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
 {
     int is_equal = 0;
 
@@ -9468,7 +9468,7 @@ rxi_IsSockAddrEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
 
 /* this function returns 1 (true) if port1 is equal to port2; 0 (false) otherwise */
 int
-rxi_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
+rx_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
 {
     int is_equal = 0;
     int port1 = (saddr1->sa_family == AF_INET) ? ((struct sockaddr_in *)saddr1)->sin_port : ((struct sockaddr_in6 *)saddr1)->sin6_port;

@@ -40,8 +40,7 @@ struct Identity {
 };
 
 struct AddrPort  {
-    afs_uint32 addr;		/* in network byte order */
-    afs_uint16 port;		/* in network byte order */
+    struct sockaddr_storage saddr; /* in network byte order */
     afs_int16  valid;
 };
 

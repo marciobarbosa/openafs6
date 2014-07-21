@@ -89,8 +89,8 @@ typedef struct cache_entry {
 static int
 rxi_CachedConnectionsEqual(rx_connParts_p a, rx_connParts_p b)
 {
-    return (rxi_IsSockAddrEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
-        && rxi_IsSockPortEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
+    return (rx_IsSockAddrEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
+        && rx_IsSockPortEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
 	    && (a->service == b->service)
 	    && (a->securityObject == b->securityObject)
 	    && (a->securityIndex == b->securityIndex));

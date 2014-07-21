@@ -2992,7 +2992,6 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
     static struct rx_securityClass *sc = 0;
     static struct AFSCBs tc = { 0, 0 };
     char hoststr[16];
-    struct sockaddr_in saddr;
 
     /* nothing more can be done */
     if (!host->interface)
@@ -3017,16 +3016,14 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
     /* initialize alternate rx connections */
     for (i = 0, j = 0; i < host->interface->numberOfInterfaces; i++) {
 	/* this is the current primary address */
-	if (rx_IpSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].addr &&
-	    rx_PortSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].port)
+	if (rx_IsSockAddrEqual((struct sockaddr *)&host->saddr, (struct sockaddr *)&host->interface->interface[i].saddr) &&
+	    rx_IsSockPortEqual((struct sockaddr *)&host->saddr, (struct sockaddr *)&host->interface->interface[i].saddr))
 	    continue;
 
 	interfaces[j] = host->interface->interface[i];
 
-        saddr = rx_CreateSockAddr(interfaces[j].addr, interfaces[j].port);
-
 	conns[j] =
-	    rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
+	    rx_NewConnectionSA((struct sockaddr *)&interfaces[j].saddr, 1, sc, 0);
 	rx_SetConnDeadTime(conns[j], 2);
 	rx_SetConnHardDeadTime(conns[j], AFS_HARDDEADTIME);
 	j++;
@@ -3046,17 +3043,16 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
 		rx_DestroyConnection(host->callback_rxcon);
 	    host->callback_rxcon = conns[multi_i];
 	    /* add then remove */
-	    addInterfaceAddr_r(host, interfaces[multi_i].addr,
-	                             interfaces[multi_i].port);
+	    addInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&interfaces[multi_i].saddr),
+	                             rx_PortSockAddr((struct sockaddr *)&interfaces[multi_i].saddr));
 	    removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr));
-            rx_SetSockAddr(interfaces[multi_i].addr, interfaces[multi_i].port, (struct sockaddr *)&host->saddr);
+            rx_CopySockAddr((struct sockaddr *)&host->saddr, (struct sockaddr *)&interfaces[multi_i].saddr);
 	    connSuccess = conns[multi_i];
 	    rx_SetConnDeadTime(host->callback_rxcon, 50);
 	    rx_SetConnHardDeadTime(host->callback_rxcon, AFS_HARDDEADTIME);
 	    ViceLog(125,
-		    ("multibreakcall success with addr %s:%d\n",
-		     afs_inet_ntoa_r(interfaces[multi_i].addr, hoststr),
-                     ntohs(interfaces[multi_i].port)));
+		    ("multibreakcall success with addr %s\n",
+		     rx_PrintSockAddr((struct sockaddr *)&interfaces[multi_i].saddr, hoststr)));
 	    H_UNLOCK;
 	    multi_Abort;
 	}
@@ -3091,7 +3087,6 @@ MultiProbeAlternateAddress_r(struct host *host)
     struct AddrPort *interfaces;
     static struct rx_securityClass *sc = 0;
     char hoststr[16];
-    struct sockaddr_in saddr;
 
     /* nothing more can be done */
     if (!host->interface)
@@ -3116,16 +3111,14 @@ MultiProbeAlternateAddress_r(struct host *host)
     /* initialize alternate rx connections */
     for (i = 0, j = 0; i < host->interface->numberOfInterfaces; i++) {
 	/* this is the current primary address */
-	if (rx_IpSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].addr &&
-	    rx_PortSockAddr((struct sockaddr *)&host->saddr) == host->interface->interface[i].port)
+	if (rx_IsSockAddrEqual((struct sockaddr *)&host->saddr, (struct sockaddr *)&host->interface->interface[i].saddr) &&
+	    rx_IsSockPortEqual((struct sockaddr *)&host->saddr, (struct sockaddr *)&host->interface->interface[i].saddr))
 	    continue;
 
 	interfaces[j] = host->interface->interface[i];
 
-        saddr = rx_CreateSockAddr(interfaces[j].addr, interfaces[j].port);
-
 	conns[j] =
-	    rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
+	    rx_NewConnectionSA((struct sockaddr *)&interfaces[j].saddr, 1, sc, 0);
 	rx_SetConnDeadTime(conns[j], 2);
 	rx_SetConnHardDeadTime(conns[j], AFS_HARDDEADTIME);
 	j++;
@@ -3145,24 +3138,22 @@ MultiProbeAlternateAddress_r(struct host *host)
 		rx_DestroyConnection(host->callback_rxcon);
 	    host->callback_rxcon = conns[multi_i];
 	    /* add then remove */
-	    addInterfaceAddr_r(host, interfaces[multi_i].addr,
-	                             interfaces[multi_i].port);
+	    addInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&interfaces[multi_i].saddr),
+	                             rx_PortSockAddr((struct sockaddr *)&interfaces[multi_i].saddr));
 	    removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr));
-            rx_SetSockAddr(interfaces[multi_i].addr, interfaces[multi_i].port, (struct sockaddr *)&host->saddr);
+            rx_CopySockAddr((struct sockaddr *)&host->saddr, (struct sockaddr *)&interfaces[multi_i].saddr);
 	    connSuccess = conns[multi_i];
 	    rx_SetConnDeadTime(host->callback_rxcon, 50);
 	    rx_SetConnHardDeadTime(host->callback_rxcon, AFS_HARDDEADTIME);
 	    ViceLog(125,
-		    ("multiprobe success with addr %s:%d\n",
-		     afs_inet_ntoa_r(interfaces[multi_i].addr, hoststr),
-                     ntohs(interfaces[multi_i].port)));
+		    ("multiprobe success with addr %s\n",
+		     rx_PrintSockAddr((struct sockaddr *)&interfaces[multi_i].saddr, hoststr)));
 	    H_UNLOCK;
 	    multi_Abort;
 	} else {
 	    ViceLog(125,
-		    ("multiprobe failure with addr %s:%d\n",
-		     afs_inet_ntoa_r(interfaces[multi_i].addr, hoststr),
-                     ntohs(interfaces[multi_i].port)));
+		    ("multiprobe failure with addr %s\n",
+		     rx_PrintSockAddr((struct sockaddr *)&interfaces[multi_i].saddr, hoststr)));
 
             /* This is less than desirable but its the best we can do.
              * The AFS Cache Manager will return either 0 for a Uuid
@@ -3174,7 +3165,7 @@ MultiProbeAlternateAddress_r(struct host *host)
             if (multi_error == 1) {
                 /* remove the current alternate address from this host */
                 H_LOCK;
-                removeInterfaceAddr_r(host, interfaces[multi_i].addr, interfaces[multi_i].port);
+                removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&interfaces[multi_i].saddr), rx_PortSockAddr((struct sockaddr *)&interfaces[multi_i].saddr));
                 H_UNLOCK;
             }
         }

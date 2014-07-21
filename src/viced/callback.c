@@ -3043,9 +3043,8 @@ MultiBreakCallBackAlternateAddress_r(struct host *host,
 		rx_DestroyConnection(host->callback_rxcon);
 	    host->callback_rxcon = conns[multi_i];
 	    /* add then remove */
-	    addInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&interfaces[multi_i].saddr),
-	                             rx_PortSockAddr((struct sockaddr *)&interfaces[multi_i].saddr));
-	    removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr));
+	    addInterfaceAddr_r(host, (struct sockaddr *)&interfaces[multi_i].saddr);
+	    removeInterfaceAddr_r(host, (struct sockaddr *)&host->saddr);
             rx_CopySockAddr((struct sockaddr *)&host->saddr, (struct sockaddr *)&interfaces[multi_i].saddr);
 	    connSuccess = conns[multi_i];
 	    rx_SetConnDeadTime(host->callback_rxcon, 50);
@@ -3138,9 +3137,8 @@ MultiProbeAlternateAddress_r(struct host *host)
 		rx_DestroyConnection(host->callback_rxcon);
 	    host->callback_rxcon = conns[multi_i];
 	    /* add then remove */
-	    addInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&interfaces[multi_i].saddr),
-	                             rx_PortSockAddr((struct sockaddr *)&interfaces[multi_i].saddr));
-	    removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&host->saddr), rx_PortSockAddr((struct sockaddr *)&host->saddr));
+	    addInterfaceAddr_r(host, (struct sockaddr *)&interfaces[multi_i].saddr);
+	    removeInterfaceAddr_r(host, (struct sockaddr *)&host->saddr);
             rx_CopySockAddr((struct sockaddr *)&host->saddr, (struct sockaddr *)&interfaces[multi_i].saddr);
 	    connSuccess = conns[multi_i];
 	    rx_SetConnDeadTime(host->callback_rxcon, 50);
@@ -3165,7 +3163,7 @@ MultiProbeAlternateAddress_r(struct host *host)
             if (multi_error == 1) {
                 /* remove the current alternate address from this host */
                 H_LOCK;
-                removeInterfaceAddr_r(host, rx_IpSockAddr((struct sockaddr *)&interfaces[multi_i].saddr), rx_PortSockAddr((struct sockaddr *)&interfaces[multi_i].saddr));
+                removeInterfaceAddr_r(host, (struct sockaddr *)&interfaces[multi_i].saddr);
                 H_UNLOCK;
             }
         }

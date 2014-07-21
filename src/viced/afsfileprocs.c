@@ -5697,6 +5697,7 @@ SRXAFS_FlushCPS(struct rx_call * acall, struct ViceIds * vids,
     afs_int32 nids, naddrs;
     afs_int32 *vd, *addr;
     Error errorCode = 0;		/* return code to caller */
+    struct sockaddr_in saddr;
 
     ViceLog(1, ("SRXAFS_FlushCPS\n"));
     FS_LOCK;
@@ -5724,8 +5725,10 @@ SRXAFS_FlushCPS(struct rx_call * acall, struct ViceIds * vids,
 
     addr = addrs->IPAddrs_val;
     for (i = 0; i < naddrs; i++, addr++) {
-	if (*addr)
-	    h_flushhostcps(*addr, htons(7001));
+	if (*addr) {
+	    saddr = rx_CreateSockAddr(*addr, htons(7001));
+	    h_flushhostcps((struct sockaddr *)&saddr);
+	}
     }
 
   Bad_FlushCPS:

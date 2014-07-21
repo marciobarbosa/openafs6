@@ -95,8 +95,7 @@ struct host {
 struct h_AddrHashChain {
     struct host *hostPtr;
     struct h_AddrHashChain *next;
-    afs_uint32 addr;
-    afs_uint16 port;
+    struct sockaddr_storage saddr;
 };
 
 struct h_UuidHashChain {
@@ -205,8 +204,7 @@ extern int PrintCallBackStats(void);
 extern void *ShutDown(void *);
 extern void ShutDownAndCore(int dopanic);
 
-extern int h_Lookup_r(afs_uint32 hostaddr, afs_uint16 hport,
-		      struct host **hostp);
+extern int h_Lookup_r(struct sockaddr *saddr, struct host **hostp);
 extern struct host *h_LookupUuid_r(afsUUID * uuidp);
 extern void h_Enumerate(int (*proc) (struct host *, void *), void *param);
 extern void h_Enumerate_r(int (*proc) (struct host *, void *), struct host *enumstart, void *param);
@@ -223,20 +221,19 @@ extern void h_PrintStats(void);
 extern void h_PrintClients(void);
 extern void h_GetWorkStats(int *, int *, int *, afs_int32);
 extern void h_GetWorkStats64(afs_uint64 *, afs_uint64 *, afs_uint64 *, afs_int32);
-extern void h_flushhostcps(afs_uint32 hostaddr,
-			   afs_uint16 hport);
+extern void h_flushhostcps(struct sockaddr *saddr);
 extern void h_GetHostNetStats(afs_int32 * a_numHostsP, afs_int32 * a_sameNetOrSubnetP,
 		  afs_int32 * a_diffSubnetP, afs_int32 * a_diffNetworkP);
 extern int h_NBLock_r(struct host *host);
 extern void h_DumpHosts(void);
 extern void h_InitHostPackage(int hquota);
 extern void h_CheckHosts(void );
-extern void h_AddHostToAddrHashTable_r(afs_uint32 addr, afs_uint16 port, struct host * host);
+extern void h_AddHostToAddrHashTable_r(struct sockaddr *saddr, struct host * host);
 extern void h_AddHostToUuidHashTable_r(afsUUID * uuid, struct host * host);
-extern int h_DeleteHostFromAddrHashTable_r(afs_uint32 addr, afs_uint16 port, struct host *host);
+extern int h_DeleteHostFromAddrHashTable_r(struct sockaddr *saddr, struct host *host);
 extern int h_DeleteHostFromUuidHashTable_r(struct host *host);
-extern int addInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port);
-extern int removeInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port);
+extern int addInterfaceAddr_r(struct host *host, struct sockaddr *saddr);
+extern int removeInterfaceAddr_r(struct host *host, struct sockaddr *saddr);
 extern afs_int32 hpr_Initialize(struct ubik_client **);
 extern int hpr_End(struct ubik_client *);
 extern int hpr_IdToName(idlist *ids, namelist *names);

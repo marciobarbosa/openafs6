@@ -94,22 +94,21 @@ struct host_state_entry_header {
 
 /* 36 byte host entry structure */
 struct hostDiskEntry {
-    afs_uint32 host;		/* IP address of host interface that is
-				 * currently being used, in network
-				 * byte order */
-    afs_uint16 port;	        /* port address of host */
-    afs_uint16 hostFlags;       /*  bit map */
-    byte Console;		/* XXXX This host is a console */
-    byte hcpsfailed;	        /* Retry the cps call next time */
-    byte hcps_valid;            /* prlist_val not null */
-    byte InSameNetwork;	        /*Is host's addr in the same network as
-				 * the File Server's? */
-    afs_uint32 hcps_len;        /* length of hcps */
-    afs_uint32 LastCall;	/* time of last call from host */
-    afs_uint32 ActiveCall;	/* time of any call but gettime */
-    afs_uint32 cpsCall;		/* time of last cps call from this host */
-    afs_uint32 cblist;		/* Call back list for this host */
-    afs_uint32 index;           /* index for correlating w/ callback dumps */
+    struct sockaddr_storage saddr;      /* IP address and port of host interface that is
+				         * currently being used, in network
+				         * byte order */
+    afs_uint16 hostFlags;               /*  bit map */
+    byte Console;		        /* XXXX This host is a console */
+    byte hcpsfailed;	                /* Retry the cps call next time */
+    byte hcps_valid;                    /* prlist_val not null */
+    byte InSameNetwork;	                /*Is host's addr in the same network as
+				         * the File Server's? */
+    afs_uint32 hcps_len;                /* length of hcps */
+    afs_uint32 LastCall;	        /* time of last call from host */
+    afs_uint32 ActiveCall;	        /* time of any call but gettime */
+    afs_uint32 cpsCall;		        /* time of last cps call from this host */
+    afs_uint32 cblist;		        /* Call back list for this host */
+    afs_uint32 index;                   /* index for correlating w/ callback dumps */
 };
 
 /*

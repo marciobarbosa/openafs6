@@ -264,7 +264,6 @@ hpr_Initialize(struct ubik_client **uclient)
     struct afsconf_cell info;
     afs_int32 i;
     char cellstr[64];
-    struct sockaddr_in saddr;
 
     tdir = afsconf_Open(FS_configPath);
     if (!tdir) {
@@ -313,10 +312,8 @@ hpr_Initialize(struct ubik_client **uclient)
 
     memset(serverconns, 0, sizeof(serverconns));        /* terminate list!!! */
     for (i = 0; i < info.numServers; i++) {
-        saddr = rx_CreateSockAddr(info.hostAddr[i].sin_addr.s_addr, info.hostAddr[i].sin_port);
-
         serverconns[i] =
-            rx_NewConnectionSA((struct sockaddr *)&saddr, PRSRV, sc, scIndex);
+            rx_NewConnectionSA((struct sockaddr *)&info.hostAddr[i], PRSRV, sc, scIndex);
     }
 
     code = ubik_ClientInit(serverconns, uclient);
@@ -579,7 +576,7 @@ h_gethostcps_r(struct host *host, afs_int32 now)
     code = hpr_GetHostCPS(ntohl(rx_IpSockAddr((struct sockaddr *)&host->saddr)), &host->hcps);
     H_LOCK;
     if (code) {
-        char hoststr[16];
+        rx_addr_str_t hoststr;
 	/*
 	 * Although ubik_Call (called by pr_GetHostCPS) traverses thru all protection servers
 	 * and reevaluates things if no sync server or quorum is found we could still end up
@@ -823,7 +820,7 @@ h_TossStuff_r(struct host *host)
 
     /* if somebody still has this host locked */
     if (code != 0) {
-	char hoststr[16];
+	rx_addr_str_t hoststr;
 	if (wasdeleted) {
 	    /* someone locked the host while HOSTDELETED was set; that is bad */
 	    ViceLog(0, ("Warning:  h_TossStuff_r failed; Host %" AFS_PTR_FMT
@@ -840,7 +837,7 @@ h_TossStuff_r(struct host *host)
     /* we must check this _after_ h_NBLock_r, since h_NBLock_r can drop and
      * reacquire H_LOCK */
     if (host->refCount > 0) {
-	char hoststr[16];
+	rx_addr_str_t hoststr;
 	if (wasdeleted) {
 	    /* someone grabbed a ref while HOSTDELETED was set; that is bad */
 	    ViceLog(0, ("Warning:  h_TossStuff_r failed; Host %" AFS_PTR_FMT
@@ -857,7 +854,7 @@ h_TossStuff_r(struct host *host)
 	    int code;
 	    ObtainWriteLockNoBlock(&client->lock, code);
 	    if (code < 0) {
-		char hoststr[16];
+		rx_addr_str_t hoststr;
 		ViceLog(0,
 			("Warning: h_TossStuff_r failed: Host %p (%s) "
 			 "client %p was locked.\n",
@@ -867,7 +864,7 @@ h_TossStuff_r(struct host *host)
 	    }
 
 	    if (client->refCount) {
-		char hoststr[16];
+		rx_addr_str_t hoststr;
 		ViceLog(0,
 			("Warning: h_TossStuff_r failed: Host %p (%s) "
 			 "client %p refcount %d.\n",
@@ -1113,7 +1110,7 @@ h_AddHostToUuidHashTable_r(struct afsUUID *uuid, struct host *host)
     int index;
     struct h_UuidHashChain *chain;
     char uuid1[128], uuid2[128];
-    char hoststr[16];
+    rx_addr_str_t hoststr;
 
     /* hash into proper bucket */
     index = h_UuidHashIndex(uuid);
@@ -1162,7 +1159,7 @@ h_DeleteHostFromUuidHashTable_r(struct host *host)
      int index;
      struct h_UuidHashChain **uhp, *uth;
      char uuid1[128];
-     char hoststr[16];
+     rx_addr_str_t hoststr;
 
      if (!host->interface)
        return 0;
@@ -2697,7 +2694,7 @@ h_FindClient_r(struct rx_connection *tcon, afs_int32 *a_viceid)
 	    code = hpr_GetCPS(viceid, &client->CPS);
 	    H_LOCK;
 	    if (code) {
-		char hoststr[16];
+		rx_addr_str_t hoststr;
 		ViceLog(0,
 			("pr_GetCPS failed(%d) for user %d, host %" AFS_PTR_FMT " (%s)\n",
 			 code, viceid, client->host,
@@ -2737,7 +2734,7 @@ h_FindClient_r(struct rx_connection *tcon, afs_int32 *a_viceid)
 	&& oldClient->sid == rx_GetConnectionId(tcon)
 	&& oldClient->VenusEpoch == rx_GetConnectionEpoch(tcon)
 	&& !(oldClient->host->hostFlags & HOSTDELETED)) {
-	char hoststr[16];
+	rx_addr_str_t hoststr;
 	if (!oldClient->deleted) {
 	    /* if we didn't create it, it's not ours to put back */
 	    if (created) {
@@ -2836,7 +2833,7 @@ int
 GetClient(struct rx_connection *tcon, struct client **cp)
 {
     struct client *client;
-    char hoststr[16];
+    rx_addr_str_t hoststr;
 
     H_LOCK;
     *cp = NULL;
@@ -2942,7 +2939,7 @@ h_PrintClient(struct host *host, void *rock)
     int i;
     char tmpStr[256];
     char tbuffer[32];
-    char hoststr[16];
+    rx_addr_str_t hoststr;
     time_t LastCall, expTime;
     struct tm tm;
 
@@ -3033,7 +3030,7 @@ h_DumpHost(struct host *host, void *rock)
 
     int i;
     char tmpStr[256];
-    char hoststr[16];
+    rx_addr_str_t hoststr;
 
     H_LOCK;
     snprintf(tmpStr, sizeof tmpStr,
@@ -3056,7 +3053,7 @@ h_DumpHost(struct host *host, void *rock)
     (void)STREAM_WRITE(tmpStr, strlen(tmpStr), 1, file);
     if (host->interface)
 	for (i = 0; i < host->interface->numberOfInterfaces; i++) {
-	    char hoststr[16];
+	    rx_addr_str_t hoststr;
 	    sprintf(tmpStr, " %s",
 		     rx_PrintSockAddr((struct sockaddr *)&host->interface->interface[i].saddr, hoststr));
 	    (void)STREAM_WRITE(tmpStr, strlen(tmpStr), 1, file);
@@ -3464,7 +3461,7 @@ h_stateSaveHost(struct host * host, void* rock)
     int iovcnt = 2;
 
     if (h_isBusy_r(host)) {
-	char hoststr[16];
+	rx_addr_str_t hoststr;
 	ViceLog(1, ("Not saving host %s to disk; host appears busy\n",
 	            rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
 	/* Make sure we don't try to save callbacks to disk for this host, or
@@ -3600,9 +3597,9 @@ h_stateRestoreHost(struct fs_dump_state * state)
     }
 
     if ((hdsk.hostFlags & HWHO_INPROGRESS) || !(hdsk.hostFlags & ALTADDR)) {
-	char hoststr[16];
-	ViceLog(0, ("h_stateRestoreHost: skipping host %s:%d due to invalid flags 0x%x\n",
-	            afs_inet_ntoa_r(hdsk.host, hoststr), (int)ntohs(hdsk.port),
+	rx_addr_str_t hoststr;
+	ViceLog(0, ("h_stateRestoreHost: skipping host %s due to invalid flags 0x%x\n",
+	            rx_PrintSockAddr((struct sockaddr *)&hdsk.saddr, hoststr),
 	            (unsigned)hdsk.hostFlags));
 	bail = 0;
 	state->h_map.entries[hdsk.index].valid = FS_STATE_IDX_SKIPPED;
@@ -3657,8 +3654,7 @@ h_stateRestoreHost(struct fs_dump_state * state)
 static void
 h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
 {
-    out->host = rx_IpSockAddr((struct sockaddr *)&in->saddr);
-    out->port = rx_PortSockAddr((struct sockaddr *)&in->saddr);
+    rx_CopySockAddr((struct sockaddr *)&out->saddr, (struct sockaddr *)&in->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
     out->hcpsfailed = in->hcpsfailed;
@@ -3678,7 +3674,7 @@ h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
 static void
 h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out)
 {
-    rx_SetSockAddr(in->host, in->port, (struct sockaddr *)&out->saddr);
+    rx_CopySockAddr((struct sockaddr *)&out->saddr, (struct sockaddr *)&in->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
     out->hcpsfailed = in->hcpsfailed;
@@ -4002,7 +3998,7 @@ CheckHost_r(struct host *host, void *dummy)
 		    }
 		    host->hostFlags |= ALTADDR;	/* alternate addresses valid */
 		    if (code) {
-			char hoststr[16];
+			rx_addr_str_t hoststr;
 			(void)rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr);
 			ViceLog(0,
 				("CB: RCallBackConnectBack (host.c) failed for host %s\n",
@@ -4018,7 +4014,7 @@ CheckHost_r(struct host *host, void *dummy)
 		}
 	    } else {
 		if (!(host->hostFlags & VENUSDOWN) && host->cblist) {
-		    char hoststr[16];
+		    rx_addr_str_t hoststr;
 		    (void)rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr);
 		    if (host->interface) {
 			afsUUID uuid = host->interface->uuid;
@@ -4101,7 +4097,7 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
     afs_uint16 myPort;
     int found;
     struct Interface *interface;
-    char hoststr[16];
+    rx_addr_str_t hoststr;
     char uuidstr[128];
     afs_uint16 port7001 = htons(7001);
     struct sockaddr_in saddr;
@@ -4236,7 +4232,7 @@ int
 h_DeleteHostFromAddrHashTable_r(struct sockaddr *saddr,
 				struct host *host)
 {
-    char hoststr[16];
+    rx_addr_str_t hoststr;
     struct h_AddrHashChain **hp, *th;
 
     if (rx_IpSockAddr(saddr) == 0 && rx_PortSockAddr(saddr) == 0)
@@ -4268,7 +4264,7 @@ void
 printInterfaceAddr(struct host *host, int level)
 {
     int i, number;
-    char hoststr[16];
+    rx_addr_str_t hoststr;
 
     if (host->interface) {
 	/* check alternate addresses */

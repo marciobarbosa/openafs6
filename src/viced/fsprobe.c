@@ -22,12 +22,11 @@ struct rx_connection *serverconns[MAXSERVERS];
 char *(args[50]);
 
 afs_int32
-pxclient_Initialize(int auth, afs_int32 serverAddr)
+pxclient_Initialize(int auth, struct sockaddr *saddr)
 {
     afs_int32 code;
     rx_securityIndex scIndex;
     struct rx_securityClass *sc;
-    struct sockaddr_in saddr = rx_CreateSockAddr(serverAddr, htons(7000));
 
     code = rx_Init(htons(2115) /*0 */ );
     if (code) {
@@ -39,7 +38,7 @@ pxclient_Initialize(int auth, afs_int32 serverAddr)
     sc = rxnull_NewClientSecurityObject();
 
     serverconns[0] =
-	rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, scIndex);
+	rx_NewConnectionSA(saddr, 1, sc, scIndex);
 
     code = ubik_ClientInit(serverconns, &cstruct);
 
@@ -72,6 +71,7 @@ main(int argc, char **argv)
     memset(&host, 0, sizeof(struct sockaddr_in));
     host.sin_family = AF_INET;
     host.sin_addr.s_addr = inet_addr(av[0]);
+    host.sin_port = htons(7000);
 #ifdef STRUCT_SOCKADDR_HAS_SA_LEN
     host.sin_len = sizeof(struct sockaddr_in);
 #endif
@@ -85,7 +85,7 @@ main(int argc, char **argv)
 	    exit(1);
 	}
     }
-    if ((code = pxclient_Initialize(noAuth, host.sin_addr.s_addr)) != 0) {
+    if ((code = pxclient_Initialize(noAuth, (struct sockaddr *)&host)) != 0) {
 	printf("Couldn't initialize fs library (code=%d).\n", code);
 	exit(1);
     }

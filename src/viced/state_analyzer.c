@@ -1242,8 +1242,8 @@ dump_he_entry(void)
 {
     char hoststr[16];
     DPFSO0("hostDiskEntry");
-    DPFS1("host", afs_inet_ntoa_r(he_cursor.he.host, hoststr));
-    DPFV1("port", "u", he_cursor.he.port);
+    DPFS1("host", afs_inet_ntoa_r(((struct sockaddr_in *)&he_cursor.he.saddr)->sin_addr.s_addr, hoststr));
+    DPFV1("port", "u", ((struct sockaddr_in *)&he_cursor.he.saddr)->sin_port);
     DPFX1("hostFlags", he_cursor.he.hostFlags);
     DPFV1("Console", "u", he_cursor.he.Console);
     DPFV1("hcpsfailed", "u", he_cursor.he.hcpsfailed);

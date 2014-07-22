@@ -5285,7 +5285,7 @@ FillPerfValues(struct afs_PerfStats *a_perfP)
 	(afs_int32) stats->specialPktAllocFailures;
     a_perfP->rx_socketGreedy = (afs_int32) stats->socketGreedy;
     a_perfP->rx_bogusPacketOnRead = (afs_int32) stats->bogusPacketOnRead;
-    a_perfP->rx_bogusHost = (afs_int32) stats->bogusHost;
+    rx_SetSockAddr((afs_int32) stats->bogusHost, 0, (struct sockaddr *)&a_perfP->rx_bogusHost);
     a_perfP->rx_noPacketOnRead = (afs_int32) stats->noPacketOnRead;
     a_perfP->rx_noPacketBuffersOnRead =
 	(afs_int32) stats->noPacketBuffersOnRead;

@@ -66,7 +66,7 @@ struct afs_PerfStats {
     afs_int32 rx_noPackets_SpecialClass;	/*Ditto, specials */
     afs_int32 rx_socketGreedy;	/*Did SO_GREEDY succeed? */
     afs_int32 rx_bogusPacketOnRead;	/*Short pkts rcvd */
-    afs_int32 rx_bogusHost;	/*Host addr from bogus pkts */
+    struct sockaddr_storage rx_bogusHost;	/*Host addr from bogus pkts */
     afs_int32 rx_noPacketOnRead;	/*Read pkts w/no packet there */
     afs_int32 rx_noPacketBuffersOnRead;	/*Pkts dropped from buff shortage */
     afs_int32 rx_selects;	/*Selects waiting on pkt or timeout */

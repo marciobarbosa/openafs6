@@ -92,7 +92,7 @@ GetUpDownStats(struct server *srv)
     if (srv->cell)
 	fsport = srv->cell->fsport;
 
-    if (srv->addr->sa_portal == fsport)
+    if (rx_PortSockAddr((struct sockaddr *)&srv->addr->saddr) == fsport)
 	upDownP = afs_stats_cmperf.fs_UpDown;
     else
 	upDownP = afs_stats_cmperf.vl_UpDown;
@@ -238,7 +238,7 @@ afs_ServerDown(struct srvAddr *sa, int code, struct rx_connection *rxconn)
     if (aserver->flags & SRVR_ISDOWN || sa->sa_flags & SRVADDR_ISDOWN)
 	return 0;
     afs_MarkServerUpOrDown(sa, SRVR_ISDOWN);
-    if (sa->sa_portal == aserver->cell->vlport)
+    if (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == aserver->cell->vlport)
 	print_internet_address("afs: Lost contact with volume location server ",
 	                      sa, "", 1, code, rxconn);
     else
@@ -696,7 +696,7 @@ afs_LoopServers(int adown, struct cell *acellp, int vlalso,
 	    continue;
 
 	/* check vlserver with special code */
-	if (sa->sa_portal == AFS_VLPORT) {
+	if (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_VLPORT) {
 	    if (vlalso)
 		CheckVLServer(sa, treq);
 	    continue;
@@ -767,13 +767,13 @@ afs_FindServer(afs_int32 aserver, afs_uint16 aport, afsUUID * uuidp,
 	    if ((ts->flags & SRVR_MULTIHOMED)
 		&&
 		(memcmp((char *)uuidp, (char *)&ts->sr_uuid, sizeof(*uuidp))
-		 == 0) && (!ts->addr || (ts->addr->sa_portal == aport)))
+		 == 0) && (!ts->addr || (rx_PortSockAddr((struct sockaddr *)&ts->addr->saddr) == aport)))
 		return ts;
 	}
     } else {
 	i = SHash(aserver);
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
-	    if ((sa->sa_ip == aserver) && (sa->sa_portal == aport)) {
+	    if ((rx_IpSockAddr((struct sockaddr *)&sa->saddr) == aserver) && (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == aport)) {
 		return sa->server;
 	    }
 	}
@@ -1000,7 +1000,7 @@ afsi_SetServerIPRank(struct srvAddr *sa, afs_int32 addr,
     afs_uint32 serverAddr;
 
     myAddr = ntohl(addr);	/* one of my IP addr in host order */
-    serverAddr = ntohl(sa->sa_ip);	/* server's IP addr in host order */
+    serverAddr = ntohl(rx_IpSockAddr((struct sockaddr *)&sa->saddr));	/* server's IP addr in host order */
     subnetmask = ntohl(subnetmask);	/* subnet mask in host order */
 
     if (IN_CLASSA(myAddr))
@@ -1689,7 +1689,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 	 * it from its server structure and add it to the new one.
 	 */
 	for (oldsa = afs_srvAddrs[iphash]; oldsa; oldsa = oldsa->next_bkt) {
-	    if ((oldsa->sa_ip == aserverp[k]) && (oldsa->sa_portal == aport))
+	    if ((rx_IpSockAddr((struct sockaddr *)&oldsa->saddr) == aserverp[k]) && (rx_PortSockAddr((struct sockaddr *)&oldsa->saddr) == aport))
 		break;
 	}
 	if (oldsa && (oldsa->server != newts)) {
@@ -1717,8 +1717,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 	    newts->addr = newsa;
 
 	    /* Initialize the srvAddr Structure */
-	    newsa->sa_ip = aserverp[k];
-	    newsa->sa_portal = aport;
+	    rx_SetSockAddr(aserverp[k], aport, (struct sockaddr *)&newsa->saddr);
 	}
 
 	/* Update the srvAddr Structure */
@@ -1744,7 +1743,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 	for (orphsa = newts->addr; orphsa; orphsa = nextsa) {
 	    nextsa = orphsa->next_sa;
 	    for (k = 0; k < nservers; k++) {
-		if (orphsa->sa_ip == aserverp[k])
+		if (rx_IpSockAddr((struct sockaddr *)&orphsa->saddr) == aserverp[k])
 		    break;	/* belongs */
 	    }
 	    if (k < nservers)

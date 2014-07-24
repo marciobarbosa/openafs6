@@ -363,7 +363,7 @@ afs_PrintServerErrors(struct vrequest *areq, struct VenusFid *afid)
 		if (areq->lasterror[i] && tvp->serverHost[i]) {
 		    sa = tvp->serverHost[i]->addr;
 		    if (sa) {
-			address = ntohl(sa->sa_ip);
+			address = ntohl(rx_IpSockAddr((struct sockaddr *)&sa->saddr));
 			afs_warnuser("%s%d.%d.%d.%d code=%d", sep,
 				     (address >> 24), (address >> 16) & 0xff,
 				     (address >> 8) & 0xff, (address) & 0xff,
@@ -581,7 +581,7 @@ afs_Analyze(struct afs_conn *aconn, struct rx_connection *rxconn,
     /* Find server associated with this connection. */
     sa = aconn->parent->srvr;
     tsp = sa->server;
-    address = ntohl(sa->sa_ip);
+    address = ntohl(rx_IpSockAddr((struct sockaddr *)&sa->saddr));
 
     /* Before we do anything with acode, make sure we translate it back to
      * a system error */

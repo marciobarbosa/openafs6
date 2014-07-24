@@ -2607,8 +2607,8 @@ DECL_PIOCTL(PCheckServers)
 	    if (cellp && ts->cell != cellp)
 		continue;	/* cell spec'd and wrong */
 	    if ((ts->flags & SRVR_ISDOWN)
-		&& ts->addr->sa_portal != ts->cell->vlport) {
-		afs_pd_putInt(aout, ts->addr->sa_ip);
+		&& rx_PortSockAddr((struct sockaddr *)&ts->addr->saddr) != ts->cell->vlport) {
+		afs_pd_putInt(aout, rx_IpSockAddr((struct sockaddr *)&ts->addr->saddr));
 	    }
 	}
     }
@@ -2768,7 +2768,7 @@ DECL_PIOCTL(PFindVolume)
 	ts = tvp->serverHost[i];
 	if (!ts)
 	    break;
-	if (afs_pd_putInt(aout, ts->addr->sa_ip) != 0) {
+	if (afs_pd_putInt(aout, rx_IpSockAddr((struct sockaddr *)&ts->addr->saddr)) != 0) {
 	    code = E2BIG;
 	    goto out;
 	}
@@ -3180,7 +3180,7 @@ DECL_PIOCTL(PListCells)
     for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	if (tcell->cellHosts[i] == 0)
 	    break;
-	if (afs_pd_putInt(aout, tcell->cellHosts[i]->addr->sa_ip) != 0)
+	if (afs_pd_putInt(aout, rx_IpSockAddr((struct sockaddr *)&tcell->cellHosts[i]->addr->saddr)) != 0)
 	    goto out;
     }
     for (;i < AFS_MAXCELLHOSTS; i++) {
@@ -3988,10 +3988,10 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
 
 	i = SHash(sp->host.s_addr);
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
-	    if (sa->sa_ip == sp->host.s_addr) {
+	    if (rx_IpSockAddr((struct sockaddr *)&sa->saddr) == sp->host.s_addr) {
 		srvr = sa->server;
-		isfs = (srvr->cell && (sa->sa_portal == srvr->cell->fsport))
-		    || (sa->sa_portal == AFS_FSPORT);
+		isfs = (srvr->cell && (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == srvr->cell->fsport))
+		    || (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_FSPORT);
 		if ((!vlonly && isfs) || (vlonly && !isfs)) {
 		    matches++;
 		    break;
@@ -4001,7 +4001,7 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
 
 	if (sa && matches) {	/* found one! */
 	    if (debugsetsp) {
-		afs_warn("sa ip=%x, ip_rank=%d\n", sa->sa_ip, sa->sa_iprank);
+		afs_warn("sa ip=%x, ip_rank=%d\n", rx_IpSockAddr((struct sockaddr *)&sa->saddr), sa->sa_iprank);
 	    }
 	    sa->sa_iprank = sp->rank + afs_randomMod15();
 	    afs_SortOneServer(sa->server);
@@ -4186,8 +4186,8 @@ DECL_PIOCTL(PGetSPrefs)
 	    spout->next_offset++;
 
 	    srvr = sa->server;
-	    isfs = (srvr->cell && (sa->sa_portal == srvr->cell->fsport))
-		|| (sa->sa_portal == AFS_FSPORT);
+	    isfs = (srvr->cell && (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == srvr->cell->fsport))
+		|| (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_FSPORT);
 
 	    if ((vlonly && isfs) || (!vlonly && !isfs)) {
 		/* only report ranks for vl servers */
@@ -4200,7 +4200,7 @@ DECL_PIOCTL(PGetSPrefs)
 		return 0;
 	    }
 
-	    srvout->host.s_addr = sa->sa_ip;
+	    srvout->host.s_addr = rx_IpSockAddr((struct sockaddr *)&sa->saddr);
 	    srvout->rank = sa->sa_iprank;
 	    spout->num_servers++;
 	    srvout++;
@@ -5227,7 +5227,7 @@ DECL_PIOCTL(PCallBackAddr)
 	    continue;
 
 	/* vlserver has no callback conn */
-	if (sa->sa_portal == AFS_VLPORT) {
+	if (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_VLPORT) {
 	    continue;
 	}
 

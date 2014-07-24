@@ -448,9 +448,8 @@ struct srvAddr {
     struct server *server;	/* back to parent */
     struct sa_conn_vector *conns;   /* All user connections to this server */
     struct afs_conn *natping;
-    afs_int32 sa_ip;		/* Host addr in network byte order */
+    struct sockaddr_storage saddr;  /* Host addr and port in network byte order */
     u_short sa_iprank;		/* indiv ip address priority */
-    u_short sa_portal;		/* port addr in network byte order */
     u_char sa_flags;
 };
 

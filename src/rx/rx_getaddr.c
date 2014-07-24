@@ -95,11 +95,8 @@ rxi_getaddr(void)
 
     count = rx_getAllAddr((struct sockaddr *)buffer, 1024);
 
-    if (count <= 0) {
-    	memset(&buffer[0], 0, sizeof(struct sockaddr_storage));
-    	((struct sockaddr_in *)&buffer[0])->sin_family = AF_INET;
-    	((struct sockaddr_in *)&buffer[0])->sin_addr.s_addr = 0;
-    }
+    if (count <= 0)
+    	rx_SetSockAddr(0, 0, (struct sockaddr *)&buffer[0]);
 
     return buffer[0];	/* returns the first address */
 }
@@ -356,11 +353,9 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 		    a = (struct sockaddr_in *) info.rti_info[RTAX_NETMASK];
 		    if (a)
 			rx_CopySockAddr(&maskBuffer[count], (struct sockaddr *)a);
-		    else {
-			memset(&maskBuffer[count], 0, sizeof(struct sockaddr_in));
-			((struct sockaddr_in *)&maskBuffer[count])->sin_family = AF_INET;
-			((struct sockaddr_in *)&maskBuffer[count])->sin_addr.s_addr = htonl(0xffffffff);
-		    }
+		    else
+			rx_SetSockAddr(htonl(0xffffffff), 0, &maskBuffer[count]);
+
 		    memset(&ifr, 0, sizeof(ifr));
 		    ifr.ifr_addr.sa_family = AF_INET;
 		    strncpy(ifr.ifr_name, sdl->sdl_data, sdl->sdl_nlen);
@@ -552,9 +547,7 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 
 	    if (ioctl(s, SIOCGIFNETMASK, (caddr_t) ifr) < 0) {
 		perror("SIOCGIFNETMASK");
-		memset(&maskBuffer[count], 0, sizeof(struct sockaddr_in));
-		((struct sockaddr_in *)&maskBuffer[count])->sin_family = AF_INET;
-		((struct sockaddr_in *)&maskBuffer[count])->sin_addr.s_addr = htonl(0xffffffff);
+		rx_SetSockAddr(htonl(0xffffffff), 0, &maskBuffer[count]);
 	    } else {
 		rx_CopySockAddr(&maskBuffer[count], &ifr->ifr_addr);
 	    }

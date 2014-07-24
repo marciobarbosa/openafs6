@@ -1466,8 +1466,8 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *saddr)
                 rx_atomic_inc(&rx_stats.bogusPacketOnRead);
                 rx_stats.bogusHost = ((struct sockaddr_in *)&from)->sin_addr.s_addr;
             }
-	    dpf(("B: bogus packet from [%x,%d] nb=%d\n", ntohl(((struct sockaddr_in *)&from)->sin_addr.s_addr),
-		 ntohs(((struct sockaddr_in *)&from)->sin_port), nbytes));
+	    dpf(("B: bogus packet from [%x,%d] nb=%d\n", rx_IpSockAddr((struct sockaddr *)&from),
+		 ntohs(rx_PortSockAddr((struct sockaddr *)&from)), nbytes));
 	}
 	return 0;
     }
@@ -1479,8 +1479,8 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *saddr)
 	rx_CopySockAddr(saddr, (struct sockaddr *)&from);
 
 	dpf(("Dropped %d %s: %x.%u.%u.%u.%u.%u.%u flags %d len %d\n",
-	      p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(((struct sockaddr_in *)&from)->sin_addr.s_addr), 
-              ntohs(((struct sockaddr_in *)&from)->sin_port), p->header.serial,
+	      p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(rx_IpSockAddr((struct sockaddr *)&from)), 
+              ntohs(rx_PortSockAddr((struct sockaddr *)&from)), p->header.serial,
 	      p->header.epoch, p->header.cid, p->header.callNumber, p->header.seq, p->header.flags,
 	      p->length));
 #ifdef RX_TRIMDATABUFS

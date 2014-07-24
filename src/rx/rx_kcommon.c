@@ -533,8 +533,7 @@ rxi_GetcbiInfo(void)
     if (different) {
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-            ((struct sockaddr_in *)&myNetAddrs[j])->sin_family = AF_INET;
-	    ((struct sockaddr_in *)&myNetAddrs[j])->sin_addr.s_addr = addrs[j];
+            rx_SetSockAddr(addrs[j], 0, (struct sockaddr *)&myNetAddrs[j]);
 	}
     }
     return different;
@@ -725,8 +724,7 @@ rxi_GetIFInfo(void)
 	int l;
 	for (l = 0; l < i; l++) {
 	    myNetMTUs[l] = mtus[l];
-            ((struct sockaddr_in *)&myNetAddrs[l])->sin_family = AF_INET;
-	    ((struct sockaddr_in *)&myNetAddrs[l])->sin_addr.s_addr = addrs[l];
+            rx_SetSockAddr(addrs[l], 0, (struct sockaddr *)&myNetAddrs[l]);
 	}
     }
     return different;
@@ -781,10 +779,9 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
     }				/* for all in_ifaddrs */
 
   done:
-    if (ifad && maskp) {
-        ((struct sockaddr_in *)smaskp)->sin_family = AF_INET;
-        ((struct sockaddr_in *)smaskp)->sin_addr.s_addr = ifad->ia_subnetmask;
-    }
+    if (ifad && maskp)
+        rx_SetSockAddr(ifad->ia_subnetmask, 0, smaskp);
+
     return (ifad ? ifad->ia_ifp : NULL);
 }
 #endif /* else DARWIN || XBSD */

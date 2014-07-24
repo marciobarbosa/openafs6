@@ -304,11 +304,8 @@ rxi_getaddr(void)
 	rx_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[0]);
         ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[0]));
     }
-    else {
-        memset(&saddr, 0, sizeof(struct sockaddr_storage));
-        ((struct sockaddr_in *)&saddr)->sin_family = AF_INET;
-	((struct sockaddr_in *)&saddr)->sin_addr.s_addr = 0;
-    }
+    else
+        rx_SetSockAddr(0, 0, (struct sockaddr *)&saddr);
 
     return saddr;
 }
@@ -328,9 +325,7 @@ rx_getAllAddr(struct sockaddr buffer[], int maxSize)
 
     for (count = 0; offset < rxi_numNetAddrs && maxSize > 0;
 	 count++, offset++, maxSize--) {
-        memset(&buffer[count], 0, sizeof(struct sockaddr_in));
-        ((struct sockaddr_in *)&buffer[count])->sin_family = AF_INET;
-        ((struct sockaddr_in *)&buffer[count])->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset]));
+        rx_SetSockAddr(htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset])), 0, &buffer[count]);
     }
 
     return count;
@@ -403,13 +398,8 @@ rx_GetIFInfo(void)
                            myNetMasks_32, myNetMTUs, myNetFlags);
 
     for (i = 0; i < rxi_numNetAddrs; i++) {
-        memset(&rxi_NetAddrs[i], 0, sizeof(struct sockaddr_storage));
-        ((struct sockaddr_in *)&rxi_NetAddrs[i])->sin_family = AF_INET;
-        ((struct sockaddr_in *)&rxi_NetAddrs[i])->sin_addr.s_addr = rxi_NetAddrs_32[i];
-
-        memset(&myNetMasks[i], 0, sizeof(struct sockaddr_storage));
-        ((struct sockaddr_in *)&myNetMasks[i])->sin_family = AF_INET;
-        ((struct sockaddr_in *)&myNetMasks[i])->sin_addr.s_addr = myNetMasks_32[i];
+        rx_SetSockAddr(rxi_NetAddrs_32[i], 0, (struct sockaddr *)&rxi_NetAddrs[i]);
+        rx_SetSockAddr(myNetMasks_32[i], 0, (struct sockaddr *)&myNetMasks[i]);
 
         rxsize = rxi_AdjustIfMTU(myNetMTUs[i] - RX_IPUDP_SIZE);
         maxsize =
@@ -552,9 +542,7 @@ rx_GetIFInfo(void)
 	a = (struct sockaddr_in *)&ifr->ifr_addr;
 	if (a->sin_family != AF_INET)
 	    continue;
-        memset(&rxi_NetAddrs[rxi_numNetAddrs], 0, sizeof(struct sockaddr_storage));
-        ((struct sockaddr_in *)&rxi_NetAddrs[rxi_numNetAddrs])->sin_family = AF_INET;
-	((struct sockaddr_in *)&rxi_NetAddrs[rxi_numNetAddrs])->sin_addr.s_addr = ntohl(a->sin_addr.s_addr);
+        rx_SetSockAddr(ntohl(a->sin_addr.s_addr), 0, (struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]);
 	if (rx_IsLoopbackAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])) {
 	    /* we don't really care about "localhost" */
 	    continue;
@@ -610,13 +598,10 @@ rx_GetIFInfo(void)
 				 htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])),
 				 &mask)) {
 		/* fputs(stderr, "syscall error GETMASK\n");
-		 * perror(ifr->ifr_name); */                
-                ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
-		((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr = 0;
+		 * perror(ifr->ifr_name); */
+                rx_SetSockAddr(0, 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 	    } else
-                ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
-		((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr =
-		    ntohl(mask);
+                rx_SetSockAddr(ntohl(mask), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 	    /* fprintf(stderr, "if %s mask=0x%x\n",
 	     * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	}
@@ -637,15 +622,12 @@ rx_GetIFInfo(void)
 	}
 
 	if (rx_IpSockAddr((struct sockaddr *)&myNetMasks[rxi_numNetAddrs]) == 0) {
-            ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
-	    ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr =
-		fudge_netmask((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]);
+            rx_SetSockAddr(fudge_netmask((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 #ifdef SIOCGIFNETMASK
 	    res = ioctl(s, SIOCGIFNETMASK, ifr);
 	    if (res == 0) {
 		a = (struct sockaddr_in *)&ifr->ifr_addr;
-                ((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_family = AF_INET;
-		((struct sockaddr_in *)&myNetMasks[rxi_numNetAddrs])->sin_addr.s_addr = ntohl(a->sin_addr.s_addr);
+                rx_SetSockAddr(ntohl(a->sin_addr.s_addr), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 		/* fprintf(stderr, "if %s subnetmask=0x%x\n",
 		 * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	    } else {

@@ -214,9 +214,9 @@ int ntoh_syserr_conv(int error);
 
 
 static_inline int
-rx_IsLoopbackAddr(struct sockaddr *addr)
+rx_IsLoopbackAddr(struct sockaddr *saddr)
 {
-    return ((((struct sockaddr_in *)addr)->sin_addr.s_addr & 0xffff0000) == 0x7f000000);
+    return ((((struct sockaddr_in *)saddr)->sin_addr.s_addr & 0xffff0000) == 0x7f000000);
 }
 
 /*******************

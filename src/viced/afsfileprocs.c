@@ -6835,8 +6835,9 @@ SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr)
     int i,j;
     struct rx_connection *conn;
     afs_int32 viceid = -1;
-#endif
+#else
     struct sockaddr_in saddr;
+#endif
 
     if ((errorCode = CallPreamble(acall, ACTIVECALL, NULL, &tcon, &tcallhost)))
 	    goto Bad_CallBackRxConnAddr1;

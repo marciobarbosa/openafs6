@@ -100,7 +100,6 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
     int pmtu = IP_PMTUDISC_DONT;
 # endif
 #endif
-
 #if !defined(AFS_NT40_ENV)
     if (ntohs(rx_PortSockAddr(saddr)) >= IPPORT_RESERVED && ntohs(rx_PortSockAddr(saddr)) < IPPORT_USERRESERVED) {
 /*	(osi_Msg "%s*WARNING* port number %d is not a reserved port number.  Use port numbers above %d\n", name, port, IPPORT_USERRESERVED);
@@ -123,7 +122,6 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
 #endif
 	goto error;
     }
-
 #ifdef AFS_NT40_ENV
     rxi_xmit_init(socketFd);
 #endif /* AFS_NT40_ENV */
@@ -191,7 +189,6 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
         if (rx_stats_active)
             rx_atomic_set(&rx_stats.socketGreedy, greedy);
     }
-
 #ifdef AFS_LINUX22_ENV
     setsockopt(socketFd, SOL_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
 #endif

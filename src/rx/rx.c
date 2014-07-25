@@ -512,7 +512,6 @@ rx_InitHost(struct sockaddr *saddr)
 
     /* Allocate and initialize a socket for client and perhaps server
      * connections. */
-
     rx_socket = rxi_GetHostUDPSocket(saddr);
 
     if (rx_socket == OSI_NULLSOCKET) {
@@ -9520,7 +9519,7 @@ rx_IpSockAddr(struct sockaddr *saddr)
 short
 rx_PortSockAddr(struct sockaddr *saddr)
 {
-    struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr4;
+    struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr;
 
     return saddr4->sin_port;
 }

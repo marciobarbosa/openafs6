@@ -246,9 +246,9 @@ uu_show(struct seq_file *m, void *p)
 	int i;
 
 #if defined(NIPQUAD)
-        sprintf(ipaddr, "%u.%u.%u.%u", NIPQUAD(np->host));
+        sprintf(ipaddr, "%u.%u.%u.%u", NIPQUAD(rx_IpSockAddr((struct sockaddr *)&np->saddr)));
 #else
-        sprintf(ipaddr, "%pI4", &np->host);
+        sprintf(ipaddr, "%pI4", &(((struct sockaddr_in *)&np->saddr)->sin_addr.s_addr));
 #endif
 	seq_printf(m, "  %-15s %10d %10d", ipaddr, np->uid, np->client_uid);
 	if (np->sysnamecount) {

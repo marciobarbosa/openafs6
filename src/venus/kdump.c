@@ -2451,7 +2451,6 @@ print_exporter(int kmem, struct afs_exporter *exporter,
     }
 }
 
-
 void
 print_nfsclient(int kmem, struct nfsclientpag *ep,
 		struct nfsclientpag *ptr, int pnt)

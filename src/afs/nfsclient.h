@@ -24,14 +24,14 @@ struct nfsclientpag {
     struct exporterstats nfs_stats;
     /* .... here is also an overlay to the afs_exporter structure */
 
-    afs_int32 refCount;		/* Ref count for packages using this */
-    afs_int32 uid;		/* search based on uid and ... */
-    afs_uint32 host;		/* ... nfs client's host ip address */
-    afs_int32 pag;		/* active pag for all  (uid, host) "unpaged" conns */
-    afs_int32 client_uid;       /* actual UID on client */
-    char *sysname[MAXNUMSYSNAMES];/* user's "@sys" value; also kept in unixuser */
-    int sysnamecount;           /*  number of sysnames */
-    afs_int32 lastcall;		/*  Used for timing out nfsclientpag structs  */
+    afs_int32 refCount;		    /* Ref count for packages using this */
+    afs_int32 uid;		    /* search based on uid and ... */
+    struct sockaddr_storage saddr;  /* ... nfs client's host ip address */
+    afs_int32 pag;		    /* active pag for all  (uid, host) "unpaged" conns */
+    afs_int32 client_uid;           /* actual UID on client */
+    char *sysname[MAXNUMSYSNAMES];  /* user's "@sys" value; also kept in unixuser */
+    int sysnamecount;               /*  number of sysnames */
+    afs_int32 lastcall;		    /*  Used for timing out nfsclientpag structs  */
 };
 
 

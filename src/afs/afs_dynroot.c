@@ -87,13 +87,13 @@ static int
 afs_dynrootCellInit(void)
 {
     if (!afs_dynrootCell) {
-	afs_int32 cellHosts[AFS_MAXCELLHOSTS];
+	struct sockaddr_in cellHosts[AFS_MAXCELLHOSTS];
 	struct cell *tc;
 	int code;
 
 	memset(cellHosts, 0, sizeof(cellHosts));
 	code =
-	    afs_NewCell(AFS_DYNROOT_CELLNAME, cellHosts, CNoSUID | CNoAFSDB,
+	    afs_NewCell(AFS_DYNROOT_CELLNAME, (struct sockaddr *)cellHosts, CNoSUID | CNoAFSDB,
 			NULL, 0, 0, 0);
 	if (code)
 	    return code;

@@ -127,7 +127,7 @@ extern void afs_CellInit(void);
 extern void shutdown_cell(void);
 extern int afs_cellname_init(afs_dcache_id_t *inode, int lookupcode);
 extern int afs_cellname_write(void);
-extern afs_int32 afs_NewCell(char *acellName, afs_int32 * acellHosts,
+extern afs_int32 afs_NewCell(char *acellName, struct sockaddr *acellSaddrs,
 			     int aflags, char *linkedcname, u_short fsport,
 			     u_short vlport, int timeout);
 extern afs_int32 afs_SetPrimaryCell(char *acellName);
@@ -886,8 +886,8 @@ extern void afs_SortOneServer(struct server *asp);
 extern void afs_SortServers(struct server *aservers[], int count);
 extern void afs_ActivateServer(struct srvAddr *sap);
 #ifdef AFS_USERSPACE_IP_ADDR
-extern void afsi_SetServerIPRank(struct srvAddr *sa, afs_int32 addr,
-				afs_uint32 subnetmask);
+extern void afsi_SetServerIPRank(struct srvAddr *sa, struct sockaddr *saddr,
+				 struct sockaddr *smask);
 #else
 #if (!defined(AFS_SUN5_ENV)) && defined(USEIFADDR)
 void afsi_SetServerIPRank(struct srvAddr *sa, struct in_ifaddr *ifa);

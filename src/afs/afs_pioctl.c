@@ -3052,12 +3052,14 @@ DECL_PIOCTL(PRemoveCallBack)
 DECL_PIOCTL(PNewCell)
 {
     afs_int32 cellHosts[AFS_MAXCELLHOSTS], magic = 0;
+    struct sockaddr_in cellSaddrs[AFS_MAXCELLHOSTS];
     char *newcell = NULL;
     char *linkedcell = NULL;
     afs_int32 code, ls;
     afs_int32 linkedstate = 0;
     afs_int32 fsport = 0, vlport = 0;
     int skip;
+    int i;
 
     AFS_STATCNT(PNewCell);
     if (!afs_resourceinit_flag)	/* afs daemons haven't started yet */
@@ -3119,8 +3121,12 @@ DECL_PIOCTL(PNewCell)
     }
 
     linkedstate |= CNoSUID;	/* setuid is disabled by default for fs newcell */
+
+    for(i = 0; i < AFS_MAXCELLHOSTS; i++)
+        cellSaddrs[i] = rx_CreateSockAddr(cellHosts[i], 0);
+
     code =
-	afs_NewCell(newcell, cellHosts, linkedstate, linkedcell, fsport,
+	afs_NewCell(newcell, (struct sockaddr *)cellSaddrs, linkedstate, linkedcell, fsport,
 		    vlport, (int)0);
     return code;
 }

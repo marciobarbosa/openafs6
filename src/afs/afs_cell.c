@@ -78,7 +78,7 @@ int
 afs_AFSDBHandler(char *acellName, int acellNameLen, afs_int32 * kernelMsg)
 {
     afs_int32 timeout, code;
-    afs_int32 cellHosts[AFS_MAXCELLHOSTS];
+    struct sockaddr_in cellHosts[AFS_MAXCELLHOSTS];
 
     if (afsdb_handler_shutdown)
 	return -2;
@@ -96,13 +96,13 @@ afs_AFSDBHandler(char *acellName, int acellNameLen, afs_int32 * kernelMsg)
 
 	for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	    if (i >= hostCount)
-		cellHosts[i] = 0;
+		cellHosts[i] = rx_CreateSockAddr(0, 0);                
 	    else
-		cellHosts[i] = kernelMsg[2 + i];
+		cellHosts[i] = rx_CreateSockAddr(kernelMsg[2 + i], 0);
 	}
 
 	if (hostCount)
-	    code = afs_NewCell(acellName, cellHosts, CNoSUID, NULL, 0, 0,
+	    code = afs_NewCell(acellName, (struct sockaddr *)cellHosts, CNoSUID, NULL, 0, 0,
 			       timeout);
 
 	if (!hostCount || (code && code != EEXIST))
@@ -922,10 +922,10 @@ afs_SetPrimaryCell(char *acellName)
  * \return
  */
 afs_int32
-afs_NewCell(char *acellName, afs_int32 * acellHosts, int aflags,
+afs_NewCell(char *acellName, struct sockaddr *acellSaddrs, int aflags,
 	    char *linkedcname, u_short fsport, u_short vlport, int timeout)
 {
-    struct cell *tc, *tcl = 0;
+    struct cell *tc, *tcl = 0; /* acellHosts */
     afs_int32 i, newc = 0, code = 0;
     struct md5 m;
 
@@ -1002,10 +1002,10 @@ afs_NewCell(char *acellName, afs_int32 * acellHosts, int aflags,
     for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	/* Get server for each host and link this cell in.*/
 	struct server *ts;
-        struct sockaddr_in saddr = rx_CreateSockAddr(acellHosts[i], tc->vlport);
-	if (!acellHosts[i])
+        ((struct sockaddr_in *)&acellSaddrs[i])->sin_port = tc->vlport;
+	if (!rx_IpSockAddr(&acellSaddrs[i]))
 	    break;
-	ts = afs_GetServer((struct sockaddr *)&saddr, 1, 0, WRITE_LOCK, NULL, 0, NULL);
+	ts = afs_GetServer(&acellSaddrs[i], 1, 0, WRITE_LOCK, NULL, 0, NULL);
 	ts->cell = tc;
 	ts->flags &= ~SRVR_ISGONE;
 	/* Set the server as a host of the new cell. */

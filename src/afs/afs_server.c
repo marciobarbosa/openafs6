@@ -993,15 +993,16 @@ afs_SortServers(struct server *aservers[], int count)
  *
  */
 void
-afsi_SetServerIPRank(struct srvAddr *sa, afs_int32 addr,
-		     afs_uint32 subnetmask)
+afsi_SetServerIPRank(struct srvAddr *sa, struct sockaddr *saddr,
+		     struct sockaddr *smask)
 {
-    afs_uint32 myAddr, myNet, mySubnet, netMask;
+    afs_uint32 myAddr, myNet, mySubnet, netMask; /* addr subnetmask */
     afs_uint32 serverAddr;
+    afs_uint32 subnetmask;
 
-    myAddr = ntohl(addr);	/* one of my IP addr in host order */
+    myAddr = ntohl(rx_IpSockAddr(saddr));	/* one of my IP addr in host order */
     serverAddr = ntohl(rx_IpSockAddr((struct sockaddr *)&sa->saddr));	/* server's IP addr in host order */
-    subnetmask = ntohl(subnetmask);	/* subnet mask in host order */
+    subnetmask = ntohl(rx_IpSockAddr(smask));	/* subnet mask in host order */
 
     if (IN_CLASSA(myAddr))
 	netMask = IN_CLASSA_NET;
@@ -1162,11 +1163,14 @@ afs_SetServerPrefs(struct srvAddr *const sa)
 {
 #if     defined(AFS_USERSPACE_IP_ADDR)
     int i;
+    struct sockaddr_in saddr, smask;
 
-      sa->sa_iprank = LO;
+    sa->sa_iprank = LO;
     for (i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
-	afsi_SetServerIPRank(sa, afs_cb_interface.addr_in[i],
-			     afs_cb_interface.subnetmask[i]);
+    	saddr = rx_CreateSockAddr(afs_cb_interface.addr_in[i], 0);
+    	smask = rx_CreateSockAddr(afs_cb_interface.subnetmask[i], 0);
+	afsi_SetServerIPRank(sa, (struct sockaddr *)&saddr,
+			     (struct sockaddr *)&smask);
     }
 #else				/* AFS_USERSPACE_IP_ADDR */
 #if	defined(AFS_SUN5_ENV)

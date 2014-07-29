@@ -889,6 +889,8 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	 * name.  Parameter 4 is the length of the name, including the null.  Parm 5 is the
 	 * home cell flag (0x1 bit) and the nosuid flag (0x2 bit) */
 	struct afsop_cell *tcell = afs_osi_Alloc(sizeof(struct afsop_cell));
+	struct sockaddr_in shosts[AFS_MAXCELLHOSTS];
+	int i;
 
 	osi_Assert(tcell != NULL);
 	code = afs_InitDynroot();
@@ -901,9 +903,13 @@ afs_syscall_call(long parm, long parm2, long parm3,
 		code = EFAULT;
 	    else {
 	      AFS_COPYIN(AFSKPTR(parm3), (caddr_t)tcell->cellName, parm4, code);
-		if (!code)
-		    afs_NewCell(tcell->cellName, tcell->hosts, parm5, NULL, 0,
+		if (!code) {
+		    for(i = 0; i < AFS_MAXCELLHOSTS; i++)
+		    	shosts[i] = rx_CreateSockAddr(tcell->hosts[i], 0);
+
+		    afs_NewCell(tcell->cellName, (struct sockaddr *)shosts, parm5, NULL, 0,
 				0, 0);
+		}
 	    }
 	}
 	afs_osi_Free(tcell, sizeof(struct afsop_cell));
@@ -912,6 +918,8 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	char *tbuffer = osi_AllocSmallSpace(AFS_SMALLOCSIZ), *lcnamep = 0;
 	char *tbuffer1 = osi_AllocSmallSpace(AFS_SMALLOCSIZ);
 	int cflags = parm4;
+	struct sockaddr_in shosts[AFS_MAXCELLHOSTS];
+	int i;
 
 	osi_Assert(tcell != NULL);
 	osi_Assert(tbuffer != NULL);
@@ -942,10 +950,14 @@ afs_syscall_call(long parm, long parm2, long parm3,
 		if (parm4 & 8) {
 		    cflags |= CHush;
 		}
-		if (!code)
+		if (!code) {
+		    for(i = 0; i < AFS_MAXCELLHOSTS; i++)
+		    	shosts[i] = rx_CreateSockAddr(tcell->hosts[i], 0);
+
 		    code =
-			afs_NewCell(tbuffer1, tcell->hosts, cflags, lcnamep,
+			afs_NewCell(tbuffer1, (struct sockaddr *)shosts, cflags, lcnamep,
 				    0, 0, 0);
+		}
 	    }
 	}
 	afs_osi_Free(tcell, sizeof(struct afsop_cell));

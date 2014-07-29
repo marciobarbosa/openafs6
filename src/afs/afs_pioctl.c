@@ -3981,14 +3981,14 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
     touchedSize = 0;
     for (k = 0; k < num; sp++, k++) {
 	if (debugsetsp) {
-	    afs_warn("sp host=%x, rank=%d\n", sp->host.s_addr, sp->rank);
+	    afs_warn("sp host=%x, rank=%d\n", rx_IpSockAddr((struct sockaddr *)&sp->saddr), sp->rank);
 	}
 	matches = 0;
 	ObtainReadLock(&afs_xserver);
 
-	i = SHash(sp->host.s_addr);
+	i = SHash(rx_IpSockAddr((struct sockaddr *)&sp->saddr));
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
-	    if (rx_IpSockAddr((struct sockaddr *)&sa->saddr) == sp->host.s_addr) {
+	    if (rx_IsSockAddrEqual((struct sockaddr *)&sa->saddr, (struct sockaddr *)&sp->saddr)) {
 		srvr = sa->server;
 		isfs = (srvr->cell && (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == srvr->cell->fsport))
 		    || (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_FSPORT);
@@ -4027,9 +4027,9 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
 	/* if we didn't find one, start to create one. */
 	/* Note that it doesn't have a cell yet...     */
 	if (!matches) {
-	    afs_uint32 temp = sp->host.s_addr;
+            ((struct sockaddr_in *)&sp->saddr)->sin_port = (vlonly ? AFS_VLPORT : AFS_FSPORT);
 	    srvr =
-		afs_GetServer(&temp, 1, 0, (vlonly ? AFS_VLPORT : AFS_FSPORT),
+		afs_GetServer((struct sockaddr *)&sp->saddr, 1, 0,
 			      WRITE_LOCK, (afsUUID *) 0, 0, NULL);
 	    srvr->addr->sa_iprank = sp->rank + afs_randomMod15();
 	    afs_PutServer(srvr, WRITE_LOCK);
@@ -4200,7 +4200,7 @@ DECL_PIOCTL(PGetSPrefs)
 		return 0;
 	    }
 
-	    srvout->host.s_addr = rx_IpSockAddr((struct sockaddr *)&sa->saddr);
+            rx_CopySockAddr((struct sockaddr *)&srvout->saddr, (struct sockaddr *)&sa->saddr);
 	    srvout->rank = sa->sa_iprank;
 	    spout->num_servers++;
 	    srvout++;
@@ -4719,7 +4719,7 @@ DECL_PIOCTL(PGetCPrefs)
      */
     for (i = spin->offset, j = 0; (i < afs_cb_interface.numberOfInterfaces)
 	 && (j < maxNumber); i++, j++, srvout++)
-	srvout->host.s_addr = afs_cb_interface.addr_in[i];
+        rx_SetSockAddr(afs_cb_interface.addr_in[i], 0, (struct sockaddr *)&srvout->saddr);
 
     spout->num_servers = j;
     aout->ptr += sizeof(struct sprefinfo) + (j - 1) * sizeof(struct spref);
@@ -4778,7 +4778,7 @@ DECL_PIOCTL(PSetCPrefs)
     ObtainWriteLock(&afs_xinterface, 412);
     afs_cb_interface.numberOfInterfaces = sin->num_servers;
     for (i = 0; (unsigned short)i < sin->num_servers; i++)
-	afs_cb_interface.addr_in[i] = sin->servers[i].host.s_addr;
+	afs_cb_interface.addr_in[i] = rx_IpSockAddr((struct sockaddr *)&sin->servers[i].saddr);
 
     ReleaseWriteLock(&afs_xinterface);
     return 0;

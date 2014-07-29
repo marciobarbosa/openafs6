@@ -753,7 +753,7 @@ afs_LoopServers(int adown, struct cell *acellp, int vlalso,
 
 /* find a server structure given the host address */
 struct server *
-afs_FindServer(afs_int32 aserver, afs_uint16 aport, afsUUID * uuidp,
+afs_FindServer(struct sockaddr *saddr, afsUUID * uuidp,
 	       afs_int32 locktype)
 {
     struct server *ts;
@@ -767,13 +767,13 @@ afs_FindServer(afs_int32 aserver, afs_uint16 aport, afsUUID * uuidp,
 	    if ((ts->flags & SRVR_MULTIHOMED)
 		&&
 		(memcmp((char *)uuidp, (char *)&ts->sr_uuid, sizeof(*uuidp))
-		 == 0) && (!ts->addr || (rx_PortSockAddr((struct sockaddr *)&ts->addr->saddr) == aport)))
+		 == 0) && (!ts->addr || rx_IsSockPortEqual((struct sockaddr *)&ts->addr->saddr, saddr)))
 		return ts;
 	}
     } else {
-	i = SHash(aserver);
+	i = SHash(rx_IpSockAddr(saddr));
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
-	    if ((rx_IpSockAddr((struct sockaddr *)&sa->saddr) == aserver) && (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == aport)) {
+	    if (rx_IsSockAddrEqual((struct sockaddr *)&sa->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&sa->saddr, saddr)) {
 		return sa->server;
 	    }
 	}
@@ -1552,7 +1552,8 @@ static struct server *
 afs_SearchServer(u_short aport, afsUUID * uuidp, afs_int32 locktype,
 		 struct server **oldts, afs_int32 addr_uniquifier)
 {
-    struct server *ts = afs_FindServer(0, aport, uuidp, locktype);
+    struct sockaddr_in saddr = rx_CreateSockAddr(0, aport);
+    struct server *ts = afs_FindServer((struct sockaddr *)&saddr, uuidp, locktype);
     if (ts && (ts->sr_addr_uniquifier == addr_uniquifier) && ts->addr) {
 	/* Found a server struct that is multihomed and same
 	 * uniqufier (same IP addrs). The above if statement is the
@@ -1592,8 +1593,8 @@ afs_SearchServer(u_short aport, afsUUID * uuidp, afs_int32 locktype,
  *      A server structure matching the request.
  */
 struct server *
-afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
-	      u_short aport, afs_int32 locktype, afsUUID * uuidp,
+afs_GetServer(struct sockaddr *saddr, afs_int32 nservers, afs_int32 acell,
+	      afs_int32 locktype, afsUUID * uuidp,
 	      afs_int32 addr_uniquifier, struct volume *tv)
 {
     struct server *oldts = 0, *ts, *newts, *orphts = 0;
@@ -1610,7 +1611,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 	if (nservers != 1)
 	    panic("afs_GetServer: incorrect count of servers");
 	ObtainReadLock(&afs_xsrvAddr);
-	ts = afs_FindServer(aserverp[0], aport, NULL, locktype);
+	ts = afs_FindServer(saddr, NULL, locktype);
 	ReleaseReadLock(&afs_xsrvAddr);
 	if (ts && !(ts->flags & SRVR_MULTIHOMED)) {
 	    /* Found a server struct that is not multihomed and has the
@@ -1623,7 +1624,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 	if (nservers <= 0)
 	    panic("afs_GetServer: incorrect count of servers");
 
-	ts = afs_SearchServer(aport, uuidp, locktype, &oldts, addr_uniquifier);
+	ts = afs_SearchServer(rx_PortSockAddr(saddr), uuidp, locktype, &oldts, addr_uniquifier);
 	if (ts) {
 	    ReleaseSharedLock(&afs_xserver);
 	    return ts;
@@ -1642,7 +1643,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 
 	/* we don't know what changed while we didn't hold the lock */
 	oldts = 0;
-	ts = afs_SearchServer(aport, uuidp, locktype, &oldts,
+	ts = afs_SearchServer(rx_PortSockAddr(saddr), uuidp, locktype, &oldts,
 			      addr_uniquifier);
 	if (ts) {
 	    ReleaseWriteLock(&afs_xserver);
@@ -1667,7 +1668,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 
 	/* Add the server struct to the afs_servers[] hash chain */
 	srvhash =
-	    (uuidp ? (afs_uuid_hash(uuidp) % NSERVERS) : SHash(aserverp[0]));
+	    (uuidp ? (afs_uuid_hash(uuidp) % NSERVERS) : SHash(rx_IpSockAddr(saddr)));
 	newts->next = afs_servers[srvhash];
 	afs_servers[srvhash] = newts;
     }
@@ -1683,13 +1684,13 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 
     /* For each IP address we are registering */
     for (k = 0; k < nservers; k++) {
-	iphash = SHash(aserverp[k]);
+	iphash = SHash(rx_IpSockAddr(&saddr[k]));
 
 	/* Check if the srvAddr structure already exists. If so, remove
 	 * it from its server structure and add it to the new one.
 	 */
 	for (oldsa = afs_srvAddrs[iphash]; oldsa; oldsa = oldsa->next_bkt) {
-	    if ((rx_IpSockAddr((struct sockaddr *)&oldsa->saddr) == aserverp[k]) && (rx_PortSockAddr((struct sockaddr *)&oldsa->saddr) == aport))
+	    if (rx_IsSockAddrEqual((struct sockaddr *)&oldsa->saddr, &saddr[k]) && rx_IsSockPortEqual((struct sockaddr *)&oldsa->saddr, &saddr[k]))
 		break;
 	}
 	if (oldsa && (oldsa->server != newts)) {
@@ -1717,7 +1718,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 	    newts->addr = newsa;
 
 	    /* Initialize the srvAddr Structure */
-	    rx_SetSockAddr(aserverp[k], aport, (struct sockaddr *)&newsa->saddr);
+	    rx_CopySockAddr((struct sockaddr *)&newsa->saddr, &saddr[k]);
 	}
 
 	/* Update the srvAddr Structure */
@@ -1743,7 +1744,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 	for (orphsa = newts->addr; orphsa; orphsa = nextsa) {
 	    nextsa = orphsa->next_sa;
 	    for (k = 0; k < nservers; k++) {
-		if (rx_IpSockAddr((struct sockaddr *)&orphsa->saddr) == aserverp[k])
+		if (rx_IsSockAddrEqual((struct sockaddr *)&orphsa->saddr, &saddr[k]))
 		    break;	/* belongs */
 	    }
 	    if (k < nservers)
@@ -1762,7 +1763,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 		 * in the afs_servers table by its ip address (only by uuid -
 		 * which this has none).
 		 */
-		iphash = SHash(aserverp[k]);
+		iphash = SHash(rx_IpSockAddr(&saddr[k]));
 		orphts->next = afs_servers[iphash];
 		afs_servers[iphash] = orphts;
 
@@ -1801,7 +1802,7 @@ afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
 
     ReleaseWriteLock(&afs_xsrvAddr);
 
-    if ( aport == AFS_FSPORT && !(newts->flags & SCAPS_KNOWN))
+    if ( rx_PortSockAddr(saddr) == AFS_FSPORT && !(newts->flags & SCAPS_KNOWN))
 	afs_GetCapabilities(newts);
 
     ReleaseWriteLock(&afs_xserver);

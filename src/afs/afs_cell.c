@@ -1002,10 +1002,10 @@ afs_NewCell(char *acellName, afs_int32 * acellHosts, int aflags,
     for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	/* Get server for each host and link this cell in.*/
 	struct server *ts;
-	afs_uint32 temp = acellHosts[i];
-	if (!temp)
+        struct sockaddr_in saddr = rx_CreateSockAddr(acellHosts[i], tc->vlport);
+	if (!acellHosts[i])
 	    break;
-	ts = afs_GetServer(&temp, 1, 0, tc->vlport, WRITE_LOCK, NULL, 0, NULL);
+	ts = afs_GetServer((struct sockaddr *)&saddr, 1, 0, WRITE_LOCK, NULL, 0, NULL);
 	ts->cell = tc;
 	ts->flags &= ~SRVR_ISGONE;
 	/* Set the server as a host of the new cell. */

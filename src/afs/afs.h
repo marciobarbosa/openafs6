@@ -512,7 +512,7 @@ struct server {
  * also in venus.h
  */
 struct spref {
-    struct in_addr host;
+    struct sockaddr_storage saddr;
     unsigned short rank;
 };
 

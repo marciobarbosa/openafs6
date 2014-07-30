@@ -996,7 +996,7 @@ void
 afsi_SetServerIPRank(struct srvAddr *sa, struct sockaddr *saddr,
 		     struct sockaddr *smask)
 {
-    afs_uint32 myAddr, myNet, mySubnet, netMask; /* addr subnetmask */
+    afs_uint32 myAddr, myNet, mySubnet, netMask;
     afs_uint32 serverAddr;
     afs_uint32 subnetmask;
 

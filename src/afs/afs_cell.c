@@ -96,7 +96,7 @@ afs_AFSDBHandler(char *acellName, int acellNameLen, afs_int32 * kernelMsg)
 
 	for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	    if (i >= hostCount)
-		cellHosts[i] = rx_CreateSockAddr(0, 0);                
+		cellHosts[i] = rx_CreateSockAddr(0, 0);
 	    else
 		cellHosts[i] = rx_CreateSockAddr(kernelMsg[2 + i], 0);
 	}
@@ -925,7 +925,7 @@ afs_int32
 afs_NewCell(char *acellName, struct sockaddr *acellSaddrs, int aflags,
 	    char *linkedcname, u_short fsport, u_short vlport, int timeout)
 {
-    struct cell *tc, *tcl = 0; /* acellHosts */
+    struct cell *tc, *tcl = 0;
     afs_int32 i, newc = 0, code = 0;
     struct md5 m;
 

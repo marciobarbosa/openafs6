@@ -6835,7 +6835,6 @@ SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr)
     int i,j;
     struct rx_connection *conn;
     afs_int32 viceid = -1;
-#else
     struct sockaddr_in saddr;
 #endif
 

@@ -110,7 +110,7 @@ rxi_GetIFInfo()
 	    rxmtu = (afsifinfo[i].mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = afsifinfo[i].ipaddr;
-	    if (rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
+	    if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -121,7 +121,7 @@ rxi_GetIFInfo()
 	    maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
 	    addrs[i] = ifinaddr;
 
-            saddr = rx_CreateSockAddr(ifinaddr, 0);
+            saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
 
 	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && maxmtu > rx_maxReceiveSize) {
 		rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
@@ -170,7 +170,7 @@ rxi_GetIFInfo()
 	    rxmtu = (ipif->ipif_mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = ntohl(ipif->ipif_local_addr);
-	    if (rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
+	    if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -183,7 +183,7 @@ rxi_GetIFInfo()
 	    addrs[i] = ifinaddr;
 	    i++;
 
-            saddr = rx_CreateSockAddr(ifinaddr, 0);
+            saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
 
 	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && maxmtu > rx_maxReceiveSize) {
 		rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
@@ -227,7 +227,7 @@ rxi_FindIfMTU(struct sockaddr *addr)
 
     if (numMyNetAddrs == 0)
 	rxi_GetIFInfo();
-    myAddr = ntohl(rx_IpSockAddr(addr));
+    myAddr = ntohl(xxx_rx_IpSockAddr(addr));
 
     if (IN_CLASSA(myAddr))
 	netMask = IN_CLASSA_NET;
@@ -436,7 +436,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), aport);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), aport);
 
     return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }

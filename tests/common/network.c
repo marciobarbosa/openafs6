@@ -28,7 +28,7 @@ afstest_IsLoopbackNetworkDefault(void)
     }
     memcpy(&addr, host->h_addr, sizeof(addr));
 
-    saddr = rx_CreateSockAddr(ntohl(addr), 0);
+    saddr = xxx_rx_CreateSockAddr(ntohl(addr), 0);
 
     return(rx_IsLoopbackAddr((struct sockaddr *)&saddr));
 }

@@ -275,7 +275,7 @@ main(int argc, char *argv[])
 	{
             ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
             for(i = 0; i < ccode; i++)
-                SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+                SHostAddrs[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1)
             host = SHostAddrs[0];
@@ -283,7 +283,7 @@ main(int argc, char *argv[])
 
     /* Initialize Rx, telling it port number this server will use for its
      * single service */
-    saddr = rx_CreateSockAddr(host, htons(AFSCONF_UPDATEPORT));
+    saddr = xxx_rx_CreateSockAddr(host, htons(AFSCONF_UPDATEPORT));
     if (rx_InitHost((struct sockaddr *)&saddr) < 0)
 	Quit("rx_init");
 
@@ -296,7 +296,7 @@ main(int argc, char *argv[])
      * which is called to decode requests is passed in here
      * (UPDATE_ExecuteRequest). */
 
-    saddr = rx_CreateSockAddr(host, 0);
+    saddr = xxx_rx_CreateSockAddr(host, 0);
 
     service =
 	rx_NewServiceHost((struct sockaddr *)&saddr, UPDATE_SERVICEID, "UPDATE", securityClasses,

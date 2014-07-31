@@ -2607,8 +2607,8 @@ DECL_PIOCTL(PCheckServers)
 	    if (cellp && ts->cell != cellp)
 		continue;	/* cell spec'd and wrong */
 	    if ((ts->flags & SRVR_ISDOWN)
-		&& rx_PortSockAddr((struct sockaddr *)&ts->addr->saddr) != ts->cell->vlport) {
-		afs_pd_putInt(aout, rx_IpSockAddr((struct sockaddr *)&ts->addr->saddr));
+		&& xxx_rx_PortSockAddr((struct sockaddr *)&ts->addr->saddr) != ts->cell->vlport) {
+		afs_pd_putInt(aout, xxx_rx_IpSockAddr((struct sockaddr *)&ts->addr->saddr));
 	    }
 	}
     }
@@ -2768,7 +2768,7 @@ DECL_PIOCTL(PFindVolume)
 	ts = tvp->serverHost[i];
 	if (!ts)
 	    break;
-	if (afs_pd_putInt(aout, rx_IpSockAddr((struct sockaddr *)&ts->addr->saddr)) != 0) {
+	if (afs_pd_putInt(aout, xxx_rx_IpSockAddr((struct sockaddr *)&ts->addr->saddr)) != 0) {
 	    code = E2BIG;
 	    goto out;
 	}
@@ -3123,7 +3123,7 @@ DECL_PIOCTL(PNewCell)
     linkedstate |= CNoSUID;	/* setuid is disabled by default for fs newcell */
 
     for(i = 0; i < AFS_MAXCELLHOSTS; i++)
-        cellSaddrs[i] = rx_CreateSockAddr(cellHosts[i], 0);
+        cellSaddrs[i] = xxx_rx_CreateSockAddr(cellHosts[i], 0);
 
     code =
 	afs_NewCell(newcell, (struct sockaddr *)cellSaddrs, linkedstate, linkedcell, fsport,
@@ -3186,7 +3186,7 @@ DECL_PIOCTL(PListCells)
     for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	if (tcell->cellHosts[i] == 0)
 	    break;
-	if (afs_pd_putInt(aout, rx_IpSockAddr((struct sockaddr *)&tcell->cellHosts[i]->addr->saddr)) != 0)
+	if (afs_pd_putInt(aout, xxx_rx_IpSockAddr((struct sockaddr *)&tcell->cellHosts[i]->addr->saddr)) != 0)
 	    goto out;
     }
     for (;i < AFS_MAXCELLHOSTS; i++) {
@@ -3987,17 +3987,17 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
     touchedSize = 0;
     for (k = 0; k < num; sp++, k++) {
 	if (debugsetsp) {
-	    afs_warn("sp host=%x, rank=%d\n", rx_IpSockAddr((struct sockaddr *)&sp->saddr), sp->rank);
+	    afs_warn("sp host=%x, rank=%d\n", xxx_rx_IpSockAddr((struct sockaddr *)&sp->saddr), sp->rank);
 	}
 	matches = 0;
 	ObtainReadLock(&afs_xserver);
 
-	i = SHash(rx_IpSockAddr((struct sockaddr *)&sp->saddr));
+	i = SHash(xxx_rx_IpSockAddr((struct sockaddr *)&sp->saddr));
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
 	    if (rx_IsSockAddrEqual((struct sockaddr *)&sa->saddr, (struct sockaddr *)&sp->saddr)) {
 		srvr = sa->server;
-		isfs = (srvr->cell && (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == srvr->cell->fsport))
-		    || (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_FSPORT);
+		isfs = (srvr->cell && (xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr) == srvr->cell->fsport))
+		    || (xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_FSPORT);
 		if ((!vlonly && isfs) || (vlonly && !isfs)) {
 		    matches++;
 		    break;
@@ -4007,7 +4007,7 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
 
 	if (sa && matches) {	/* found one! */
 	    if (debugsetsp) {
-		afs_warn("sa ip=%x, ip_rank=%d\n", rx_IpSockAddr((struct sockaddr *)&sa->saddr), sa->sa_iprank);
+		afs_warn("sa ip=%x, ip_rank=%d\n", xxx_rx_IpSockAddr((struct sockaddr *)&sa->saddr), sa->sa_iprank);
 	    }
 	    sa->sa_iprank = sp->rank + afs_randomMod15();
 	    afs_SortOneServer(sa->server);
@@ -4192,8 +4192,8 @@ DECL_PIOCTL(PGetSPrefs)
 	    spout->next_offset++;
 
 	    srvr = sa->server;
-	    isfs = (srvr->cell && (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == srvr->cell->fsport))
-		|| (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_FSPORT);
+	    isfs = (srvr->cell && (xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr) == srvr->cell->fsport))
+		|| (xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_FSPORT);
 
 	    if ((vlonly && isfs) || (!vlonly && !isfs)) {
 		/* only report ranks for vl servers */
@@ -4725,7 +4725,7 @@ DECL_PIOCTL(PGetCPrefs)
      */
     for (i = spin->offset, j = 0; (i < afs_cb_interface.numberOfInterfaces)
 	 && (j < maxNumber); i++, j++, srvout++)
-        rx_SetSockAddr(afs_cb_interface.addr_in[i], 0, (struct sockaddr *)&srvout->saddr);
+        xxx_rx_SetSockAddr(afs_cb_interface.addr_in[i], 0, (struct sockaddr *)&srvout->saddr);
 
     spout->num_servers = j;
     aout->ptr += sizeof(struct sprefinfo) + (j - 1) * sizeof(struct spref);
@@ -4784,7 +4784,7 @@ DECL_PIOCTL(PSetCPrefs)
     ObtainWriteLock(&afs_xinterface, 412);
     afs_cb_interface.numberOfInterfaces = sin->num_servers;
     for (i = 0; (unsigned short)i < sin->num_servers; i++)
-	afs_cb_interface.addr_in[i] = rx_IpSockAddr((struct sockaddr *)&sin->servers[i].saddr);
+	afs_cb_interface.addr_in[i] = xxx_rx_IpSockAddr((struct sockaddr *)&sin->servers[i].saddr);
 
     ReleaseWriteLock(&afs_xinterface);
     return 0;
@@ -5233,7 +5233,7 @@ DECL_PIOCTL(PCallBackAddr)
 	    continue;
 
 	/* vlserver has no callback conn */
-	if (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_VLPORT) {
+	if (xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_VLPORT) {
 	    continue;
 	}
 

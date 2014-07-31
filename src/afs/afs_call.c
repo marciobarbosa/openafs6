@@ -128,7 +128,7 @@ afs_InitSetup(int preallocs)
     /* start RX */
     if(!afscall_set_rxpck_received)
     rx_extraPackets = AFS_NRXPACKETS;	/* smaller # of packets */
-    saddr = rx_CreateSockAddr(rx_bindhost, htons(7001));
+    saddr = xxx_rx_CreateSockAddr(rx_bindhost, htons(7001));
     code = rx_InitHost((struct sockaddr *)&saddr);
     if (code) {
 	afs_warn("AFS: RX failed to initialize %d).\n", code);
@@ -898,7 +898,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	    AFS_COPYIN(AFSKPTR(parm2), (caddr_t)hosts, sizeof(hosts), code);
 
 	    for(i = 0; i < AFS_MAXCELLHOSTS; i++)
-	    	rx_SetSockAddr(hosts[i], 0, (struct sockaddr *)&tcell->saddrs[i]);
+	    	xxx_rx_SetSockAddr(hosts[i], 0, (struct sockaddr *)&tcell->saddrs[i]);
 	}
 	if (!code) {
 	    if (parm4 > sizeof(tcell->cellName))
@@ -932,7 +932,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	    AFS_COPYIN(AFSKPTR(parm2), (caddr_t)hosts, sizeof(hosts), code);
 
 	    for(i = 0; i < AFS_MAXCELLHOSTS; i++)
-	    	rx_SetSockAddr(hosts[i], 0, (struct sockaddr *)&tcell->saddrs[i]);
+	    	xxx_rx_SetSockAddr(hosts[i], 0, (struct sockaddr *)&tcell->saddrs[i]);
 	}
 	if (!code) {
 	    AFS_COPYINSTR(AFSKPTR(parm3), tbuffer1, AFS_SMALLOCSIZ,
@@ -1182,7 +1182,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
 		afs_cb_interface.mtu[i] = (parm5 ? mtubuffer[i] : htonl(1500));
 #endif
 	    }
-	    saddr = rx_CreateSockAddr(buffer[0], 0);
+	    saddr = xxx_rx_CreateSockAddr(buffer[0], 0);
 	    rxi_setaddr((struct sockaddr *)&saddr);
 	    if (!refresh) {
 		if (rxbind)
@@ -1227,7 +1227,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
     } else if (parm == AFSOP_GETMTU) {
 	afs_uint32 mtu = 0;
 #if	!defined(AFS_SUN5_ENV) && !defined(AFS_LINUX20_ENV)
-	struct sockaddr_in saddr = rx_CreateSockAddr(parm2, 0);
+	struct sockaddr_in saddr = xxx_rx_CreateSockAddr(parm2, 0);
 # ifdef AFS_USERSPACE_IP_ADDR
 	afs_int32 i;
 	i = rxi_Findcbi((struct sockaddr *)&saddr);
@@ -1261,7 +1261,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
     } else if (parm == AFSOP_GETMASK) {	/* parm2 == addr in net order */
 	afs_uint32 mask = 0;
 #if	!defined(AFS_SUN5_ENV)
-	struct sockaddr_in saddr_ = rx_CreateSockAddr(parm2, 0);
+	struct sockaddr_in saddr_ = xxx_rx_CreateSockAddr(parm2, 0);
 # ifdef AFS_USERSPACE_IP_ADDR
 	afs_int32 i;
 	i = rxi_Findcbi((struct sockaddr *)&saddr_);

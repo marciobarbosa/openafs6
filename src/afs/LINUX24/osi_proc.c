@@ -217,7 +217,7 @@ static int uu_show(struct seq_file *m, void *p)
         char ipaddr[16];
 	int i;
 
-        sprintf(ipaddr, "%u.%u.%u.%u", NIPQUAD(rx_IpSockAddr((struct sockaddr *)&np->saddr)));
+        sprintf(ipaddr, "%u.%u.%u.%u", NIPQUAD(xxx_rx_IpSockAddr((struct sockaddr *)&np->saddr)));
 	seq_printf(m, "  %-15s %10d %10d", ipaddr, np->uid, np->client_uid);
 	if (np->sysnamecount) {
 	    for (i = 0; i < np->sysnamecount; i++)

@@ -1074,14 +1074,14 @@ main(int argc, char **argv, char **envp)
         } else {
             ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
             for(i = 0; i < ccode; i++)
-            	SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+            	SHostAddrs[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1)
             host = SHostAddrs[0];
     }
     for (i = 0; i < 10; i++) {
 	if (rxBind) {
-	    saddr = rx_CreateSockAddr(host, htons(AFSCONF_NANNYPORT));
+	    saddr = xxx_rx_CreateSockAddr(host, htons(AFSCONF_NANNYPORT));
 	    code = rx_InitHost((struct sockaddr *)&saddr);
 	} else {
 	    code = rx_Init(htons(AFSCONF_NANNYPORT));
@@ -1135,7 +1135,7 @@ main(int argc, char **argv, char **envp)
 	bozo_CreatePidFile("bosserver", NULL, getpid());
     }
 
-    saddr = rx_CreateSockAddr(host, 0);
+    saddr = xxx_rx_CreateSockAddr(host, 0);
 
     tservice = rx_NewServiceHost((struct sockaddr *)&saddr, /* service id */ 1,
 			         "bozo", securityClasses, numClasses,

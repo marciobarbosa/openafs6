@@ -511,7 +511,7 @@ main(int argc, char **argv)
 	{
 	    ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
             for(i = 0; i < ccode; i++)
-                SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+                SHostAddrs[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
 	}
 	if (ccode == 1) {
 	    host = SHostAddrs[0];
@@ -519,7 +519,7 @@ main(int argc, char **argv)
 	     * again by the ubik init stuff, it doesn't really matter
 	     * -- klm
 	     */
-            saddr = rx_CreateSockAddr(host, htons(AFSCONF_PROTPORT));
+            saddr = xxx_rx_CreateSockAddr(host, htons(AFSCONF_PROTPORT));
 	    rx_InitHost((struct sockaddr *)&saddr);
 	}
     }
@@ -548,7 +548,7 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(prdir, &securityClasses, &numClasses);
 
-    saddr = rx_CreateSockAddr(host, 0);
+    saddr = xxx_rx_CreateSockAddr(host, 0);
 
     tservice =
 	rx_NewServiceHost((struct sockaddr *)&saddr, PRSRV, "Protection Server", securityClasses,

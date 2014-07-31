@@ -1386,7 +1386,7 @@ CleanupTimedOutCallBacks_r(void)
 		cbi = cb->tnext;
 		ViceLog(8,
 			("CCB: deleting timed out call back %x (%s), (%" AFS_VOLID_FMT ",%u,%u)\n",
-                         rx_IpSockAddr((struct sockaddr *)&h_itoh(cb->hhead)->saddr),
+                         xxx_rx_IpSockAddr((struct sockaddr *)&h_itoh(cb->hhead)->saddr),
                          rx_PrintSockAddr((struct sockaddr *)&h_itoh(cb->hhead)->saddr, hoststr),
 			 afs_printable_VolumeId_lu(itofe(cb->fhead)->volid),
 			 itofe(cb->fhead)->vnode, itofe(cb->fhead)->unique));

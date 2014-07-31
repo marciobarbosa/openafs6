@@ -422,7 +422,7 @@ uuid_get_address(uuid_address_p_t addr)
 #ifdef UKERNEL
     else {
         saddr = rxi_getaddr();
-	addr1 = rx_IpSockAddr((struct sockaddr *)&saddr);
+	addr1 = xxx_rx_IpSockAddr((struct sockaddr *)&saddr);
     }
 #endif
 

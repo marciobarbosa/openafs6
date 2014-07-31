@@ -101,14 +101,14 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
 # endif
 #endif
 #if !defined(AFS_NT40_ENV)
-    if (ntohs(rx_PortSockAddr(saddr)) >= IPPORT_RESERVED && ntohs(rx_PortSockAddr(saddr)) < IPPORT_USERRESERVED) {
+    if (ntohs(xxx_rx_PortSockAddr(saddr)) >= IPPORT_RESERVED && ntohs(xxx_rx_PortSockAddr(saddr)) < IPPORT_USERRESERVED) {
 /*	(osi_Msg "%s*WARNING* port number %d is not a reserved port number.  Use port numbers above %d\n", name, port, IPPORT_USERRESERVED);
 */ ;
     }
-    if (ntohs(rx_PortSockAddr(saddr)) > 0 && ntohs(rx_PortSockAddr(saddr)) < IPPORT_RESERVED && geteuid() != 0) {
+    if (ntohs(xxx_rx_PortSockAddr(saddr)) > 0 && ntohs(xxx_rx_PortSockAddr(saddr)) < IPPORT_RESERVED && geteuid() != 0) {
 	(osi_Msg
 	 "%sport number %d is a reserved port number which may only be used by root.  Use port numbers above %d\n",
-	 name, ntohs(rx_PortSockAddr(saddr)), IPPORT_USERRESERVED);
+	 name, ntohs(xxx_rx_PortSockAddr(saddr)), IPPORT_USERRESERVED);
 	goto error;
     }
 #endif
@@ -219,7 +219,7 @@ rxi_GetHostUDPSocket(struct sockaddr *saddr)
 osi_socket
 rxi_GetUDPSocket(u_short port)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), port);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), port);
 
     return rxi_GetHostUDPSocket((struct sockaddr *)&saddr);
 }
@@ -295,14 +295,14 @@ rxi_getaddr(void)
     /* this is a bad bad hack */
     if (rxi_numNetAddrs > 1) {
         rx_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[1]);
-        ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[1]));
+        ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(xxx_rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[1]));
     }
     else if (rxi_numNetAddrs > 0) {
 	rx_CopySockAddr((struct sockaddr *)&saddr, (struct sockaddr *)&rxi_NetAddrs[0]);
-        ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[0]));
+        ((struct sockaddr_in *)&saddr)->sin_addr.s_addr = htonl(xxx_rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[0]));
     }
     else
-        rx_SetSockAddr(0, 0, (struct sockaddr *)&saddr);
+        xxx_rx_SetSockAddr(0, 0, (struct sockaddr *)&saddr);
 
     return saddr;
 }
@@ -322,7 +322,7 @@ rx_getAllAddr(struct sockaddr buffer[], int maxSize)
 
     for (count = 0; offset < rxi_numNetAddrs && maxSize > 0;
 	 count++, offset++, maxSize--) {
-        rx_SetSockAddr(htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset])), 0, &buffer[count]);
+        xxx_rx_SetSockAddr(htonl(xxx_rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset])), 0, &buffer[count]);
     }
 
     return count;
@@ -345,8 +345,8 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
     for (count = 0;
          offset < rxi_numNetAddrs && maxSize > 0;
          count++, offset++, maxSize--) {
-	addrBuffer[count] = rx_CreateSockAddr(htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset])), 0);
-	maskBuffer[count] = rx_CreateSockAddr(htonl(rx_IpSockAddr((struct sockaddr *)&myNetMasks[offset])), 0);
+	addrBuffer[count] = xxx_rx_CreateSockAddr(htonl(xxx_rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[offset])), 0);
+	maskBuffer[count] = xxx_rx_CreateSockAddr(htonl(xxx_rx_IpSockAddr((struct sockaddr *)&myNetMasks[offset])), 0);
 	mtuBuffer[count]  = htonl(myNetMTUs[offset]);
     }
     return count;
@@ -395,8 +395,8 @@ rx_GetIFInfo(void)
                            myNetMasks_32, myNetMTUs, myNetFlags);
 
     for (i = 0; i < rxi_numNetAddrs; i++) {
-        rx_SetSockAddr(rxi_NetAddrs_32[i], 0, (struct sockaddr *)&rxi_NetAddrs[i]);
-        rx_SetSockAddr(myNetMasks_32[i], 0, (struct sockaddr *)&myNetMasks[i]);
+        xxx_rx_SetSockAddr(rxi_NetAddrs_32[i], 0, (struct sockaddr *)&rxi_NetAddrs[i]);
+        xxx_rx_SetSockAddr(myNetMasks_32[i], 0, (struct sockaddr *)&myNetMasks[i]);
 
         rxsize = rxi_AdjustIfMTU(myNetMTUs[i] - RX_IPUDP_SIZE);
         maxsize =
@@ -430,11 +430,11 @@ fudge_netmask(struct sockaddr *addr)
 {
     afs_uint32 msk;
 
-    if (IN_CLASSA(rx_IpSockAddr(addr)))
+    if (IN_CLASSA(xxx_rx_IpSockAddr(addr)))
 	msk = IN_CLASSA_NET;
-    else if (IN_CLASSB(rx_IpSockAddr(addr)))
+    else if (IN_CLASSB(xxx_rx_IpSockAddr(addr)))
 	msk = IN_CLASSB_NET;
-    else if (IN_CLASSC(rx_IpSockAddr(addr)))
+    else if (IN_CLASSC(xxx_rx_IpSockAddr(addr)))
 	msk = IN_CLASSC_NET;
     else
 	msk = 0;
@@ -539,7 +539,7 @@ rx_GetIFInfo(void)
 	a = (struct sockaddr_in *)&ifr->ifr_addr;
 	if (a->sin_family != AF_INET)
 	    continue;
-        rx_SetSockAddr(ntohl(a->sin_addr.s_addr), 0, (struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]);
+        xxx_rx_SetSockAddr(ntohl(a->sin_addr.s_addr), 0, (struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]);
 	if (rx_IsLoopbackAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])) {
 	    /* we don't really care about "localhost" */
 	    continue;
@@ -585,20 +585,20 @@ rx_GetIFInfo(void)
             memset(&myNetMasks[rxi_numNetAddrs], 0, sizeof(struct sockaddr_storage));
 
 	    if ((*rxi_syscallp) (20 /*AFSOP_GETMTU */ ,
-				 htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])),
+				 htonl(xxx_rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])),
 				 &(myNetMTUs[rxi_numNetAddrs]))) {
 		/* fputs(stderr, "syscall error GETMTU\n");
 		 * perror(ifr->ifr_name); */
 		myNetMTUs[rxi_numNetAddrs] = 0;
 	    }
 	    if ((*rxi_syscallp) (42 /*AFSOP_GETMASK */ ,
-				 htonl(rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])),
+				 htonl(xxx_rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs])),
 				 &mask)) {
 		/* fputs(stderr, "syscall error GETMASK\n");
 		 * perror(ifr->ifr_name); */
-                rx_SetSockAddr(0, 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
+                xxx_rx_SetSockAddr(0, 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 	    } else
-                rx_SetSockAddr(ntohl(mask), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
+                xxx_rx_SetSockAddr(ntohl(mask), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 	    /* fprintf(stderr, "if %s mask=0x%x\n",
 	     * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	}
@@ -618,13 +618,13 @@ rx_GetIFInfo(void)
 #endif
 	}
 
-	if (rx_IpSockAddr((struct sockaddr *)&myNetMasks[rxi_numNetAddrs]) == 0) {
-            rx_SetSockAddr(fudge_netmask((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
+	if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetMasks[rxi_numNetAddrs]) == 0) {
+            xxx_rx_SetSockAddr(fudge_netmask((struct sockaddr *)&rxi_NetAddrs[rxi_numNetAddrs]), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 #ifdef SIOCGIFNETMASK
 	    res = ioctl(s, SIOCGIFNETMASK, ifr);
 	    if (res == 0) {
 		a = (struct sockaddr_in *)&ifr->ifr_addr;
-                rx_SetSockAddr(ntohl(a->sin_addr.s_addr), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
+                xxx_rx_SetSockAddr(ntohl(a->sin_addr.s_addr), 0, (struct sockaddr *)&myNetMasks[rxi_numNetAddrs]);
 		/* fprintf(stderr, "if %s subnetmask=0x%x\n",
 		 * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	    } else {
@@ -698,7 +698,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 
     /* try to second-guess IP, and identify which link is most likely to
      * be used for traffic to/from this host. */
-    ppaddr = ntohl(rx_IpSockAddr((struct sockaddr *)&pp->saddr));
+    ppaddr = ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&pp->saddr));
 
     pp->ifMTU = 0;
     rx_rto_setPeerTimeoutSecs(pp, 2);
@@ -708,7 +708,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 
     LOCK_IF;
     for (ix = 0; ix < rxi_numNetAddrs; ++ix) {
-	if ((rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[ix]) & rx_IpSockAddr((struct sockaddr *)&myNetMasks[ix])) == (ppaddr & rx_IpSockAddr((struct sockaddr *)&myNetMasks[ix]))) {
+	if ((xxx_rx_IpSockAddr((struct sockaddr *)&rxi_NetAddrs[ix]) & xxx_rx_IpSockAddr((struct sockaddr *)&myNetMasks[ix])) == (ppaddr & xxx_rx_IpSockAddr((struct sockaddr *)&myNetMasks[ix]))) {
 #ifdef IFF_POINTOPOINT
 	    if (myNetFlags[ix] & IFF_POINTOPOINT)
 		rx_rto_setPeerTimeoutSecs(pp, 4);

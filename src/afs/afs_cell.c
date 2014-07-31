@@ -96,9 +96,9 @@ afs_AFSDBHandler(char *acellName, int acellNameLen, afs_int32 * kernelMsg)
 
 	for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	    if (i >= hostCount)
-		cellHosts[i] = rx_CreateSockAddr(0, 0);
+		cellHosts[i] = xxx_rx_CreateSockAddr(0, 0);
 	    else
-		cellHosts[i] = rx_CreateSockAddr(kernelMsg[2 + i], 0);
+		cellHosts[i] = xxx_rx_CreateSockAddr(kernelMsg[2 + i], 0);
 	}
 
 	if (hostCount)
@@ -1003,7 +1003,7 @@ afs_NewCell(char *acellName, struct sockaddr *acellSaddrs, int aflags,
 	/* Get server for each host and link this cell in.*/
 	struct server *ts;
         ((struct sockaddr_in *)&acellSaddrs[i])->sin_port = tc->vlport;
-	if (!rx_IpSockAddr(&acellSaddrs[i]))
+	if (!xxx_rx_IpSockAddr(&acellSaddrs[i]))
 	    break;
 	ts = afs_GetServer(&acellSaddrs[i], 1, 0, WRITE_LOCK, NULL, 0, NULL);
 	ts->cell = tc;

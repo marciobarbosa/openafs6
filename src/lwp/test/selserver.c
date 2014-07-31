@@ -204,7 +204,7 @@ main(int ac, char **av)
 	exit(1);
     }
 
-    saddr = rx_CreateSockAddr(htonl(INADDR_ANY), ntohs(port));
+    saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), ntohs(port));
 
     if (bind(sockFD, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
 	perror("bind: ");

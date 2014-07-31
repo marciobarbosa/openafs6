@@ -988,7 +988,7 @@ LockAndInstallVolumeEntry(struct volume *av, struct vldbentry *ve, int acell)
 	    continue;		/* wrong volume or  don't use this volume */
 	}
 
-	saddr = rx_CreateSockAddr(htonl(ve->serverNumber[i]), cellp->fsport);
+	saddr = xxx_rx_CreateSockAddr(htonl(ve->serverNumber[i]), cellp->fsport);
 	ts = afs_GetServer((struct sockaddr *)&saddr, 1, acell, WRITE_LOCK,
 			   (afsUUID *) 0, 0, av);
 	serverHost[j] = ts;
@@ -1066,7 +1066,7 @@ LockAndInstallNVolumeEntry(struct volume *av, struct nvldbentry *ve, int acell)
 	    continue;		/* wrong volume or don't use this volume */
 	}
 
-	saddr = rx_CreateSockAddr(htonl(ve->serverNumber[i]), cellp->fsport);
+	saddr = xxx_rx_CreateSockAddr(htonl(ve->serverNumber[i]), cellp->fsport);
 	ts = afs_GetServer((struct sockaddr *)&saddr, 1, acell, WRITE_LOCK,
 			   (afsUUID *) 0, 0, av);
 	serverHost[j] = ts;
@@ -1152,11 +1152,11 @@ LockAndInstallUVolumeEntry(struct volume *av, struct uvldbentry *ve, int acell,
 
 	if (!(ve->serverFlags[i] & VLSF_UUID)) {
 	    /* The server has no uuid */
-	    saddr = rx_CreateSockAddr(htonl(ve->serverNumber[i].time_low), cellp->fsport);
+	    saddr = xxx_rx_CreateSockAddr(htonl(ve->serverNumber[i].time_low), cellp->fsport);
 	    ts = afs_GetServer((struct sockaddr *)&saddr, 1, acell,
 			       WRITE_LOCK, (afsUUID *) 0, 0, av);
 	} else {
-	    saddr = rx_CreateSockAddr(0, cellp->fsport);
+	    saddr = xxx_rx_CreateSockAddr(0, cellp->fsport);
 	    ts = afs_FindServer((struct sockaddr *)&saddr, &ve->serverNumber[i], 0);
 	    if (ts && (ts->sr_addr_uniquifier == ve->serverUnique[i])
 		&& ts->addr) {
@@ -1206,7 +1206,7 @@ LockAndInstallUVolumeEntry(struct volume *av, struct uvldbentry *ve, int acell,
 		addrp = addrs.bulkaddrs_val;
 		for (k = 0; k < nentries; k++) {
 		    addrp[k] = htonl(addrp[k]);
-		    saddrp[k] = rx_CreateSockAddr(addrp[k], cellp->fsport);
+		    saddrp[k] = xxx_rx_CreateSockAddr(addrp[k], cellp->fsport);
 		}
 		ts = afs_GetServer((struct sockaddr *)saddrp, nentries,
 				   acell, WRITE_LOCK,

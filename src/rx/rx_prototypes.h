@@ -29,10 +29,10 @@ extern int rx_IsSockAddrEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
 extern int rx_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2);
 
 /* these functions are not permanent! they are used to help in the migration process from IPv4 to IPv6 */
-extern struct sockaddr_in rx_CreateSockAddr(unsigned int host, unsigned int port);
-extern void rx_SetSockAddr(unsigned int host, unsigned int port, struct sockaddr *saddr);
-extern unsigned int rx_IpSockAddr(struct sockaddr *saddr);
-extern short rx_PortSockAddr(struct sockaddr *saddr);
+extern struct sockaddr_in xxx_rx_CreateSockAddr(unsigned int host, unsigned int port);
+extern void xxx_rx_SetSockAddr(unsigned int host, unsigned int port, struct sockaddr *saddr);
+extern unsigned int xxx_rx_IpSockAddr(struct sockaddr *saddr);
+extern short xxx_rx_PortSockAddr(struct sockaddr *saddr);
 /* not permanet functions */
 
 extern void rx_SetEpoch(afs_uint32 epoch);

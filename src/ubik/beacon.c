@@ -659,7 +659,7 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 	/* get all my interface addresses in net byte order */
 	count = rx_getAllAddr((struct sockaddr *)saddrs, UBIK_MAX_INTERFACE_ADDR);
 	for(i = 0; i < count; i++)
-	    myAddr[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+	    myAddr[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
     }
 
     if (count <= 0) {		/* no address found */
@@ -687,7 +687,7 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 	    *ame = myAddr[0];
 	    tcount = rx_getAllAddr((struct sockaddr *)saddrs2, UBIK_MAX_INTERFACE_ADDR);
 	    for(i = 0; i < tcount; i++)
-	    	myAddr2[i] = rx_IpSockAddr((struct sockaddr *)&saddrs2[i]);
+	    	myAddr2[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs2[i]);
 	    if (tcount <= 0) {	/* no address found */
 		ubik_print("ubik: No network addresses found, aborting..\n");
 		return UBADHOST;

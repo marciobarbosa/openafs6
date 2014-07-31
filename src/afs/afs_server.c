@@ -92,7 +92,7 @@ GetUpDownStats(struct server *srv)
     if (srv->cell)
 	fsport = srv->cell->fsport;
 
-    if (rx_PortSockAddr((struct sockaddr *)&srv->addr->saddr) == fsport)
+    if (xxx_rx_PortSockAddr((struct sockaddr *)&srv->addr->saddr) == fsport)
 	upDownP = afs_stats_cmperf.fs_UpDown;
     else
 	upDownP = afs_stats_cmperf.vl_UpDown;
@@ -238,7 +238,7 @@ afs_ServerDown(struct srvAddr *sa, int code, struct rx_connection *rxconn)
     if (aserver->flags & SRVR_ISDOWN || sa->sa_flags & SRVADDR_ISDOWN)
 	return 0;
     afs_MarkServerUpOrDown(sa, SRVR_ISDOWN);
-    if (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == aserver->cell->vlport)
+    if (xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr) == aserver->cell->vlport)
 	print_internet_address("afs: Lost contact with volume location server ",
 	                      sa, "", 1, code, rxconn);
     else
@@ -696,7 +696,7 @@ afs_LoopServers(int adown, struct cell *acellp, int vlalso,
 	    continue;
 
 	/* check vlserver with special code */
-	if (rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_VLPORT) {
+	if (xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr) == AFS_VLPORT) {
 	    if (vlalso)
 		CheckVLServer(sa, treq);
 	    continue;
@@ -771,7 +771,7 @@ afs_FindServer(struct sockaddr *saddr, afsUUID * uuidp,
 		return ts;
 	}
     } else {
-	i = SHash(rx_IpSockAddr(saddr));
+	i = SHash(xxx_rx_IpSockAddr(saddr));
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
 	    if (rx_IsSockAddrEqual((struct sockaddr *)&sa->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&sa->saddr, saddr)) {
 		return sa->server;
@@ -829,7 +829,7 @@ afs_random(void)
 	 * bits are in a tv_usec
 	 */
 	saddr = rxi_getaddr();
-	state = (t.tv_usec & (~0 << 4)) + (rx_IpSockAddr((struct sockaddr *)&saddr) & 0xff);
+	state = (t.tv_usec & (~0 << 4)) + (xxx_rx_IpSockAddr((struct sockaddr *)&saddr) & 0xff);
 	state += (t.tv_sec & 0xff);
 	for (i = 0; i < 30; i++) {
 	    ranstage(state);
@@ -1000,9 +1000,9 @@ afsi_SetServerIPRank(struct srvAddr *sa, struct sockaddr *saddr,
     afs_uint32 serverAddr;
     afs_uint32 subnetmask;
 
-    myAddr = ntohl(rx_IpSockAddr(saddr));	/* one of my IP addr in host order */
-    serverAddr = ntohl(rx_IpSockAddr((struct sockaddr *)&sa->saddr));	/* server's IP addr in host order */
-    subnetmask = ntohl(rx_IpSockAddr(smask));	/* subnet mask in host order */
+    myAddr = ntohl(xxx_rx_IpSockAddr(saddr));	/* one of my IP addr in host order */
+    serverAddr = ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&sa->saddr));	/* server's IP addr in host order */
+    subnetmask = ntohl(xxx_rx_IpSockAddr(smask));	/* subnet mask in host order */
 
     if (IN_CLASSA(myAddr))
 	netMask = IN_CLASSA_NET;
@@ -1167,8 +1167,8 @@ afs_SetServerPrefs(struct srvAddr *const sa)
 
     sa->sa_iprank = LO;
     for (i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
-    	saddr = rx_CreateSockAddr(afs_cb_interface.addr_in[i], 0);
-    	smask = rx_CreateSockAddr(afs_cb_interface.subnetmask[i], 0);
+    	saddr = xxx_rx_CreateSockAddr(afs_cb_interface.addr_in[i], 0);
+    	smask = xxx_rx_CreateSockAddr(afs_cb_interface.subnetmask[i], 0);
 	afsi_SetServerIPRank(sa, (struct sockaddr *)&saddr,
 			     (struct sockaddr *)&smask);
     }
@@ -1285,7 +1285,7 @@ afs_SetServerPrefs(struct srvAddr *const sa)
     rx_ifnet_t ifn = NULL;
     struct in_ifaddr *ifad = (struct in_ifaddr *)0;
     struct sockaddr_in *sin;
-    struct sockaddr_in smask, saddr = rx_CreateSockAddr(sa->sa_ip, 0);
+    struct sockaddr_in smask, saddr = xxx_rx_CreateSockAddr(sa->sa_ip, 0);
     
     sa->sa_iprank = 0;
     ifn = rxi_FindIfnet((struct sockaddr *)&saddr, (struct sockaddr *)&smask);
@@ -1556,7 +1556,7 @@ static struct server *
 afs_SearchServer(u_short aport, afsUUID * uuidp, afs_int32 locktype,
 		 struct server **oldts, afs_int32 addr_uniquifier)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(0, aport);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(0, aport);
     struct server *ts = afs_FindServer((struct sockaddr *)&saddr, uuidp, locktype);
     if (ts && (ts->sr_addr_uniquifier == addr_uniquifier) && ts->addr) {
 	/* Found a server struct that is multihomed and same
@@ -1628,7 +1628,7 @@ afs_GetServer(struct sockaddr *saddr, afs_int32 nservers, afs_int32 acell,
 	if (nservers <= 0)
 	    panic("afs_GetServer: incorrect count of servers");
 
-	ts = afs_SearchServer(rx_PortSockAddr(saddr), uuidp, locktype, &oldts, addr_uniquifier);
+	ts = afs_SearchServer(xxx_rx_PortSockAddr(saddr), uuidp, locktype, &oldts, addr_uniquifier);
 	if (ts) {
 	    ReleaseSharedLock(&afs_xserver);
 	    return ts;
@@ -1647,7 +1647,7 @@ afs_GetServer(struct sockaddr *saddr, afs_int32 nservers, afs_int32 acell,
 
 	/* we don't know what changed while we didn't hold the lock */
 	oldts = 0;
-	ts = afs_SearchServer(rx_PortSockAddr(saddr), uuidp, locktype, &oldts,
+	ts = afs_SearchServer(xxx_rx_PortSockAddr(saddr), uuidp, locktype, &oldts,
 			      addr_uniquifier);
 	if (ts) {
 	    ReleaseWriteLock(&afs_xserver);
@@ -1672,7 +1672,7 @@ afs_GetServer(struct sockaddr *saddr, afs_int32 nservers, afs_int32 acell,
 
 	/* Add the server struct to the afs_servers[] hash chain */
 	srvhash =
-	    (uuidp ? (afs_uuid_hash(uuidp) % NSERVERS) : SHash(rx_IpSockAddr(saddr)));
+	    (uuidp ? (afs_uuid_hash(uuidp) % NSERVERS) : SHash(xxx_rx_IpSockAddr(saddr)));
 	newts->next = afs_servers[srvhash];
 	afs_servers[srvhash] = newts;
     }
@@ -1688,7 +1688,7 @@ afs_GetServer(struct sockaddr *saddr, afs_int32 nservers, afs_int32 acell,
 
     /* For each IP address we are registering */
     for (k = 0; k < nservers; k++) {
-	iphash = SHash(rx_IpSockAddr(&saddr[k]));
+	iphash = SHash(xxx_rx_IpSockAddr(&saddr[k]));
 
 	/* Check if the srvAddr structure already exists. If so, remove
 	 * it from its server structure and add it to the new one.
@@ -1767,7 +1767,7 @@ afs_GetServer(struct sockaddr *saddr, afs_int32 nservers, afs_int32 acell,
 		 * in the afs_servers table by its ip address (only by uuid -
 		 * which this has none).
 		 */
-		iphash = SHash(rx_IpSockAddr(&saddr[k]));
+		iphash = SHash(xxx_rx_IpSockAddr(&saddr[k]));
 		orphts->next = afs_servers[iphash];
 		afs_servers[iphash] = orphts;
 
@@ -1806,7 +1806,7 @@ afs_GetServer(struct sockaddr *saddr, afs_int32 nservers, afs_int32 acell,
 
     ReleaseWriteLock(&afs_xsrvAddr);
 
-    if ( rx_PortSockAddr(saddr) == AFS_FSPORT && !(newts->flags & SCAPS_KNOWN))
+    if ( xxx_rx_PortSockAddr(saddr) == AFS_FSPORT && !(newts->flags & SCAPS_KNOWN))
 	afs_GetCapabilities(newts);
 
     ReleaseWriteLock(&afs_xserver);

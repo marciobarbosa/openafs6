@@ -336,7 +336,7 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
     if (numMyNetAddrs == 0)
 	(void)rxi_GetIFInfo();
 
-    ppaddr = ntohl(rx_IpSockAddr(saddr));
+    ppaddr = ntohl(xxx_rx_IpSockAddr(saddr));
     ifad = (struct in_ifaddr *)&hashinfo_inaddr;
 
     (void)hash_enum(&hashinfo_inaddr, rxi_MatchIfnet, HTF_INET,
@@ -371,14 +371,14 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     ifnp = iap->ia_ifp;
     rxmtu = (ifnp->if_mtu - RX_IPUDP_SIZE);
     ifinaddr = ntohl(iap->ia_addr.sin_addr.s_addr);
-    if (rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
+    if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
     	((struct sockaddr_in *)&myNetAddrs[i])->sin_family = AF_INET;
 	((struct sockaddr_in *)&myNetAddrs[i])->sin_addr.s_addr = ifinaddr;
 	myNetMTUs[i] = rxmtu;
 	different++;
 	*(int *)arg1 = different;
     }
-    saddr = rx_CreateSockAddr(ifinaddr, 0);
+    saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
     rxmtu = rxmtu * rxi_nRecvFrags + ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
     if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && (rxmtu > rx_maxReceiveSize)) {
 	rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, rxmtu);

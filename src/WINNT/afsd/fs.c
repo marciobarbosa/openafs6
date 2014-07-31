@@ -4450,7 +4450,7 @@ SetClientAddrsCmd(struct cmd_syndesc *as, void *arock)
 	}
 	/* see if it is an address that really exists */
 	for (flag = 0, i = 0; i < existNu; i++) /* should have {} ? */
-	    if (rx_IpSockAddr((struct sockaddr *)&existingAddr[i]) == addr) {
+	    if (xxx_rx_IpSockAddr((struct sockaddr *)&existingAddr[i]) == addr) {
 		flag = 1;
 		break;
 	    }

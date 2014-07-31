@@ -496,7 +496,7 @@ afs_ConnBySA(struct srvAddr *sap, unsigned short aport, afs_int32 acell,
 	if (glocked)
             AFS_GUNLOCK();
 
-    saddr = rx_CreateSockAddr(rx_IpSockAddr((struct sockaddr *)&sap->saddr), aport);
+    saddr = xxx_rx_CreateSockAddr(xxx_rx_IpSockAddr((struct sockaddr *)&sap->saddr), aport);
 
     tc->id = rx_NewConnectionSA((struct sockaddr *)&saddr, service, csec, isec);
 	if (glocked)

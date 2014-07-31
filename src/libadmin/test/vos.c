@@ -1640,7 +1640,7 @@ GetServer(char *aname)
 	memcpy(&addr, th->h_addr, sizeof(addr));
     }
 
-    saddr = rx_CreateSockAddr(ntohl(addr), 0);
+    saddr = xxx_rx_CreateSockAddr(ntohl(addr), 0);
 
     if (rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {	/* local host */
 	code = gethostname(hostname, MAXHOSTCHARS);

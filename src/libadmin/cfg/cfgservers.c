@@ -2091,7 +2091,7 @@ UbikVoteStatusFetch(int serverAddr, unsigned short serverPort,
     afs_status_t tst = 0;
     struct rx_securityClass *nullSecurity;
     struct rx_connection *serverConn;
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(serverAddr), htons(serverPort));
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(serverAddr), htons(serverPort));
 
     nullSecurity = rxnull_NewClientSecurityObject();	/* never fails */
 

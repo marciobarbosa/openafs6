@@ -203,7 +203,7 @@ main(int ac, char **av)
     }
     printf("%s: Using socket at file descriptor %d.\n", program, sockFD);
 
-    saddr = rx_CreateSockAddr(host, htons(port)); /* host: already in network byte order. */
+    saddr = xxx_rx_CreateSockAddr(host, htons(port)); /* host: already in network byte order. */
 
     if (connect(sockFD, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
 	assert(0);

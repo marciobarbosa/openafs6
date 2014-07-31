@@ -42,7 +42,7 @@ struct release {
 static struct rx_connection *
 UV_Bind(afs_cell_handle_p cellHandle, afs_int32 aserver, afs_int32 port)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(aserver, port);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(aserver, port);
 
     return rx_GetCachedConnection((struct sockaddr *)&saddr, VOLSERVICE_ID,
 				  cellHandle->tokens->afs_sc[cellHandle->

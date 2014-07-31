@@ -193,7 +193,7 @@ bos_ServerOpen(const void *cellHandle, const char *serverName,
 	goto fail_bos_ServerOpen;
     }
 
-    saddr = rx_CreateSockAddr(htonl(serverAddress), htons(AFSCONF_NANNYPORT));
+    saddr = xxx_rx_CreateSockAddr(htonl(serverAddress), htons(AFSCONF_NANNYPORT));
 
     bos_server->server =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,

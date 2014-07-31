@@ -1774,7 +1774,7 @@ SetupVL(void)
     {
 	FS_HostAddr_cnt = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
         for(i = 0; i < FS_HostAddr_cnt; i++)
-            FS_HostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+            FS_HostAddrs[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
     }
 
     if (FS_HostAddr_cnt == 1 && rxBind == 1)
@@ -2011,7 +2011,7 @@ main(int argc, char *argv[])
 	rx_SetUdpBufSize(udpBufSize);	/* set the UDP buffer size for receive */
     rx_bindhost = SetupVL();
 
-    saddr = rx_CreateSockAddr(rx_bindhost, (int)htons(7000));
+    saddr = xxx_rx_CreateSockAddr(rx_bindhost, (int)htons(7000));
     if (rx_InitHost((struct sockaddr *)&saddr) < 0) {
 	ViceLog(0, ("Cannot initialize RX\n"));
 	exit(1);
@@ -2031,7 +2031,7 @@ main(int argc, char *argv[])
     afsconf_SetSecurityFlags(confDir, AFSCONF_SECOPTS_ALWAYSENCRYPT);
     afsconf_BuildServerSecurityObjects(confDir, &securityClasses, &numClasses);
 
-    saddr = rx_CreateSockAddr(rx_bindhost, 0);
+    saddr = xxx_rx_CreateSockAddr(rx_bindhost, 0);
 
     tservice = rx_NewServiceHost((struct sockaddr *)&saddr, /* service id */
 				 1,	/*service name */

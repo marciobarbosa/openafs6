@@ -96,7 +96,7 @@ rxi_getaddr(void)
     count = rx_getAllAddr((struct sockaddr *)buffer, 1024);
 
     if (count <= 0)
-    	rx_SetSockAddr(0, 0, (struct sockaddr *)&buffer[0]);
+    	xxx_rx_SetSockAddr(0, 0, (struct sockaddr *)&buffer[0]);
 
     return buffer[0];	/* returns the first address */
 }
@@ -146,7 +146,7 @@ rxi_IsLoopbackIface(struct sockaddr *a, unsigned long flags)
     if (rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 	return 1;
     }
-    if ((flags & IFF_LOOPBACK) && ((rx_IpSockAddr((struct sockaddr *)&saddr) & 0xff000000) == 0x7f000000)) {
+    if ((flags & IFF_LOOPBACK) && ((xxx_rx_IpSockAddr((struct sockaddr *)&saddr) & 0xff000000) == 0x7f000000)) {
 	return 1;
     }
     return 0;
@@ -340,7 +340,7 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 	    }
 	    a = (struct sockaddr_in *) info.rti_info[RTAX_IFA];
 
-	    saddr = rx_CreateSockAddr(ntohl(a->sin_addr.s_addr), 0);
+	    saddr = xxx_rx_CreateSockAddr(ntohl(a->sin_addr.s_addr), 0);
 
 	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 		if (count >= maxSize) {	/* no more space */
@@ -354,7 +354,7 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 		    if (a)
 			rx_CopySockAddr(&maskBuffer[count], (struct sockaddr *)a);
 		    else
-			rx_SetSockAddr(htonl(0xffffffff), 0, &maskBuffer[count]);
+			xxx_rx_SetSockAddr(htonl(0xffffffff), 0, &maskBuffer[count]);
 
 		    memset(&ifr, 0, sizeof(ifr));
 		    ifr.ifr_addr.sa_family = AF_INET;
@@ -493,7 +493,7 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 #if !defined(AFS_USERSPACE_IP_ADDR)
     count = rx_getAllAddr_internal(addrBuffer, 1024, 0);
     for (i = 0; i < count; i++) {
-	maskBuffer[i] = rx_CreateSockAddr(htonl(0xffffffff), 0);
+	maskBuffer[i] = xxx_rx_CreateSockAddr(htonl(0xffffffff), 0);
 	mtuBuffer[i] = htonl(1500);
     }
     return count;
@@ -532,7 +532,7 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 		continue;	/* ignore this address */
 	    }
 
-	    saddr = rx_CreateSockAddr(ntohl(a->sin_addr.s_addr), 0);
+	    saddr = xxx_rx_CreateSockAddr(ntohl(a->sin_addr.s_addr), 0);
 
             if (rx_IsLoopbackAddr((struct sockaddr *)&saddr))
                 continue;   /* skip loopback address as well. */
@@ -547,7 +547,7 @@ rx_getAllAddrMaskMtu(struct sockaddr addrBuffer[], struct sockaddr maskBuffer[],
 
 	    if (ioctl(s, SIOCGIFNETMASK, (caddr_t) ifr) < 0) {
 		perror("SIOCGIFNETMASK");
-		rx_SetSockAddr(htonl(0xffffffff), 0, &maskBuffer[count]);
+		xxx_rx_SetSockAddr(htonl(0xffffffff), 0, &maskBuffer[count]);
 	    } else {
 		rx_CopySockAddr(&maskBuffer[count], &ifr->ifr_addr);
 	    }

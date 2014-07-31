@@ -585,8 +585,8 @@ rx_InitHost(struct sockaddr *saddr)
 #else
     osi_GetTime(&tv);
 #endif
-    if (rx_PortSockAddr(saddr)) {
-	rx_port = rx_PortSockAddr(saddr);
+    if (xxx_rx_PortSockAddr(saddr)) {
+	rx_port = xxx_rx_PortSockAddr(saddr);
     } else {
 #if defined(KERNEL) && !defined(UKERNEL)
 	/* Really, this should never happen in a real kernel */
@@ -649,7 +649,7 @@ rx_InitHost(struct sockaddr *saddr)
 int
 rx_Init(u_int port)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), port);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), port);
 
     return rx_InitHost((struct sockaddr *)&saddr);
 }
@@ -1042,7 +1042,7 @@ rx_NewConnection(afs_uint32 shost, u_short sport, u_short sservice,
 		 struct rx_securityClass *securityObject,
 		 int serviceSecurityIndex)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(shost, sport);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(shost, sport);
 
     return rx_NewConnectionSA((struct sockaddr *)&saddr, sservice, securityObject, serviceSecurityIndex);
 }
@@ -1104,7 +1104,7 @@ rx_NewConnectionSA(struct sockaddr *saddr, u_short sservice,
 
     RXS_NewConnection(securityObject, conn);
     hashindex =
-    CONN_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr), conn->cid, conn->epoch, RX_CLIENT_CONNECTION);
+    CONN_HASH(xxx_rx_IpSockAddr(saddr), xxx_rx_PortSockAddr(saddr), conn->cid, conn->epoch, RX_CLIENT_CONNECTION);
 
     conn->refCount++;       /* no lock required since only this thread knows... */
     conn->next = rx_connHashTable[hashindex];
@@ -1368,8 +1368,8 @@ rxi_DestroyConnectionNoLock(struct rx_connection *conn)
     /* Remove from connection hash table before proceeding */
     conn_ptr =
 	&rx_connHashTable[CONN_HASH
-			  (rx_IpSockAddr((struct sockaddr *)&peer->saddr), 
-                           rx_PortSockAddr((struct sockaddr *)&peer->saddr), conn->cid, conn->epoch,
+			  (xxx_rx_IpSockAddr((struct sockaddr *)&peer->saddr), 
+                           xxx_rx_PortSockAddr((struct sockaddr *)&peer->saddr), conn->cid, conn->epoch,
 			   conn->type)];
     for (; *conn_ptr; conn_ptr = &(*conn_ptr)->next) {
 	if (*conn_ptr == conn) {
@@ -1779,7 +1779,7 @@ rx_NewServiceHost(struct sockaddr *saddr, u_short serviceId,
 	 serviceName);
 	return 0;
     }
-    if (rx_PortSockAddr(saddr) == 0) {
+    if (xxx_rx_PortSockAddr(saddr) == 0) {
 	if (rx_port == 0) {
 	    (osi_Msg
 	     "rx_NewService: A non-zero port must be specified on this call if a non-zero port was not provided at Rx initialization (service %s).\n",
@@ -1878,7 +1878,7 @@ rx_NewService(u_short port, u_short serviceId, char *serviceName,
 	      struct rx_securityClass **securityObjects, int nSecurityObjects,
 	      afs_int32(*serviceProc) (struct rx_call * acall))
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), port);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), port);
 
     return rx_NewServiceHost((struct sockaddr *)&saddr, serviceId, serviceName, securityObjects, nSecurityObjects, serviceProc);
 }
@@ -2191,7 +2191,7 @@ rx_GetCall(int tno, struct rx_service *cur_service, osi_socket * socketp)
 
 	rxi_calltrace(RX_CALL_START, call);
 	dpf(("rx_GetCall(port=%d, service=%d) ==> call %"AFS_PTR_FMT"\n",
-	     rx_PortSockAddr((struct sockaddr *)&call->conn->service->saddr), call->conn->service->serviceId,
+	     xxx_rx_PortSockAddr((struct sockaddr *)&call->conn->service->saddr), call->conn->service->serviceId,
 	     call));
 
 	MUTEX_EXIT(&call->lock);
@@ -2352,7 +2352,7 @@ rx_GetCall(int tno, struct rx_service *cur_service, osi_socket * socketp)
 
 	rxi_calltrace(RX_CALL_START, call);
 	dpf(("rx_GetCall(port=%d, service=%d) ==> call %p\n",
-	     rx_PortSockAddr((struct sockaddr *)&call->conn->service->saddr), call->conn->service->serviceId,
+	     xxx_rx_PortSockAddr((struct sockaddr *)&call->conn->service->saddr), call->conn->service->serviceId,
 	     call));
     } else {
 	dpf(("rx_GetCall(socketp=%p, *socketp=0x%x)\n", socketp, *socketp));
@@ -2885,7 +2885,7 @@ rxi_SetPeerMtu(struct rx_peer *peer, struct sockaddr *saddr, int mtu)
 
     if (!peer) {
 	MUTEX_ENTER(&rx_peerHashTable_lock);
-	if (rx_PortSockAddr(saddr) == 0) {
+	if (xxx_rx_PortSockAddr(saddr) == 0) {
 	    peer_ptr = &rx_peerHashTable[0];
 	    peer_end = &rx_peerHashTable[rx_hashTableSize];
 	    next = NULL;
@@ -2900,7 +2900,7 @@ rxi_SetPeerMtu(struct rx_peer *peer, struct sockaddr *saddr, int mtu)
 		}
 	    }
 	} else {
-	    hashIndex = PEER_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr));
+	    hashIndex = PEER_HASH(xxx_rx_IpSockAddr(saddr), xxx_rx_PortSockAddr(saddr));
 	    for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
                 if(rx_IsSockAddrEqual((struct sockaddr *)&peer->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&peer->saddr, saddr))
                     break;
@@ -2931,7 +2931,7 @@ rxi_SetPeerMtu(struct rx_peer *peer, struct sockaddr *saddr, int mtu)
 
         MUTEX_ENTER(&rx_peerHashTable_lock);
         peer->refCount--;
-        if (rx_IpSockAddr(saddr) && !rx_PortSockAddr(saddr)) {
+        if (xxx_rx_IpSockAddr(saddr) && !xxx_rx_PortSockAddr(saddr)) {
             peer = next;
 	    /* pick up where we left off */
             goto resume;
@@ -2944,7 +2944,7 @@ rxi_SetPeerMtu(struct rx_peer *peer, struct sockaddr *saddr, int mtu)
 static void
 rxi_SetPeerDead(struct sock_extended_err *err, struct sockaddr *saddr)
 {
-    int hashIndex = PEER_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr));
+    int hashIndex = PEER_HASH(xxx_rx_IpSockAddr(saddr), xxx_rx_PortSockAddr(saddr));
     struct rx_peer *peer;
 
     MUTEX_ENTER(&rx_peerHashTable_lock);
@@ -3080,7 +3080,7 @@ rxi_FindPeer(struct sockaddr *saddr, int create)
     struct rx_peer *pp;
     int hashIndex;
 
-    hashIndex = PEER_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr));
+    hashIndex = PEER_HASH(xxx_rx_IpSockAddr(saddr), xxx_rx_PortSockAddr(saddr));
     MUTEX_ENTER(&rx_peerHashTable_lock);
     for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
         if(rx_IsSockAddrEqual((struct sockaddr *)&pp->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&pp->saddr, saddr))
@@ -3132,7 +3132,7 @@ rxi_FindConnection(osi_socket socket, struct sockaddr *saddr,
     struct rx_connection *conn;
 
     *unknownService = 0;
-    hashindex = CONN_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr),
+    hashindex = CONN_HASH(xxx_rx_IpSockAddr(saddr), xxx_rx_PortSockAddr(saddr),
                            cid, epoch, type);
     MUTEX_ENTER(&rx_connHashTable_lock);
     rxLastConn ? (conn = rxLastConn, flag = 0) : (conn =
@@ -3487,8 +3487,8 @@ rxi_ReceivePacket(struct rx_packet *np, osi_socket socket,
     packetType = (np->header.type > 0 && np->header.type < RX_N_PACKET_TYPES)
 	? rx_packetTypes[np->header.type - 1] : "*UNKNOWN*";
     dpf(("R %d %s: %x.%d.%d.%d.%d.%d.%d flags %d, packet %"AFS_PTR_FMT"\n",
-	 np->header.serial, packetType, ntohl(rx_IpSockAddr(saddr)),
-         ntohs(rx_PortSockAddr(saddr)), np->header.serviceId,
+	 np->header.serial, packetType, ntohl(xxx_rx_IpSockAddr(saddr)),
+         ntohs(xxx_rx_PortSockAddr(saddr)), np->header.serviceId,
 	 np->header.epoch, np->header.cid, np->header.callNumber,
 	 np->header.seq, np->header.flags, np));
 #endif
@@ -6400,7 +6400,7 @@ rxi_CheckCall(struct rx_call *call, int haveCTLock)
 	    netstack_t *ns = netstack_find_by_stackid(GLOBAL_NETSTACKID);
 	    ip_stack_t *ipst = ns->netstack_ip;
 #  endif
-	    ire = ire_cache_lookup(rx_IpSockAddr((struct sockaddr *)&conn->peer->saddr)
+	    ire = ire_cache_lookup(xxx_rx_IpSockAddr((struct sockaddr *)&conn->peer->saddr)
 #  if defined(AFS_SUN510_ENV) && defined(ALL_ZONES)
 				   , ALL_ZONES
 #    if defined(ICL_3_ARG) || defined(GLOBAL_NETSTACKID)
@@ -6490,7 +6490,7 @@ mtuout:
     if (conn->msgsizeRetryErr && cerror != RX_CALL_TIMEOUT && !idle_timeout &&
         call->lastReceiveTime) {
 	int oldMTU = conn->peer->ifMTU;
-        struct sockaddr_in saddr = rx_CreateSockAddr(0, 0);
+        struct sockaddr_in saddr = xxx_rx_CreateSockAddr(0, 0);
 
 	/* if we thought we could send more, perhaps things got worse */
 	if (conn->peer->maxPacketSize > conn->lastPacketSize)
@@ -7482,7 +7482,7 @@ void
 rx_PrintPeerStats(FILE * file, struct rx_peer *peer)
 {
     fprintf(file, "Peer %x.%d.\n",
-	    ntohl(rx_IpSockAddr((struct sockaddr *)&peer->saddr)), (int)ntohs(rx_PortSockAddr((struct sockaddr *)&peer->saddr)));
+	    ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&peer->saddr)), (int)ntohs(xxx_rx_PortSockAddr((struct sockaddr *)&peer->saddr)));
 
     fprintf(file,
 	    "   Rtt %d, " "total sent %d, " "resent %d\n",
@@ -7883,7 +7883,7 @@ rx_GetLocalPeers(struct sockaddr *saddr,
 {
 	struct rx_peer *tp;
 	afs_int32 error = 1; /* default to "did not succeed" */
-	afs_uint32 hashValue = PEER_HASH(rx_IpSockAddr(saddr), rx_PortSockAddr(saddr));
+	afs_uint32 hashValue = PEER_HASH(xxx_rx_IpSockAddr(saddr), xxx_rx_PortSockAddr(saddr));
 
 	MUTEX_ENTER(&rx_peerHashTable_lock);
 	for(tp = rx_peerHashTable[hashValue];
@@ -7899,8 +7899,8 @@ rx_GetLocalPeers(struct sockaddr *saddr,
 		error = 0;
 
                 MUTEX_ENTER(&tp->peer_lock);
-		peerStats->host = rx_IpSockAddr((struct sockaddr *)&tp->saddr);
-		peerStats->port = rx_PortSockAddr((struct sockaddr *)&tp->saddr);
+		peerStats->host = xxx_rx_IpSockAddr((struct sockaddr *)&tp->saddr);
+		peerStats->port = xxx_rx_PortSockAddr((struct sockaddr *)&tp->saddr);
 		peerStats->ifMTU = tp->ifMTU;
 		peerStats->idleWhen = tp->idleWhen;
 		peerStats->refCount = tp->refCount;
@@ -8324,8 +8324,8 @@ rxi_FindRpcStat(struct opr_queue *stats, afs_uint32 rxInterface,
 	*counter += totalFunc;
 	for (i = 0; i < totalFunc; i++) {
 	    rxi_ClearRPCOpStat(&(rpc_stat->stats[i]));
-	    rpc_stat->stats[i].remote_peer = rx_IpSockAddr(saddr);
-	    rpc_stat->stats[i].remote_port = rx_PortSockAddr(saddr);
+	    rpc_stat->stats[i].remote_peer = xxx_rx_IpSockAddr(saddr);
+	    rpc_stat->stats[i].remote_port = xxx_rx_PortSockAddr(saddr);
 	    rpc_stat->stats[i].remote_is_server = isServer;
 	    rpc_stat->stats[i].interfaceId = rxInterface;
 	    rpc_stat->stats[i].func_total = totalFunc;
@@ -8344,7 +8344,7 @@ rx_ClearProcessRPCStats(afs_int32 rxInterface)
 {
     rx_interface_stat_p rpc_stat;
     int totalFunc, i;
-    struct sockaddr_in saddr = rx_CreateSockAddr(0, 0);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(0, 0);
 
     if (rxInterface == -1)
         return;
@@ -8367,7 +8367,7 @@ rx_ClearPeerRPCStats(afs_int32 rxInterface, struct sockaddr *saddr)
     rx_interface_stat_p rpc_stat;
     int totalFunc, i;
     struct rx_peer * peer;
-    struct sockaddr_in saddr_in = rx_CreateSockAddr(0, 0);
+    struct sockaddr_in saddr_in = xxx_rx_CreateSockAddr(0, 0);
 
     if (rxInterface == -1)
         return;
@@ -8396,7 +8396,7 @@ rx_CopyProcessRPCStats(afs_uint64 op)
 	rxi_Alloc(sizeof(rx_function_entry_v1_t));
     int currentFunc = (op & MAX_AFS_UINT32);
     afs_int32 rxInterface = (op >> 32);
-    struct sockaddr_in saddr = rx_CreateSockAddr(0, 0);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(0, 0);
 
     if (!rxi_monitor_processStats)
         return NULL;
@@ -8430,7 +8430,7 @@ rx_CopyPeerRPCStats(afs_uint64 op, struct sockaddr *saddr)
     int currentFunc = (op & MAX_AFS_UINT32);
     afs_int32 rxInterface = (op >> 32);
     struct rx_peer *peer;
-    struct sockaddr_in saddr_in = rx_CreateSockAddr(0, 0);
+    struct sockaddr_in saddr_in = xxx_rx_CreateSockAddr(0, 0);
 
     if (!rxi_monitor_peerStats)
         return NULL;
@@ -8567,7 +8567,7 @@ rxi_IncrementTimeAndCount(struct rx_peer *peer, afs_uint32 rxInterface,
 			  afs_uint64 bytesSent, afs_uint64 bytesRcvd,
 			  int isServer)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(0xffffffff, 0xffffffff);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(0xffffffff, 0xffffffff);
 
     if (!(rxi_monitor_peerStats || rxi_monitor_processStats))
         return;
@@ -9481,7 +9481,7 @@ rx_IsSockPortEqual(struct sockaddr *saddr1, struct sockaddr *saddr2)
 
 /* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
 struct sockaddr_in
-rx_CreateSockAddr(unsigned int host, unsigned int port)
+xxx_rx_CreateSockAddr(unsigned int host, unsigned int port)
 {
     struct sockaddr_in saddr;
 
@@ -9495,7 +9495,7 @@ rx_CreateSockAddr(unsigned int host, unsigned int port)
 
 /* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
 void
-rx_SetSockAddr(unsigned int host, unsigned int port, struct sockaddr *saddr)
+xxx_rx_SetSockAddr(unsigned int host, unsigned int port, struct sockaddr *saddr)
 {
     struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr;
 
@@ -9508,7 +9508,7 @@ rx_SetSockAddr(unsigned int host, unsigned int port, struct sockaddr *saddr)
 
 /* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
 unsigned int
-rx_IpSockAddr(struct sockaddr *saddr)
+xxx_rx_IpSockAddr(struct sockaddr *saddr)
 {
     struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr;
 
@@ -9517,7 +9517,7 @@ rx_IpSockAddr(struct sockaddr *saddr)
 
 /* this function is not permanent! it is used to help in the migration process from IPv4 to IPv6 */
 short
-rx_PortSockAddr(struct sockaddr *saddr)
+xxx_rx_PortSockAddr(struct sockaddr *saddr)
 {
     struct sockaddr_in *saddr4 = (struct sockaddr_in *)saddr;
 

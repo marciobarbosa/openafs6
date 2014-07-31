@@ -221,7 +221,7 @@ GetServer(char *aname)
     struct sockaddr_in saddr;
 
     addr = GetServerNoresolve(aname);
-    saddr = rx_CreateSockAddr(ntohl(addr), 0);
+    saddr = xxx_rx_CreateSockAddr(ntohl(addr), 0);
     if (addr != 0) {
 	if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr))
 	    return addr;
@@ -232,7 +232,7 @@ GetServer(char *aname)
     th = gethostbyname(aname);
     if (th != NULL) {
 	for (i=0; i < th->h_length; i++) {
-	    saddr = rx_CreateSockAddr(ntohl(*(afs_uint32 *)th->h_addr_list[i]), 0);
+	    saddr = xxx_rx_CreateSockAddr(ntohl(*(afs_uint32 *)th->h_addr_list[i]), 0);
 	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 		memcpy(&addr, th->h_addr_list[i], sizeof(addr));
 		return addr;
@@ -251,7 +251,7 @@ GetServer(char *aname)
 	    th = gethostbyname(hostname);
 	    if (th != NULL) {
 		for (i=0; i < th->h_length; i++) {
-		    saddr = rx_CreateSockAddr(ntohl(*(afs_uint32 *)th->h_addr_list[i]), 0);
+		    saddr = xxx_rx_CreateSockAddr(ntohl(*(afs_uint32 *)th->h_addr_list[i]), 0);
 		    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 			memcpy(&addr, th->h_addr_list[i], sizeof(addr));
 			return addr;

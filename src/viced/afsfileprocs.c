@@ -5735,7 +5735,7 @@ SRXAFS_FlushCPS(struct rx_call * acall, struct ViceIds * vids,
     addr = addrs->IPAddrs_val;
     for (i = 0; i < naddrs; i++, addr++) {
 	if (*addr) {
-	    saddr = rx_CreateSockAddr(*addr, htons(7001));
+	    saddr = xxx_rx_CreateSockAddr(*addr, htons(7001));
 	    h_flushhostcps((struct sockaddr *)&saddr);
 	}
     }
@@ -5836,7 +5836,7 @@ TryLocalVLServer(char *avolid, struct VolumeInfo *avolinfo)
     struct vldbentry tve;
     struct rx_securityClass *vlSec;
     afs_int32 code;
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(0x7f000001), htons(7003));
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(0x7f000001), htons(7003));
 
     if (!vlConn) {
 	vlSec = rxnull_NewClientSecurityObject();
@@ -6876,7 +6876,7 @@ SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr)
     if ( *addr != thost->interface->addr[i] )
 	goto Bad_CallBackRxConnAddr;
 
-    saddr = rx_CreateSockAddr(thost->interface->addr[i], thost->port);
+    saddr = xxx_rx_CreateSockAddr(thost->interface->addr[i], thost->port);
 
     conn = rx_NewConnectionSA((struct sockaddr *)&saddr, 1, sc, 0);
     rx_SetConnDeadTime(conn, 2);

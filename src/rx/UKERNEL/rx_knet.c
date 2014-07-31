@@ -188,7 +188,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), aport);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), aport);
 
     return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }

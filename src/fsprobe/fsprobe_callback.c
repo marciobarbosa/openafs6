@@ -46,7 +46,7 @@ init_afs_cb(void)
     afs_uuid_create(&afs_cb_interface.uuid);
     count = rx_getAllAddr((struct sockaddr *)saddrs, AFS_MAX_INTERFACE_ADDR);
     for(i = 0; i < count; i++)
-        afs_cb_interface.addr_in[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+        afs_cb_interface.addr_in[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
     if (count <= 0)
 	afs_cb_interface.numberOfInterfaces = 0;
     else

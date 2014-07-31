@@ -1237,7 +1237,7 @@ SRXAFSCB_GetServerPrefs(struct rx_call *a_call, afs_int32 a_index,
     for (i = 0, j = 0; j < NSERVERS && i <= a_index; j++) {
 	for (sa = afs_srvAddrs[j]; sa && i <= a_index; sa = sa->next_bkt, i++) {
 	    if (i == a_index) {
-		*a_srvr_addr = ntohl(rx_IpSockAddr((struct sockaddr *)&sa->saddr));
+		*a_srvr_addr = ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&sa->saddr));
 		*a_srvr_rank = sa->sa_iprank;
 	    }
 	}
@@ -1299,7 +1299,7 @@ SRXAFSCB_GetCellServDB(struct rx_call *a_call, afs_int32 a_index,
 	a_hosts->serverList_len = j;
 	for (j = 0; j < AFSMAXCELLHOSTS && tcell->cellHosts[j]; j++)
 	    a_hosts->serverList_val[j] =
-		ntohl(rx_IpSockAddr((struct sockaddr *)&tcell->cellHosts[j]->addr->saddr));
+		ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&tcell->cellHosts[j]->addr->saddr));
 	afs_PutCell(tcell, READ_LOCK);
     }
 
@@ -1604,7 +1604,7 @@ SRXAFSCB_GetCellByNum(struct rx_call *a_call, afs_int32 a_cellnum,
     osi_Assert(a_hosts->serverList_val != NULL);
 
     for (i = 0; i < sn; i++)
-	a_hosts->serverList_val[i] = ntohl(rx_IpSockAddr((struct sockaddr *)&tcell->cellHosts[i]->addr->saddr));
+	a_hosts->serverList_val[i] = ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&tcell->cellHosts[i]->addr->saddr));
     ReleaseReadLock(&tcell->lock);
     afs_PutCell(tcell, READ_LOCK);
 

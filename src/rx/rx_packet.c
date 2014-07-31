@@ -1466,8 +1466,8 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *saddr)
                 rx_atomic_inc(&rx_stats.bogusPacketOnRead);
                 rx_stats.bogusHost = ((struct sockaddr_in *)&from)->sin_addr.s_addr;
             }
-	    dpf(("B: bogus packet from [%x,%d] nb=%d\n", rx_IpSockAddr((struct sockaddr *)&from),
-		 ntohs(rx_PortSockAddr((struct sockaddr *)&from)), nbytes));
+	    dpf(("B: bogus packet from [%x,%d] nb=%d\n", xxx_rx_IpSockAddr((struct sockaddr *)&from),
+		 ntohs(xxx_rx_PortSockAddr((struct sockaddr *)&from)), nbytes));
 	}
 	return 0;
     }
@@ -1479,8 +1479,8 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct sockaddr *saddr)
 	rx_CopySockAddr(saddr, (struct sockaddr *)&from);
 
 	dpf(("Dropped %d %s: %x.%u.%u.%u.%u.%u.%u flags %d len %d\n",
-	      p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(rx_IpSockAddr((struct sockaddr *)&from)), 
-              ntohs(rx_PortSockAddr((struct sockaddr *)&from)), p->header.serial,
+	      p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&from)), 
+              ntohs(xxx_rx_PortSockAddr((struct sockaddr *)&from)), p->header.serial,
 	      p->header.epoch, p->header.cid, p->header.callNumber, p->header.seq, p->header.flags,
 	      p->length));
 #ifdef RX_TRIMDATABUFS
@@ -1848,8 +1848,8 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
 		for (tc = rx_connHashTable[i]; tc; tc = tc->next) {
 		    if ((all || rxi_IsConnInteresting(tc))
 			&& tin.index-- <= 0) {
-			tconn.host = rx_IpSockAddr((struct sockaddr *)&tc->peer->saddr);
-			tconn.port = rx_PortSockAddr((struct sockaddr *)&tc->peer->saddr);
+			tconn.host = xxx_rx_IpSockAddr((struct sockaddr *)&tc->peer->saddr);
+			tconn.port = xxx_rx_PortSockAddr((struct sockaddr *)&tc->peer->saddr);
 			tconn.cid = htonl(tc->cid);
 			tconn.epoch = htonl(tc->epoch);
 			tconn.serial = htonl(tc->serial);
@@ -1959,8 +1959,8 @@ rxi_ReceiveDebugPacket(struct rx_packet *ap, osi_socket asocket,
                         MUTEX_EXIT(&rx_peerHashTable_lock);
 
                         MUTEX_ENTER(&tp->peer_lock);                        
-			tpeer.host = rx_IpSockAddr((struct sockaddr *)&tp->saddr);
-			tpeer.port = rx_PortSockAddr((struct sockaddr *)&tp->saddr);
+			tpeer.host = xxx_rx_IpSockAddr((struct sockaddr *)&tp->saddr);
+			tpeer.port = xxx_rx_PortSockAddr((struct sockaddr *)&tp->saddr);
 			tpeer.ifMTU = htons(tp->ifMTU);
 			tpeer.idleWhen = htonl(tp->idleWhen);
 			tpeer.refCount = htons(tp->refCount);
@@ -2304,8 +2304,8 @@ rxi_SendPacket(struct rx_call *call, struct rx_connection *conn,
 #ifdef RXDEBUG
     }
     dpf(("%c %d %s: %x.%u.%u.%u.%u.%u.%u flags %d, packet %"AFS_PTR_FMT" len %d\n",
-          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(rx_IpSockAddr((struct sockaddr *)&peer->saddr)),
-          ntohs(rx_PortSockAddr((struct sockaddr *)&peer->saddr)), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
+          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&peer->saddr)),
+          ntohs(xxx_rx_PortSockAddr((struct sockaddr *)&peer->saddr)), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
           p->header.seq, p->header.flags, p, p->length));
 #endif
     if (rx_stats_active) {
@@ -2493,8 +2493,8 @@ rxi_SendPacketList(struct rx_call *call, struct rx_connection *conn,
     osi_Assert(p != NULL);
 
     dpf(("%c %d %s: %x.%u.%u.%u.%u.%u.%u flags %d, packet %"AFS_PTR_FMT" len %d\n",
-          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(rx_IpSockAddr((struct sockaddr *)&peer->saddr)),
-          ntohs(rx_PortSockAddr((struct sockaddr *)&peer->saddr)), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
+          deliveryType, p->header.serial, rx_packetTypes[p->header.type - 1], ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&peer->saddr)),
+          ntohs(xxx_rx_PortSockAddr((struct sockaddr *)&peer->saddr)), p->header.serial, p->header.epoch, p->header.cid, p->header.callNumber,
           p->header.seq, p->header.flags, p, p->length));
 
 #endif

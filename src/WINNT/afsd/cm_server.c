@@ -66,11 +66,11 @@ cm_ServerClearRPCStats(void) {
 
         switch (tsp->type) {
         case CM_SERVER_VLDB:
-            saddr = rx_CreateSockAddr(tsp->addr.sin_addr.s_addr, htons(7003));
+            saddr = xxx_rx_CreateSockAddr(tsp->addr.sin_addr.s_addr, htons(7003));
             rx_ClearPeerRPCStats(opcode_VL_ProbeServer>>32, (struct sockaddr *)&saddr);
 	    break;
 	case CM_SERVER_FILE:
-            saddr = rx_CreateSockAddr(tsp->addr.sin_addr.s_addr, htons(7000));
+            saddr = xxx_rx_CreateSockAddr(tsp->addr.sin_addr.s_addr, htons(7000));
             rx_ClearPeerRPCStats(opcode_RXAFS_GetCapabilities>>32, (struct sockaddr *)&saddr);
             rx_ClearPeerRPCStats(opcode_RXAFS_GetTime>>32, (struct sockaddr *)&saddr);
 	    break;

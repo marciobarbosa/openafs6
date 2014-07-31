@@ -573,7 +573,7 @@ h_gethostcps_r(struct host *host, afs_int32 now)
     host->cpsCall = slept ? time(NULL) : (now);
 
     H_UNLOCK;
-    code = hpr_GetHostCPS(ntohl(rx_IpSockAddr((struct sockaddr *)&host->saddr)), &host->hcps);
+    code = hpr_GetHostCPS(ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&host->saddr)), &host->hcps);
     H_LOCK;
     if (code) {
         rx_addr_str_t hoststr;
@@ -676,7 +676,7 @@ h_Alloc_r(struct rx_connection *r_con)
 	else
 	    consolePort = htons(DEF_ROPCONS);	/* Use a default */
     }
-    if (rx_PortSockAddr((struct sockaddr *)&host->saddr) == consolePort)
+    if (xxx_rx_PortSockAddr((struct sockaddr *)&host->saddr) == consolePort)
 	host->Console = 1;
     /* Make a callback channel even for the console, on the off chance that it
      * makes a request that causes a break call back.  It shouldn't. */
@@ -696,7 +696,7 @@ h_Alloc_r(struct rx_connection *r_con)
      * Compare the new host's IP address (in host byte order) with ours
      * (the File Server's), remembering if they are in the same network.
      */
-    newHostAddr_HBO = (afs_uint32) ntohl(rx_IpSockAddr((struct sockaddr *)&host->saddr));
+    newHostAddr_HBO = (afs_uint32) ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&host->saddr));
     host->InSameNetwork =
 	h_AddrInSameNetwork(FS_HostAddr_HBO, newHostAddr_HBO);
     return host;
@@ -731,7 +731,7 @@ h_Lookup_r(struct sockaddr *saddr, struct host **hostp)
     afs_int32 now;
     struct host *host = NULL;
     struct h_AddrHashChain *chain;
-    int index = h_HashIndex(rx_IpSockAddr(saddr));
+    int index = h_HashIndex(xxx_rx_IpSockAddr(saddr));
     extern int hostaclRefresh;
 
   restart:
@@ -1283,7 +1283,7 @@ removeAddress_r(struct host *host, struct sockaddr *saddr)
                            host, rx_PrintSockAddr((struct sockaddr *)&host->saddr, hoststr)));
                 host->hostFlags |= HOSTDELETED;
                 /* addr/port was removed from the hash table */
-                rx_SetSockAddr(0, 0, (struct sockaddr *)&host->saddr);
+                xxx_rx_SetSockAddr(0, 0, (struct sockaddr *)&host->saddr);
             } else {
                 rxconn = host->callback_rxcon;
                 host->callback_rxcon = NULL;
@@ -1419,7 +1419,7 @@ reconcileHosts_r(struct sockaddr *saddr, struct host *newHost,
 	 * addresses. Walk the hash chain again since the hash table may have
 	 * been changed when the host lock was dropped to get the uuid. */
 	struct h_AddrHashChain *chain;
-	int index = h_HashIndex(rx_IpSockAddr(saddr));
+	int index = h_HashIndex(xxx_rx_IpSockAddr(saddr));
 	for (chain = hostAddrHashTable[index]; chain; chain = chain->next) {
 	    if (rx_IsSockAddrEqual((struct sockaddr *)&chain->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&chain->saddr, saddr)) {
 		chain->hostPtr = newHost;
@@ -1461,7 +1461,7 @@ h_AddHostToAddrHashTable_r(struct sockaddr *saddr, struct host *host)
     rx_addr_str_t hoststr;
 
     /* hash into proper bucket */
-    index = h_HashIndex(rx_IpSockAddr(saddr));
+    index = h_HashIndex(xxx_rx_IpSockAddr(saddr));
 
     /* don't add the same address:port pair entry multiple times */
     for (chain = hostAddrHashTable[index]; chain; chain = chain->next) {
@@ -3299,7 +3299,7 @@ h_stateVerifyAddrHash(struct fs_dump_state * state, struct host * h,
     int ret = 0, found = 0;
     struct host *host = NULL;
     struct h_AddrHashChain *chain;
-    int index = h_HashIndex(rx_IpSockAddr(saddr));
+    int index = h_HashIndex(xxx_rx_IpSockAddr(saddr));
     rx_addr_str_t tmp;
     int chain_len = 0;
 
@@ -3924,7 +3924,7 @@ h_GetHostNetStats(afs_int32 * a_numHostsP, afs_int32 * a_sameNetOrSubnetP,
 	     * sure to first convert to host byte order.
 	     */
 	    (*a_numHostsP)++;
-	    currAddr_HBO = (afs_uint32) ntohl(rx_IpSockAddr((struct sockaddr *)&hostP->saddr));
+	    currAddr_HBO = (afs_uint32) ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&hostP->saddr));
 	    h_ClassifyAddress(FS_HostAddr_HBO, currAddr_HBO,
 			      a_sameNetOrSubnetP, a_diffSubnetP,
 			      a_diffNetworkP);
@@ -4106,8 +4106,8 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
     opr_Assert(interf);
 
     number = interf->numberOfInterfaces;
-    myAddr = rx_IpSockAddr((struct sockaddr *)&host->saddr);	/* current interface address */
-    myPort = rx_PortSockAddr((struct sockaddr *)&host->saddr);	/* current port */
+    myAddr = xxx_rx_IpSockAddr((struct sockaddr *)&host->saddr);	/* current interface address */
+    myPort = xxx_rx_PortSockAddr((struct sockaddr *)&host->saddr);	/* current port */
 
     ViceLog(125,
 	    ("initInterfaceAddr : host %s:%d numAddr %d\n",
@@ -4156,7 +4156,7 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
      * for this connection might not be 7001.
      */
     for (i = 0, count = 0, found = 0; i < number; i++) {
-        saddr = rx_CreateSockAddr(interf->addr_in[i], 0);
+        saddr = xxx_rx_CreateSockAddr(interf->addr_in[i], 0);
 	if (rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
 	    continue;
 	}
@@ -4201,7 +4201,7 @@ initInterfaceAddr_r(struct host *host, struct interfaceAddr *interf)
 	 * TellMeAboutYourself and WhoAreYou RPCs are only valid if they
 	 * are coming from fully connected hosts (no NAT/PATs)
 	 */
-        rx_SetSockAddr(interf->addr_in[i], port7001, (struct sockaddr *)&interface->interface[i].saddr);
+        xxx_rx_SetSockAddr(interf->addr_in[i], port7001, (struct sockaddr *)&interface->interface[i].saddr);
         interface->interface[i].valid =
             (interf->addr_in[i] == myAddr && port7001 == myPort) ? 1 : 0;
     }
@@ -4235,10 +4235,10 @@ h_DeleteHostFromAddrHashTable_r(struct sockaddr *saddr,
     rx_addr_str_t hoststr;
     struct h_AddrHashChain **hp, *th;
 
-    if (rx_IpSockAddr(saddr) == 0 && rx_PortSockAddr(saddr) == 0)
+    if (xxx_rx_IpSockAddr(saddr) == 0 && xxx_rx_PortSockAddr(saddr) == 0)
 	return 1;
 
-    for (hp = &hostAddrHashTable[h_HashIndex(rx_IpSockAddr(saddr))]; (th = *hp);
+    for (hp = &hostAddrHashTable[h_HashIndex(xxx_rx_IpSockAddr(saddr))]; (th = *hp);
 	 hp = &th->next) {
         opr_Assert(th->hostPtr);
         if (th->hostPtr == host && rx_IsSockAddrEqual((struct sockaddr *)&th->saddr, saddr) && rx_IsSockPortEqual((struct sockaddr *)&th->saddr, saddr)) {

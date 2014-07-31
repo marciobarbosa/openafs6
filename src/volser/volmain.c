@@ -480,12 +480,12 @@ main(int argc, char **argv)
 	{
             ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
             for(i = 0; i < ccode; i++)
-                SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+                SHostAddrs[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1)
             host = SHostAddrs[0];
     }
-    saddr = rx_CreateSockAddr(host, (int)htons(AFSCONF_VOLUMEPORT));
+    saddr = xxx_rx_CreateSockAddr(host, (int)htons(AFSCONF_VOLUMEPORT));
     code = rx_InitHost((struct sockaddr *)&saddr);
     if (code) {
 	fprintf(stderr, "rx init failed on socket AFSCONF_VOLUMEPORT %u\n",
@@ -538,7 +538,7 @@ main(int argc, char **argv)
     if (securityClasses[0] == NULL)
 	Abort("rxnull_NewServerSecurityObject");
 
-    saddr = rx_CreateSockAddr(host, 0);
+    saddr = xxx_rx_CreateSockAddr(host, 0);
 
     service =
 	rx_NewServiceHost((struct sockaddr *)&saddr, VOLSERVICE_ID, "VOLSER", securityClasses,

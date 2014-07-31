@@ -90,7 +90,7 @@ init_afs_cb(void)
     cm_noIPAddr =
 	rx_getAllAddr((struct sockaddr *)saddrs, AFS_MAX_INTERFACE_ADDR);
     for(i = 0; i < cm_noIPAddr; i++)    	
-    	afs_cb_interface.addr_in[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+    	afs_cb_interface.addr_in[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
     if (cm_noIPAddr < 0)
 	afs_cb_interface.numberOfInterfaces = 0;
     else {

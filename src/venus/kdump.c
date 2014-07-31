@@ -3521,7 +3521,7 @@ print_services(afs_int32 kmem)
 		  (KDUMP_SIZE_T) 40);
 	    printf
 		("\t%lx: serviceId=%d, port=%d, serviceName=%s, socket=0x%x\n",
-		 rx_services[i], sentry->serviceId, rx_PortSockAddr((struct sockaddr *)&sentry->saddr),
+		 rx_services[i], sentry->serviceId, xxx_rx_PortSockAddr((struct sockaddr *)&sentry->saddr),
 		 sysname, sentry->socket);
 	    printf
 		("\t\tnSecObj=%d, nReqRunning=%d, maxProcs=%d, minProcs=%d, connDeadTime=%d, idleDeadTime=%d\n",

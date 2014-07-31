@@ -430,11 +430,11 @@ main(int argc, char **argv)
 	{
             ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
             for(i = 0; i < ccode; i++)
-                SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+                SHostAddrs[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1) {
             host = SHostAddrs[0];
-            saddr = rx_CreateSockAddr(host, htons(AFSCONF_VLDBPORT));
+            saddr = xxx_rx_CreateSockAddr(host, htons(AFSCONF_VLDBPORT));
 	    rx_InitHost((struct sockaddr *)&saddr);
 	}
     }
@@ -470,7 +470,7 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
 
-    saddr = rx_CreateSockAddr(host, 0);
+    saddr = xxx_rx_CreateSockAddr(host, 0);
 
     tservice =
 	rx_NewServiceHost((struct sockaddr *)&saddr, USER_SERVICE_ID, "Vldb server",

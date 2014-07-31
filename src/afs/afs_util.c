@@ -201,7 +201,7 @@ print_internet_address(char *preamble, struct srvAddr *sa, char *postamble,
     afs_uint32 address;
 
     AFS_STATCNT(print_internet_address);
-    address = ntohl(rx_IpSockAddr((struct sockaddr *)&sa->saddr));
+    address = ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&sa->saddr));
     if (aserver->flags & SRVR_MULTIHOMED) {
 	if (flag == 1) {	/* server down mesg */
 	    if (!(aserver->flags & SRVR_ISDOWN))
@@ -234,7 +234,7 @@ print_internet_address(char *preamble, struct srvAddr *sa, char *postamble,
 	             (address >> 16) & 0xff,
 	             (address >> 8) & 0xff,
 	             (address) & 0xff,
-	             (int)ntohs(rx_PortSockAddr((struct sockaddr *)&sa->saddr)),
+	             (int)ntohs(xxx_rx_PortSockAddr((struct sockaddr *)&sa->saddr)),
 	             errorigin, errtype, errcode, str1, errmsg, str2);
 	}
     }
@@ -294,7 +294,7 @@ afs_CheckLocks(void)
                     for (tcv = sa->conns; tcv; tcv = tcv->next) {
                         if (tcv->refCount)
                             afs_warn("conn at %p (server %x) is held\n", tcv,
-				     rx_IpSockAddr((struct sockaddr *)&sa->saddr));
+				     xxx_rx_IpSockAddr((struct sockaddr *)&sa->saddr));
 		    }
 		}
 	    }

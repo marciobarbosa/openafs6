@@ -99,7 +99,7 @@ c_show(struct seq_file *m, void *p)
 
 	if (!tc->cellHosts[j]) break;
 
-	addr = rx_IpSockAddr((struct sockaddr *)&tc->cellHosts[j]->addr->saddr);
+	addr = xxx_rx_IpSockAddr((struct sockaddr *)&tc->cellHosts[j]->addr->saddr);
 #if defined(NIPQUAD)
 	seq_printf(m, "%u.%u.%u.%u #%u.%u.%u.%u\n",
 	           NIPQUAD(addr), NIPQUAD(addr));
@@ -246,7 +246,7 @@ uu_show(struct seq_file *m, void *p)
 	int i;
 
 #if defined(NIPQUAD)
-        sprintf(ipaddr, "%u.%u.%u.%u", NIPQUAD(rx_IpSockAddr((struct sockaddr *)&np->saddr)));
+        sprintf(ipaddr, "%u.%u.%u.%u", NIPQUAD(xxx_rx_IpSockAddr((struct sockaddr *)&np->saddr)));
 #else
         sprintf(ipaddr, "%pI4", &(((struct sockaddr_in *)&np->saddr)->sin_addr.s_addr));
 #endif

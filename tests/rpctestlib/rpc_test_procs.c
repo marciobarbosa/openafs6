@@ -142,7 +142,7 @@ init_callback_service_lwp(void *arg)
     }
 
 #if defined(RPC_TEST_GLOBAL_RX_INIT)
-    struct sockaddr_in saddr = rx_CreateSockAddr(htonl(INADDR_ANY), htons(ctx->cb_port));
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), htons(ctx->cb_port));
 
     svc = rx_NewServiceHost((struct sockaddr *)&saddr, 1,
                             ctx->cb_svc_name, &sc, 1, RXAFSCB_ExecuteRequest);
@@ -182,7 +182,7 @@ afs_int32 init_callback_service(rpc_test_request_ctx *ctx)
 
 #if !defined(RPC_TEST_GLOBAL_RX_INIT)
 #if 0
-    struct sockaddr_in saddr = rx_CreateSockAddr(ctx->cb_listen_addr.addr_in[0], (int) htons(ctx->cb_port));
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(ctx->cb_listen_addr.addr_in[0], (int) htons(ctx->cb_port));
     code = rx_InitHost((struct sockaddr *)&saddr);
 #else
     code = rx_Init((int) htons(ctx->cb_port));

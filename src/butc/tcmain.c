@@ -1049,12 +1049,12 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 	{
             ccode = rx_getAllAddr((struct sockaddr *)saddrs, ADDRSPERSITE);
             for(i = 0; i < ccode; i++)
-            	SHostAddrs[i] = rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+            	SHostAddrs[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
         }
         if (ccode == 1)
             host = SHostAddrs[0];
     }
-    saddr = rx_CreateSockAddr(host, htons(BC_TAPEPORT + portOffset));
+    saddr = xxx_rx_CreateSockAddr(host, htons(BC_TAPEPORT + portOffset));
     code = rx_InitHost((struct sockaddr *)&saddr);
     if (code) {
 	TapeLog(0, 0, code, 0, "rx init failed on port %u\n",
@@ -1092,7 +1092,7 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
-    saddr = rx_CreateSockAddr(host, 0);
+    saddr = xxx_rx_CreateSockAddr(host, 0);
 
     service =
 	rx_NewServiceHost((struct sockaddr *)&saddr, 1, "BUTC", securityObjects, 1, TC_ExecuteRequest);

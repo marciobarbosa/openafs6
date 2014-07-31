@@ -103,7 +103,7 @@ rxkad_AllocCID(struct rx_securityClass *aobj, struct rx_connection *aconn)
     if (Cuid[0] == 0) {
 	afs_uint32 xor[2];
         saddr = rxi_getaddr();  /* comes back in net order */
-	tgen.ipAddr = rx_IpSockAddr((struct sockaddr *)&saddr);
+	tgen.ipAddr = xxx_rx_IpSockAddr((struct sockaddr *)&saddr);
 	clock_GetTime(&tgen.time);	/* changes time1 and time2 */
 	tgen.time.sec = htonl(tgen.time.sec);
 	tgen.time.usec = htonl(tgen.time.usec);

@@ -2228,7 +2228,7 @@ afsclient_RPCStatOpen(const void *cellHandle, const char *serverName,
 	sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
     }
 
-    saddr = rx_CreateSockAddr(htonl(servAddr), htons(servPort));
+    saddr = xxx_rx_CreateSockAddr(htonl(servAddr), htons(servPort));
 
     *rpcStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,
@@ -2316,7 +2316,7 @@ afsclient_RPCStatOpenPort(const void *cellHandle, const char *serverName,
 	sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
     }
 
-    saddr = rx_CreateSockAddr(htonl(servAddr), htons(serverPort));
+    saddr = xxx_rx_CreateSockAddr(htonl(servAddr), htons(serverPort));
 
     *rpcStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,
@@ -2429,7 +2429,7 @@ afsclient_CMStatOpen(const void *cellHandle, const char *serverName,
 
     sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
 
-    saddr = rx_CreateSockAddr(htonl(servAddr), htons(AFSCONF_CALLBACKPORT));
+    saddr = xxx_rx_CreateSockAddr(htonl(servAddr), htons(AFSCONF_CALLBACKPORT));
 
     *cmStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr,
@@ -2504,7 +2504,7 @@ afsclient_CMStatOpenPort(const void *cellHandle, const char *serverName,
 
     sc = c_handle->tokens->afs_sc[c_handle->tokens->sc_index];
 
-    saddr = rx_CreateSockAddr(htonl(servAddr), htons(serverPort));
+    saddr = xxx_rx_CreateSockAddr(htonl(servAddr), htons(serverPort));
 
     *cmStatHandleP =
 	rx_GetCachedConnection((struct sockaddr *)&saddr, 1, sc,

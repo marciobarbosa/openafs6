@@ -213,7 +213,7 @@ MainCommand(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
-    saddr = rx_CreateSockAddr(host, port);
+    saddr = xxx_rx_CreateSockAddr(host, port);
 
     if (version_flag) {
 

@@ -2343,7 +2343,7 @@ afs_UpdateStatus(struct vcache *avc, struct VenusFid *afid,
 void
 afs_BadFetchStatus(struct afs_conn *tc)
 {
-    int addr = ntohl(rx_IpSockAddr((struct sockaddr *)&tc->parent->srvr->saddr));
+    int addr = ntohl(xxx_rx_IpSockAddr((struct sockaddr *)&tc->parent->srvr->saddr));
     afs_warn("afs: Invalid AFSFetchStatus from server %u.%u.%u.%u\n",
              (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff,
              (addr) & 0xff);

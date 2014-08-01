@@ -1566,8 +1566,6 @@ AC_CHECK_FUNCS([ \
 	gethostname \
 	lstat \
 	inet_aton \
-	inet_ntop \
-	inet_pton \
 	putenv \
 	readv \
 	setenv \
@@ -1605,6 +1603,8 @@ AC_REPLACE_FUNCS([ \
 	getopt \
 	getprogname \
 	gettimeofday \
+	inet_ntop \
+	inet_pton \
 	localtime_r \
 	mkstemp \
 	setenv \

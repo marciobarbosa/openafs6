@@ -621,12 +621,12 @@ EnumerateEntry(struct nvldbentry *entry)
 
 /* forcibly remove a volume.  Very dangerous call */
 int
-UV_NukeVolume(afs_uint32 server, afs_int32 partid, afs_uint32 volid)
+UV_NukeVolume(struct sockaddr *saddr, afs_int32 partid, afs_uint32 volid)
 {
     struct rx_connection *tconn;
     afs_int32 code;
 
-    tconn = UV_Bind(server, AFSCONF_VOLUMEPORT);
+    tconn = UV_Bind(xxx_rx_IpSockAddr(saddr), AFSCONF_VOLUMEPORT);
     if (tconn) {
 	code = AFSVolNukeVolume(tconn, partid, volid);
 	rx_DestroyConnection(tconn);
@@ -637,13 +637,13 @@ UV_NukeVolume(afs_uint32 server, afs_int32 partid, afs_uint32 volid)
 
 /* like df. Return usage of <pname> on <server> in <partition> */
 int
-UV_PartitionInfo64(afs_uint32 server, char *pname,
+UV_PartitionInfo64(struct sockaddr *saddr, char *pname,
 		   struct diskPartition64 *partition)
 {
     struct rx_connection *aconn;
     afs_int32 code = 0;
 
-    aconn = UV_Bind(server, AFSCONF_VOLUMEPORT);
+    aconn = UV_Bind(xxx_rx_IpSockAddr(saddr), AFSCONF_VOLUMEPORT);
     code = AFSVolPartitionInfo64(aconn, pname, partition);
     if (code == RXGEN_OPCODE) {
 	struct diskPartition *dpp = malloc(sizeof(struct diskPartition));
@@ -672,19 +672,20 @@ UV_CreateVolume(afs_uint32 aserver, afs_int32 apart, char *aname,
 		afs_uint32 * anewid)
 {
     afs_int32 code;
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(aserver, 0);
     *anewid = 0;
-    code = UV_CreateVolume2(aserver, apart, aname, 5000, 0, 0, 0, 0, anewid);
+    code = UV_CreateVolume2((struct sockaddr *)&saddr, apart, aname, 5000, 0, 0, 0, 0, anewid);
     return code;
 }
 
 /* less old interface to create volumes */
 int
-UV_CreateVolume2(afs_uint32 aserver, afs_int32 apart, char *aname,
+UV_CreateVolume2(struct sockaddr *saddr, afs_int32 apart, char *aname,
 		 afs_int32 aquota, afs_int32 aspare1, afs_int32 aspare2,
 		 afs_int32 aspare3, afs_int32 aspare4, afs_uint32 * anewid)
 {
     afs_uint32 roid = 0, bkid = 0;
-    return UV_CreateVolume3(aserver, apart, aname, aquota, aspare1, aspare2,
+    return UV_CreateVolume3(saddr, apart, aname, aquota, aspare1, aspare2,
 	aspare3, aspare4, anewid, &roid, &bkid);
 }
 
@@ -706,7 +707,7 @@ UV_CreateVolume2(afs_uint32 aserver, afs_int32 apart, char *aname,
  * @return 0 on success, error code otherwise.
  */
 int
-UV_CreateVolume3(afs_uint32 aserver, afs_int32 apart, char *aname,
+UV_CreateVolume3(struct sockaddr *saddr, afs_int32 apart, char *aname,
 		 afs_int32 aquota, afs_int32 aspare1, afs_int32 aspare2,
 		 afs_int32 aspare3, afs_int32 aspare4, afs_uint32 * anewid,
 		 afs_uint32 * aroid, afs_uint32 * abkid)
@@ -726,7 +727,7 @@ UV_CreateVolume3(afs_uint32 aserver, afs_int32 apart, char *aname,
     init_volintInfo(&tstatus);
     tstatus.maxquota = aquota;
 
-    aconn = UV_Bind(aserver, AFSCONF_VOLUMEPORT);
+    aconn = UV_Bind(xxx_rx_IpSockAddr(saddr), AFSCONF_VOLUMEPORT);
 
     if (aroid && *aroid) {
 	VPRINT1("Using RO volume ID %d.\n", *aroid);
@@ -791,7 +792,7 @@ UV_CreateVolume3(afs_uint32 aserver, afs_int32 apart, char *aname,
     /* set up the vldb entry for this volume */
     strncpy(entry.name, aname, VOLSER_OLDMAXVOLNAME);
     entry.nServers = 1;
-    entry.serverNumber[0] = aserver;	/* this should have another
+    entry.serverNumber[0] = xxx_rx_IpSockAddr(saddr);	/* this should have another
 					 * level of indirection later */
     entry.serverPartition[0] = apart;	/* this should also have
 					 * another indirection level */
@@ -845,7 +846,7 @@ UV_CreateVolume3(afs_uint32 aserver, afs_int32 apart, char *aname,
 /* create a volume, given a server, partition number, volume name --> sends
 * back new vol id in <anewid>*/
 int
-UV_AddVLDBEntry(afs_uint32 aserver, afs_int32 apart, char *aname,
+UV_AddVLDBEntry(struct sockaddr *saddr, afs_int32 apart, char *aname,
 		afs_uint32 aid)
 {
     struct rx_connection *aconn;
@@ -859,7 +860,7 @@ UV_AddVLDBEntry(afs_uint32 aserver, afs_int32 apart, char *aname,
     /* set up the vldb entry for this volume */
     strncpy(entry.name, aname, VOLSER_OLDMAXVOLNAME);
     entry.nServers = 1;
-    entry.serverNumber[0] = aserver;	/* this should have another
+    entry.serverNumber[0] = xxx_rx_IpSockAddr(saddr);	/* this should have another
 					 * level of indirection later */
     entry.serverPartition[0] = apart;	/* this should also have
 					 * another indirection level */

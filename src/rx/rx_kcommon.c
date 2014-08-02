@@ -34,7 +34,7 @@ int (*rxk_GetPacketProc) (struct rx_packet **ahandle, int asize);
 #endif
 
 osi_socket *rxk_NewSocketHost(struct sockaddr *saddr);
-extern struct interfaceAddr afs_cb_interface;
+extern struct afs_interfaceAddr afs_cb_interface;
 
 rxk_ports_t rxk_ports;
 rxk_portRocks_t rxk_portRocks;
@@ -422,7 +422,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 #else /* AFS_SUN5_ENV */
     afs_int32 mtu;
 
-    mtu = rxi_FindIfMTU(xxx_rx_IpSockAddr((struct sockaddr *)&pp->saddr));
+    mtu = rxi_FindIfMTU((struct sockaddr *)&pp->saddr);
 
     if (mtu <= 0) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
@@ -508,7 +508,7 @@ rxi_GetcbiInfo(void)
 	if (!afs_cb_interface.mtu[i])
 	    afs_cb_interface.mtu[i] = htonl(1500);
 	rxmtu = (ntohl(afs_cb_interface.mtu[i]) - RX_IPUDP_SIZE);
-	ifinaddr = ntohl(afs_cb_interface.addr_in[i]);
+	ifinaddr = ntohl(((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr);
 	if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
 	    different++;
 
@@ -566,8 +566,8 @@ rxi_Findcbi(struct sockaddr *saddr)
 	netMask = 0;
 
     for (j = 0; j < afs_cb_interface.numberOfInterfaces; j++) {
-	thisAddr = ntohl(afs_cb_interface.addr_in[j]);
-	subnetMask = ntohl(afs_cb_interface.subnetmask[j]);
+	thisAddr = ntohl(((struct sockaddr_in *)&afs_cb_interface.addr_in[j])->sin_addr.s_addr);
+	subnetMask = ntohl(((struct sockaddr_in *)&afs_cb_interface.subnetmask[j])->sin_addr.s_addr);
 	if ((myAddr & netMask) == (thisAddr & netMask)) {
 	    if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
 		if (myAddr == thisAddr) {

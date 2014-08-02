@@ -1521,6 +1521,7 @@ NukeVolume(struct cmd_syndesc *as)
     afs_int32 partID;
     afs_uint32 server;
     char *tp;
+    struct sockaddr_in saddr;
 
     server = GetServer(tp = as->parms[0].items->data);
     if (!server) {
@@ -1548,7 +1549,8 @@ NukeVolume(struct cmd_syndesc *as)
 	    "vos: forcibly removing all traces of volume %d, please wait...",
 	    volID);
     fflush(STDOUT);
-    code = UV_NukeVolume(server, partID, volID);
+    saddr = xxx_rx_CreateSockAddr(server, 0);
+    code = UV_NukeVolume((struct sockaddr *)&saddr, partID, volID);
     if (code == 0)
 	fprintf(STDOUT, "done.\n");
     else
@@ -1948,6 +1950,7 @@ CreateVolume(struct cmd_syndesc *as, void *arock)
     afs_int32 vcode;
     afs_int32 quota;
     afs_uint32 tserver;
+    struct sockaddr_in saddr;
 
     arovolid = &rovolid;
 
@@ -2037,9 +2040,9 @@ CreateVolume(struct cmd_syndesc *as, void *arock)
 	    arovolid = NULL;
 	}
     }
-
+    saddr = xxx_rx_CreateSockAddr(tserver, 0);
     code =
-	UV_CreateVolume3(tserver, pnum, as->parms[2].items->data, quota, 0,
+	UV_CreateVolume3((struct sockaddr *)&saddr, pnum, as->parms[2].items->data, quota, 0,
 			 0, 0, 0, &volid, arovolid, &bkvolid);
     if (code) {
 	PrintDiagnostics("create", code);
@@ -2209,6 +2212,7 @@ MoveVolume(struct cmd_syndesc *as, void *arock)
     afs_int32 frompart, topart;
     afs_int32 flags, code, err;
     char fromPartName[10], toPartName[10];
+    struct sockaddr_in saddr;
 
     struct diskPartition64 partition;	/* for space check */
     volintInfo *p;
@@ -2278,8 +2282,8 @@ MoveVolume(struct cmd_syndesc *as, void *arock)
     /*
      * check target partition for space to move volume
      */
-
-    code = UV_PartitionInfo64(toserver, toPartName, &partition);
+    saddr = xxx_rx_CreateSockAddr(toserver, 0);
+    code = UV_PartitionInfo64((struct sockaddr *)&saddr, toPartName, &partition);
     if (code) {
 	fprintf(STDERR, "vos: cannot access partition %s\n", toPartName);
 	exit(1);
@@ -2339,6 +2343,7 @@ CopyVolume(struct cmd_syndesc *as, void *arock)
     struct nvldbentry entry;
     struct diskPartition64 partition;	/* for space check */
     volintInfo *p;
+    struct sockaddr_in saddr;
 
     volid = vsu_GetVolumeID(as->parms[0].items->data, cstruct, &err);
     if (volid == 0) {
@@ -2431,8 +2436,8 @@ CopyVolume(struct cmd_syndesc *as, void *arock)
     /*
      * check target partition for space to move volume
      */
-
-    code = UV_PartitionInfo64(toserver, toPartName, &partition);
+    saddr = xxx_rx_CreateSockAddr(toserver, 0);
+    code = UV_PartitionInfo64((struct sockaddr *)&saddr, toPartName, &partition);
     if (code) {
 	fprintf(STDERR, "vos: cannot access partition %s\n", toPartName);
 	exit(1);
@@ -2487,6 +2492,7 @@ ShadowVolume(struct cmd_syndesc *as, void *arock)
     char fromPartName[10], toPartName[10], toVolName[32], *tovolume;
     struct diskPartition64 partition;	/* for space check */
     volintInfo *p, *q;
+    struct sockaddr_in saddr;
 
     p = (volintInfo *) 0;
     q = (volintInfo *) 0;
@@ -2617,8 +2623,8 @@ ShadowVolume(struct cmd_syndesc *as, void *arock)
     /*
      * check target partition for space to move volume
      */
-
-    code = UV_PartitionInfo64(toserver, toPartName, &partition);
+    saddr = xxx_rx_CreateSockAddr(toserver, 0);
+    code = UV_PartitionInfo64((struct sockaddr *)&saddr, toPartName, &partition);
     if (code) {
 	fprintf(STDERR, "vos: cannot access partition %s\n", toPartName);
 	exit(1);
@@ -5155,6 +5161,7 @@ PartitionInfo(struct cmd_syndesc *as, void *arock)
     int i, cnt;
     int printSummary=0, sumPartitions=0;
     afs_uint64 sumFree, sumStorage;
+    struct sockaddr_in saddr;
 
     ZeroInt64(sumFree);
     ZeroInt64(sumStorage);
@@ -5199,7 +5206,8 @@ PartitionInfo(struct cmd_syndesc *as, void *arock)
     for (i = 0; i < cnt; i++) {
 	if (dummyPartList.partFlags[i] & PARTVALID) {
 	    MapPartIdIntoName(dummyPartList.partId[i], pname);
-	    code = UV_PartitionInfo64(aserver, pname, &partition);
+	    saddr = xxx_rx_CreateSockAddr(aserver, 0);
+	    code = UV_PartitionInfo64((struct sockaddr *)&saddr, pname, &partition);
 	    if (code) {
 		fprintf(STDERR, "Could not get information on partition %s\n",
 			pname);

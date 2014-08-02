@@ -379,12 +379,12 @@ afs_uuid_hash(afsUUID * uuid)
 
 #ifdef KERNEL
 
-extern struct interfaceAddr afs_cb_interface;
+extern struct afs_interfaceAddr afs_cb_interface;
 
 static int
 uuid_get_address(uuid_address_p_t addr)
 {
-    memcpy(addr->eaddr, &afs_cb_interface.addr_in[0], 4);
+    memcpy(addr->eaddr, &(((struct sockaddr_in *)&afs_cb_interface.addr_in[0])->sin_addr.s_addr), 4);
     addr->eaddr[4] = 0xaa;
     addr->eaddr[5] = 0x77;
     return 0;

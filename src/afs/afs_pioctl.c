@@ -4725,7 +4725,7 @@ DECL_PIOCTL(PGetCPrefs)
      */
     for (i = spin->offset, j = 0; (i < afs_cb_interface.numberOfInterfaces)
 	 && (j < maxNumber); i++, j++, srvout++)
-        xxx_rx_SetSockAddr(afs_cb_interface.addr_in[i], 0, (struct sockaddr *)&srvout->saddr);
+        rx_CopySockAddr((struct sockaddr *)&srvout->saddr, (struct sockaddr *)&afs_cb_interface.addr_in[i]);
 
     spout->num_servers = j;
     aout->ptr += sizeof(struct sprefinfo) + (j - 1) * sizeof(struct spref);
@@ -4784,7 +4784,7 @@ DECL_PIOCTL(PSetCPrefs)
     ObtainWriteLock(&afs_xinterface, 412);
     afs_cb_interface.numberOfInterfaces = sin->num_servers;
     for (i = 0; (unsigned short)i < sin->num_servers; i++)
-	afs_cb_interface.addr_in[i] = xxx_rx_IpSockAddr((struct sockaddr *)&sin->servers[i].saddr);
+        rx_CopySockAddr((struct sockaddr *)&afs_cb_interface.addr_in[i], (struct sockaddr *)&sin->servers[i].saddr);
 
     ReleaseWriteLock(&afs_xinterface);
     return 0;
@@ -5193,13 +5193,13 @@ DECL_PIOCTL(PCallBackAddr)
 
     ObtainReadLock(&afs_xinterface);
     for (i = 0; (unsigned short)i < afs_cb_interface.numberOfInterfaces; i++) {
-	if (afs_cb_interface.addr_in[i] == addr)
+	if (((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr == addr)
 	    break;
     }
 
     ReleaseWriteLock(&afs_xinterface);
 
-    if (afs_cb_interface.addr_in[i] != addr)
+    if (((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr != addr)
 	return EINVAL;
 
     ObtainReadLock(&afs_xserver);	/* Necessary? */

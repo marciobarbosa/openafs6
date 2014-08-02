@@ -32,7 +32,16 @@
 #define FSPROBE_CALLBACK_VERBOSE 0
 
 int afs_cb_inited = 0;
-struct interfaceAddr afs_cb_interface;
+struct afs_interfaceAddr afs_cb_interface;
+
+/* not permanent: original definition into afs.h */
+struct afs_interfaceAddr {          /* for multihomed clients */
+    int numberOfInterfaces;
+    afsUUID uuid;
+    struct sockaddr_storage addr_in[AFS_MAX_INTERFACE_ADDR]; /* interface addresses */
+    struct sockaddr_storage subnetmask[AFS_MAX_INTERFACE_ADDR]; /* subnet masks in net ord */
+    afs_int32 mtu[AFS_MAX_INTERFACE_ADDR]; /* MTU */
+};
 
 /*
  * Initialize the callback interface structure
@@ -41,12 +50,12 @@ static int
 init_afs_cb(void)
 {
     int count, i;
-    struct sockaddr_in saddrs[AFS_MAX_INTERFACE_ADDR];
+    struct sockaddr_storage saddrs[AFS_MAX_INTERFACE_ADDR];
 
     afs_uuid_create(&afs_cb_interface.uuid);
     count = rx_getAllAddr((struct sockaddr *)saddrs, AFS_MAX_INTERFACE_ADDR);
     for(i = 0; i < count; i++)
-        afs_cb_interface.addr_in[i] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[i]);
+        rx_CopySockAddr((struct sockaddr *)&afs_cb_interface.addr_in[i], (struct sockaddr *)&saddrs[i]);
     if (count <= 0)
 	afs_cb_interface.numberOfInterfaces = 0;
     else
@@ -470,7 +479,7 @@ SRXAFSCB_InitCallBackState2(struct rx_call * rxcall,
 afs_int32
 SRXAFSCB_WhoAreYou(struct rx_call * rxcall, struct interfaceAddr * addr)
 {
-
+    int i;
 #if FSPROBE_CALLBACK_VERBOSE
     static char rn[] = "SRXAFSCB_WhoAreYou";	/*Routine name */
     char hostName[256];		/*Host name buffer */
@@ -488,7 +497,15 @@ SRXAFSCB_WhoAreYou(struct rx_call * rxcall, struct interfaceAddr * addr)
     if (rxcall && addr) {
 	if (!afs_cb_inited)
 	    init_afs_cb();
-	*addr = afs_cb_interface;
+
+        addr->numberOfInterfaces = afs_cb_interface.numberOfInterfaces;
+        addr->uuid = afs_cb_interface.uuid;
+
+        for(i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
+            addr->addr_in[i] = ((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr;
+            addr->subnetmask[i] = ((struct sockaddr_in *)&afs_cb_interface.subnetmask[i])->sin_addr.s_addr;
+            addr->mtu[i] = afs_cb_interface.mtu[i];
+        }
     }
 
     /*
@@ -723,6 +740,7 @@ SRXAFSCB_TellMeAboutYourself(struct rx_call * rxcall,
 			     struct interfaceAddr * addr,
 			     Capabilities * capabilities)
 {
+    int i;
 #if FSPROBE_CALLBACK_VERBOSE
     static char rn[] = "SRXAFSCB_TellMeAboutYourself";	/*Routine name */
     char hostName[256];		/*Host name buffer */
@@ -740,7 +758,15 @@ SRXAFSCB_TellMeAboutYourself(struct rx_call * rxcall,
     if (rxcall && addr) {
 	if (!afs_cb_inited)
 	    init_afs_cb();
-	*addr = afs_cb_interface;
+
+        addr->numberOfInterfaces = afs_cb_interface.numberOfInterfaces;
+        addr->uuid = afs_cb_interface.uuid;
+
+        for(i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
+            addr->addr_in[i] = ((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr;
+            addr->addr_in[i] = ((struct sockaddr_in *)&afs_cb_interface.subnetmask[i])->sin_addr.s_addr;
+            addr->addr_in[i] = afs_cb_interface.mtu[i];
+        }
     }
 
     /*

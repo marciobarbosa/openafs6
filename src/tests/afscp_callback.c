@@ -5,17 +5,17 @@
 #include <afs/afsutil.h>
 #include <afs/afsutil_prototypes.h>
 int afs_cb_inited = 0;
-struct interfaceAddr afs_cb_interface;
+struct afs_interfaceAddr afs_cb_interface;
 static int
 init_afs_cb(void)
 {
     int count, j;
-    struct sockaddr_in saddrs[AFS_MAX_INTERFACE_ADDR];
+    struct sockaddr_storage saddrs[AFS_MAX_INTERFACE_ADDR];
 
     afs_uuid_create(&afs_cb_interface.uuid);
     count = rx_getAllAddr((struct sockaddr *)saddrs, AFS_MAX_INTERFACE_ADDR);
     for(j = 0; j < count; j++)
-        afs_cb_interface.addr_in[j] = xxx_rx_IpSockAddr((struct sockaddr *)&saddrs[j]);
+        rx_CopySockAddr((struct sockaddr *)&afs_cb_interface.addr_in[j], (struct sockaddr *)&saddrs[j]);
     if (count <= 0)
 	afs_cb_interface.numberOfInterfaces = 0;
     else {
@@ -25,6 +25,8 @@ init_afs_cb(void)
 	    /* these addresss will be marshalled in XDR, so they must be in
 	     * host-byte order to make sense */
 	    afs_cb_interface.addr_in[i] = ntohl(afs_cb_interface.addr_in[i]);
+            ((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr =
+                ntohl(((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr);
 	}
     }
     afs_cb_inited = 1;
@@ -99,10 +101,19 @@ SRXAFSCB_InitCallBackState2(struct rx_call *rxcall, struct interfaceAddr *addr)
 int
 SRXAFSCB_WhoAreYou(struct rx_call *rxcall, struct interfaceAddr *addr)
 {
+    int i;
+
     if (rxcall && addr) {
 	if (!afs_cb_inited)
-	    init_afs_cb();
-	*addr = afs_cb_interface;
+	    init_afs_cb();	
+        addr->numberOfInterfaces = afs_cb_interface.numberOfInterfaces;
+        addr->uuid = afs_cb_interface.uuid;
+
+        for(i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
+            addr->addr_in[i] = ((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr;
+            addr->subnetmask[i] = ((struct sockaddr_in *)&afs_cb_interface.subnetmask[i])->sin_addr.s_addr;
+            addr->mtu[i] = afs_cb_interface.mtu[i];
+        }
     }
     return (0);
 }

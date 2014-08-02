@@ -35,7 +35,7 @@ int afs_shuttingdown = 0;
 int afs_cold_shutdown = 0;
 int afs_resourceinit_flag = 0;
 afs_int32 afs_nfs_server_addr;
-struct interfaceAddr afs_cb_interface;
+struct afs_interfaceAddr afs_cb_interface;
 struct afs_osi_WaitHandle AFS_WaitHandler;
 static struct rx_securityClass *srv_secobj;
 static struct rx_securityClass *clt_secobj;

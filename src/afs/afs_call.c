@@ -69,7 +69,7 @@ static int afs_CB_Running = 0;
 static int AFS_Running = 0;
 static int afs_CacheInit_Done = 0;
 static int afs_Go_Done = 0;
-extern struct interfaceAddr afs_cb_interface;
+extern struct afs_interfaceAddr afs_cb_interface;
 #ifdef RXK_LISTENER_ENV
 static int afs_RX_Running = 0;
 #endif
@@ -1166,7 +1166,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	if (!code) {
 	    afs_cb_interface.numberOfInterfaces = count;
 	    for (i = 0; i < count; i++) {
-		afs_cb_interface.addr_in[i] = buffer[i];
+		xxx_rx_SetSockAddr(buffer[i], 0, (struct sockaddr *)&afs_cb_interface.addr_in[i]);
 #ifdef AFS_USERSPACE_IP_ADDR
 		/* AFS_USERSPACE_IP_ADDR means we have no way of finding the
 		 * machines IP addresses when in the kernel (the in_ifaddr
@@ -1177,8 +1177,11 @@ afs_syscall_call(long parm, long parm2, long parm3,
 		 * finding the best mtu size. rxi_FindIfnet() is replaced
 		 * with rxi_Findcbi().
 		 */
-		afs_cb_interface.subnetmask[i] =
-		    (parm4 ? maskbuffer[i] : 0xffffffff);
+		if(parm4)
+		    xxx_rx_SetSockAddr(maskbuffer[i], 0, (struct sockaddr *)&afs_cb_interface.subnetmask[i]);
+		else
+		    xxx_rx_SetSockAddr(0xffffffff, 0, (struct sockaddr *)&afs_cb_interface.subnetmask[i]);
+
 		afs_cb_interface.mtu[i] = (parm5 ? mtubuffer[i] : htonl(1500));
 #endif
 	    }
@@ -1266,7 +1269,7 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	afs_int32 i;
 	i = rxi_Findcbi((struct sockaddr *)&saddr_);
 	if (i != -1) {
-	    mask = afs_cb_interface.subnetmask[i];
+	    mask = ((struct sockaddr_in *)&afs_cb_interface.subnetmask[i])->sin_addr.s_addr;
 	} else {
 	    code = -1;
 	}

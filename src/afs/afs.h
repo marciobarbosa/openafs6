@@ -35,6 +35,14 @@
 
 extern int afs_shuttingdown;
 
+struct afs_interfaceAddr {          /* for multihomed clients */
+    int numberOfInterfaces;
+    afsUUID uuid;
+    struct sockaddr_storage addr_in[AFS_MAX_INTERFACE_ADDR]; /* interface addresses */
+    struct sockaddr_storage subnetmask[AFS_MAX_INTERFACE_ADDR]; /* subnet masks in net ord */
+    afs_int32 mtu[AFS_MAX_INTERFACE_ADDR]; /* MTU */
+};
+
 /*
  * Macros to uniquely identify the AFS vfs struct
  */

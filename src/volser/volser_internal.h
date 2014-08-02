@@ -38,19 +38,19 @@ extern int PrintError(char *msg, afs_int32 errcode);
 extern void init_volintInfo(struct volintInfo *vinfo);
 extern void SubEnumerateEntry(struct nvldbentry *entry);
 extern void EnumerateEntry(struct nvldbentry *entry);
-extern int UV_NukeVolume(afs_uint32 server, afs_int32 partid, afs_uint32 volid);
-extern int UV_PartitionInfo64(afs_uint32 server, char *pname,
+extern int UV_NukeVolume(struct sockaddr *saddr, afs_int32 partid, afs_uint32 volid);
+extern int UV_PartitionInfo64(struct sockaddr *saddr, char *pname,
 			    struct diskPartition64 *partition);
-extern int UV_CreateVolume2(afs_uint32 aserver, afs_int32 apart, char *aname,
+extern int UV_CreateVolume2(struct sockaddr *saddr, afs_int32 apart, char *aname,
 			    afs_int32 aquota, afs_int32 aspare1,
 			    afs_int32 aspare2, afs_int32 aspare3,
 			    afs_int32 aspare4, afs_uint32 * anewid);
-extern int UV_CreateVolume3(afs_uint32 aserver, afs_int32 apart, char *aname,
+extern int UV_CreateVolume3(struct sockaddr *saddr, afs_int32 apart, char *aname,
 			    afs_int32 aquota, afs_int32 aspare1,
 			    afs_int32 aspare2, afs_int32 aspare3,
 			    afs_int32 aspare4, afs_uint32 * anewid,
 			    afs_uint32 * aroid, afs_uint32 * abkid);
-extern int UV_AddVLDBEntry(afs_uint32 aserver, afs_int32 apart, char *aname,
+extern int UV_AddVLDBEntry(struct sockaddr *saddr, afs_int32 apart, char *aname,
 			   afs_uint32 aid);
 extern int UV_MoveVolume(afs_uint32 afromvol, afs_uint32 afromserver,
 			 afs_int32 afrompart, afs_uint32 atoserver,

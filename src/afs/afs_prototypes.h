@@ -56,7 +56,7 @@ extern afs_int32 afs_connectBacks;
 extern unsigned long lastCallBack_vnode;
 extern unsigned int lastCallBack_dv;
 extern osi_timeval_t lastCallBack_time;
-extern struct interfaceAddr afs_cb_interface;
+extern struct afs_interfaceAddr afs_cb_interface;
 
 extern int afs_RXCallBackServer(void);
 extern int SRXAFSCB_GetCE(struct rx_call *a_call, afs_int32 a_index,

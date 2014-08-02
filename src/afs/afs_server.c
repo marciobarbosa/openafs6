@@ -1163,14 +1163,11 @@ afs_SetServerPrefs(struct srvAddr *const sa)
 {
 #if     defined(AFS_USERSPACE_IP_ADDR)
     int i;
-    struct sockaddr_in saddr, smask;
 
     sa->sa_iprank = LO;
     for (i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
-    	saddr = xxx_rx_CreateSockAddr(afs_cb_interface.addr_in[i], 0);
-    	smask = xxx_rx_CreateSockAddr(afs_cb_interface.subnetmask[i], 0);
-	afsi_SetServerIPRank(sa, (struct sockaddr *)&saddr,
-			     (struct sockaddr *)&smask);
+	afsi_SetServerIPRank(sa, (struct sockaddr *)&afs_cb_interface.addr_in[i],
+			     (struct sockaddr *)&afs_cb_interface.subnetmask[i]);
     }
 #else				/* AFS_USERSPACE_IP_ADDR */
 #if	defined(AFS_SUN5_ENV)

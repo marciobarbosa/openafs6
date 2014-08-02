@@ -73,7 +73,7 @@ unsigned int lastCallBack_dv;
 osi_timeval_t lastCallBack_time;
 
 /* these are for storing alternate interface addresses */
-struct interfaceAddr afs_cb_interface;
+struct afs_interfaceAddr afs_cb_interface;
 
 /*------------------------------------------------------------------------
  * EXPORTED SRXAFSCB_GetCE
@@ -1106,8 +1106,8 @@ SRXAFSCB_WhoAreYou(struct rx_call *a_call, struct interfaceAddr *addr)
     addr->numberOfInterfaces = afs_cb_interface.numberOfInterfaces;
     addr->uuid = afs_cb_interface.uuid;
     for (i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
-	addr->addr_in[i] = ntohl(afs_cb_interface.addr_in[i]);
-	addr->subnetmask[i] = ntohl(afs_cb_interface.subnetmask[i]);
+	addr->addr_in[i] = ntohl(((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr);
+	addr->subnetmask[i] = ntohl(((struct sockaddr_in *)&afs_cb_interface.subnetmask[i])->sin_addr.s_addr);
 	addr->mtu[i] = ntohl(afs_cb_interface.mtu[i]);
     }
 
@@ -1632,8 +1632,8 @@ SRXAFSCB_TellMeAboutYourself(struct rx_call *a_call,
     addr->numberOfInterfaces = afs_cb_interface.numberOfInterfaces;
     addr->uuid = afs_cb_interface.uuid;
     for (i = 0; i < afs_cb_interface.numberOfInterfaces; i++) {
-	addr->addr_in[i] = ntohl(afs_cb_interface.addr_in[i]);
-	addr->subnetmask[i] = ntohl(afs_cb_interface.subnetmask[i]);
+	addr->addr_in[i] = ntohl(((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr);
+	addr->subnetmask[i] = ntohl(((struct sockaddr_in *)&afs_cb_interface.subnetmask[i])->sin_addr.s_addr);
 	addr->mtu[i] = ntohl(afs_cb_interface.mtu[i]);
     }
 

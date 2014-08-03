@@ -2212,7 +2212,7 @@ MoveVolume(struct cmd_syndesc *as, void *arock)
     afs_int32 frompart, topart;
     afs_int32 flags, code, err;
     char fromPartName[10], toPartName[10];
-    struct sockaddr_in saddr;
+    struct sockaddr_in saddr, saddr_;
 
     struct diskPartition64 partition;	/* for space check */
     volintInfo *p;
@@ -2317,9 +2317,9 @@ MoveVolume(struct cmd_syndesc *as, void *arock)
     }
 
     /* successful move still not guaranteed but shoot for it */
-
+    saddr_ = xxx_rx_CreateSockAddr(fromserver, 0);
     code =
-	UV_MoveVolume2(volid, fromserver, frompart, toserver, topart, flags);
+	UV_MoveVolume2(volid, (struct sockaddr *)&saddr_, frompart, (struct sockaddr *)&saddr, topart, flags);
     if (code) {
 	PrintDiagnostics("move", code);
 	return code;

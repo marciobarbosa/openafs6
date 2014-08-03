@@ -1500,8 +1500,8 @@ UV_ConvertRO(afs_uint32 server, afs_uint32 partition, afs_uint32 volid,
  */
 
 int
-UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
-	       afs_uint32 atoserver, afs_int32 atopart, int flags)
+UV_MoveVolume2(afs_uint32 afromvol, struct sockaddr *saddr_afromserver, afs_int32 afrompart,
+	       struct sockaddr *saddr_atoserver, afs_int32 atopart, int flags)
 {
     /* declare stuff 'volatile' that may be used from setjmp/longjmp and may
      * be changing during the move */
@@ -1598,9 +1598,9 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
     backupId = entry.volumeId[BACKVOL];
     MapHostToNetwork(&entry);
 
-    if (!Lp_Match(afromserver, afrompart, &entry)) {
+    if (!Lp_Match(xxx_rx_IpSockAddr(saddr_afromserver), afrompart, &entry)) {
 	/* the from server and partition do not exist in the vldb entry corresponding to volid */
-	if (!Lp_Match(atoserver, atopart, &entry)) {
+	if (!Lp_Match(xxx_rx_IpSockAddr(saddr_atoserver), atopart, &entry)) {
 	    /* the to server and partition do not exist in the vldb entry corresponding to volid */
 	    fprintf(STDERR, "The volume %lu is not on the specified site. \n",
 		    (unsigned long)afromvol);
@@ -1631,7 +1631,7 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
 	 * we have already done the move, but the volume
 	 * may still be existing physically on from fileserver
 	 */
-	fromconn = UV_Bind(afromserver, AFSCONF_VOLUMEPORT);
+	fromconn = UV_Bind(xxx_rx_IpSockAddr(saddr_afromserver), AFSCONF_VOLUMEPORT);
 	pntg = 1;
 
 	code = DoVolDelete(fromconn, afromvol, afrompart,
@@ -1658,10 +1658,10 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
      * on the old site is deleted in the process
      */
     if (afrompart == atopart) {
-	same = VLDB_IsSameAddrs(afromserver, atoserver, &error);
+	same = VLDB_IsSameAddrs(xxx_rx_IpSockAddr(saddr_afromserver), xxx_rx_IpSockAddr(saddr_atoserver), &error);
 	EGOTO2(mfail, error,
 	       "Failed to get info about server's %d address(es) from vlserver (err=%d); aborting call!\n",
-	       afromserver, error);
+	       xxx_rx_IpSockAddr(saddr_afromserver), error);
 
 	if (same) {
 	    EGOTO1(mfail, VOLSERVOLMOVED,
@@ -1671,8 +1671,8 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
     }
 
     pntg = 1;
-    toconn = UV_Bind(atoserver, AFSCONF_VOLUMEPORT);	/* get connections to the servers */
-    fromconn = UV_Bind(afromserver, AFSCONF_VOLUMEPORT);
+    toconn = UV_Bind(xxx_rx_IpSockAddr(saddr_atoserver), AFSCONF_VOLUMEPORT);	/* get connections to the servers */
+    fromconn = UV_Bind(xxx_rx_IpSockAddr(saddr_afromserver), AFSCONF_VOLUMEPORT);
     totid = 0;	/* initialize to uncreated */
 
     /* ***
@@ -1821,7 +1821,7 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
      * Now dump the clone to the new volume
      ***/
 
-    destination.destHost = ntohl(atoserver);
+    destination.destHost = ntohl(xxx_rx_IpSockAddr(saddr_atoserver));
     destination.destPort = AFSCONF_VOLUMEPORT;
     destination.destSSID = 1;
 
@@ -1910,7 +1910,7 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
 	   afromvol);
     VDONE;
 
-    Lp_SetRWValue(&entry, afromserver, afrompart, atoserver, atopart);
+    Lp_SetRWValue(&entry, xxx_rx_IpSockAddr(saddr_afromserver), afrompart, xxx_rx_IpSockAddr(saddr_atoserver), atopart);
     MapNetworkToHost(&entry, &storeEntry);
     storeEntry.flags &= ~BACK_EXISTS;
 
@@ -1979,10 +1979,10 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
 	goto mfail;
     }
 #endif
-    if (atoserver != afromserver) {
+    if (!rx_IsSockAddrEqual(saddr_atoserver, saddr_afromserver)) {
 	/* set forwarding pointer for moved volumes */
 	VPRINT1("Setting forwarding pointer for volume %u ...", afromvol);
-	code = AFSVolSetForwarding(fromconn, fromtid, atoserver);
+	code = AFSVolSetForwarding(fromconn, fromtid, xxx_rx_IpSockAddr(saddr_atoserver));
 	EGOTO1(mfail, code,
 	       "Failed to set the forwarding pointer for the volume %u\n",
 	       afromvol);
@@ -2178,7 +2178,7 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
      * volume move didn't finish so we remove the volume from the target
      * location. Otherwise, we remove the volume from the source location.
      */
-    if (Lp_Match(afromserver, afrompart, &entry)) {	/* didn't move - delete target volume */
+    if (Lp_Match(xxx_rx_IpSockAddr(saddr_afromserver), afrompart, &entry)) {	/* didn't move - delete target volume */
 	if (pntg) {
 	    fprintf(STDOUT,
 		    "move incomplete - attempt cleanup of target partition - no guarantee\n");
@@ -2237,7 +2237,7 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
 	    }
 
 	    code = DoVolDelete(fromconn, afromvol, afrompart, "source",
-			       (atoserver != afromserver)?atoserver:0,
+			       !rx_IsSockAddrEqual(saddr_atoserver, saddr_afromserver) ? xxx_rx_IpSockAddr(saddr_atoserver) : 0,
 			NULL, NULL);
 	    if (code == VNOVOL) {
 		EPRINT1(code, "Failed to start transaction on %u\n", afromvol);
@@ -2283,11 +2283,11 @@ UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
 
 
 int
-UV_MoveVolume(afs_uint32 afromvol, afs_uint32 afromserver, afs_int32 afrompart,
-	      afs_uint32 atoserver, afs_int32 atopart)
+UV_MoveVolume(afs_uint32 afromvol, struct sockaddr *saddr_afromserver, afs_int32 afrompart,
+	      struct sockaddr *saddr_atoserver, afs_int32 atopart)
 {
-    return UV_MoveVolume2(afromvol, afromserver, afrompart,
-			  atoserver, atopart, 0);
+    return UV_MoveVolume2(afromvol, saddr_afromserver, afrompart,
+			  saddr_atoserver, atopart, 0);
 }
 
 

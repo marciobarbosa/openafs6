@@ -52,11 +52,11 @@ extern int UV_CreateVolume3(struct sockaddr *saddr, afs_int32 apart, char *aname
 			    afs_uint32 * aroid, afs_uint32 * abkid);
 extern int UV_AddVLDBEntry(struct sockaddr *saddr, afs_int32 apart, char *aname,
 			   afs_uint32 aid);
-extern int UV_MoveVolume(afs_uint32 afromvol, afs_uint32 afromserver,
-			 afs_int32 afrompart, afs_uint32 atoserver,
+extern int UV_MoveVolume(afs_uint32 afromvol, struct sockaddr *saddr_afromserver,
+			 afs_int32 afrompart, struct sockaddr *saddr_atoserver,
 			 afs_int32 atopart);
-extern int UV_MoveVolume2(afs_uint32 afromvol, afs_uint32 afromserver,
-                          afs_int32 afrompart, afs_uint32 atoserver,
+extern int UV_MoveVolume2(afs_uint32 afromvol, struct sockaddr *saddr_afromserver,
+                          afs_int32 afrompart, struct sockaddr *saddr_atoserver,
                           afs_int32 atopart, int flags);
 extern int UV_BackupVolume(afs_uint32 aserver, afs_int32 apart,
 			   afs_uint32 avolid);

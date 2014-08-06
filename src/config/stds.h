@@ -33,7 +33,7 @@
 typedef void *opaque;
 
 /* IPv4 addresses */
-typedef afs_uint32 afs_s_addr;   /* for compatibility */
+typedef afs_uint32 afs_in_addr_t;   /* for compatibility */
 typedef afs_uint32 afs_address;  /* placeholder: to be replaced by generic IPv4/IPv6 address */
 
 #ifndef _ATT4

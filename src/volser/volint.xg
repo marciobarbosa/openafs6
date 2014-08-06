@@ -92,7 +92,7 @@ struct volser_status {
 };
 
 struct destServer {
-    afs_int32 destHost;
+    afs_int32 /* afs_in_addr_t */ destHost;
     afs_int32 destPort;
     afs_int32 destSSID;
 };

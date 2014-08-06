@@ -40,9 +40,9 @@ struct VldbUpdateEntry {
 	afs_uint32	cloneId;
 	afs_int32	nModifiedRepsites;
 	afs_uint32	RepsitesMask[OMAXNSERVERS];
-	afs_int32	RepsitesTargetServer[OMAXNSERVERS];
+	afs_int32 /* afs_in_addr_t */	RepsitesTargetServer[OMAXNSERVERS];
 	afs_int32	RepsitesTargetPart[OMAXNSERVERS];
-	afs_int32	RepsitesNewServer[OMAXNSERVERS];
+	afs_int32 /* afs_in_addr_t */	RepsitesNewServer[OMAXNSERVERS];
 	afs_int32	RepsitesNewPart[OMAXNSERVERS];
 	afs_int32	RepsitesNewFlags[OMAXNSERVERS];
 };
@@ -73,7 +73,7 @@ typedef	opaque bulk<DEFAULTBULK>;
 /*  Structure used by the VLListAttributes routine */
 struct VldbListByAttributes {
 	afs_uint32	Mask;
-	afs_int32	server;
+	afs_int32 /* afs_in_addr_t */	server;
 	afs_int32	partition;
 	afs_int32	spares3;
 	afs_uint32	volumeid;
@@ -92,7 +92,7 @@ struct vldbentry   {
 	char	name[VL_MAXNAMELEN];		/* Volume name */
 	afs_int32	spares3;
 	afs_int32	nServers;			/* Number of servers that have this volume */
-	afs_int32	serverNumber[OMAXNSERVERS];	/* Server # for each server that holds volume */
+	afs_int32 /* afs_in_addr_t */	serverNumber[OMAXNSERVERS];	/* Server # for each server that holds volume */
 	afs_int32	serverPartition[OMAXNSERVERS];	/* Server Partition number */
 	afs_int32	serverFlags[OMAXNSERVERS];	/* Server flags */
 	afs_uint32	volumeId[MAXTYPES];		/* Corresponding volume of each type */
@@ -103,7 +103,7 @@ struct vldbentry   {
 struct nvldbentry   {
 	char	name[VL_MAXNAMELEN];		/* Volume name */
 	afs_int32	nServers;			/* Number of servers that have this volume */
-	afs_int32	serverNumber[NMAXNSERVERS];	/* Server # for each server that holds volume */
+	afs_int32 /* afs_in_addr_t */	serverNumber[NMAXNSERVERS];	/* Server # for each server that holds volume */
 	afs_int32	serverPartition[NMAXNSERVERS];	/* Server Partition number */
 	afs_int32	serverFlags[NMAXNSERVERS];	/* Server flags */
 	afs_uint32	volumeId[MAXTYPES];		/* Corresponding volume of each type */
@@ -123,7 +123,7 @@ struct nvldbentry   {
 
 struct ListAddrByAttributes {
 	afs_int32 	Mask;
-	afs_uint32	ipaddr;
+	afs_uint32 /* afs_in_addr_t */	ipaddr;
 	afs_int32	index;
 	afs_int32	spare1;
 	afsUUID	uuid;
@@ -136,7 +136,7 @@ struct uvldbentry   {
 	char	name[VL_MAXNAMELEN];		/* Volume name */
 	afs_int32	nServers;			/* Number of servers that have this volume */
 	afsUUID	serverNumber[NMAXNSERVERS];	/* Server # for each server that holds volume */
-	afs_int32	serverUnique[NMAXNSERVERS];	/* Server unique address */
+	afs_int32 /* afs_in_addr_t */	serverUnique[NMAXNSERVERS];	/* Server unique address */
 	afs_int32	serverPartition[NMAXNSERVERS];	/* Server Partition number */
 	afs_int32	serverFlags[NMAXNSERVERS];	/* Server flags */
 	afs_uint32	volumeId[MAXTYPES];		/* Corresponding volume of each type */
@@ -208,7 +208,7 @@ const VLOP_DUMP        = 0x100;
 typedef	vldbentry bulkentries<>;
 typedef	nvldbentry nbulkentries<>;
 typedef	uvldbentry ubulkentries<>;
-typedef afs_uint32 bulkaddrs<>;
+typedef afs_uint32 /* afs_in_addr_t */ bulkaddrs<>;
 
 struct VLCallBack {
     afs_uint32 CallBackVersion;
@@ -371,8 +371,8 @@ GetAddrs(
 ) = VLGETADDRS;
 
 ChangeAddr(
-  IN afs_uint32 ip1,
-  afs_uint32 ip2
+  IN afs_uint32 /* afs_in_addr_t */ ip1,
+  afs_uint32 /* afs_in_addr_t */ ip2
 ) = VLCHANGEADDR;
 
 

@@ -47,7 +47,7 @@ typedef afs_int32 ViceDataType;
 %#endif
 
 struct BD {
-    afs_int32 host;
+    afs_int32 /* afs_in_addr_t */ host;
     afs_int32 portal;
     afs_int32 session;
 };
@@ -105,7 +105,7 @@ struct AFSFetchStatus {
 };
 
 struct AFSStoreStatus {
-    afs_uint32 Mask;
+    afs_uint32 /* afs_in_addr_t */ Mask;
     afs_uint32 ClientModTime;
     afs_uint32 Owner;
     afs_uint32 Group;
@@ -238,14 +238,14 @@ struct AFSVolumeInfo {
     afs_uint32  Type3;
     afs_uint32  Type4;
     afs_uint32  ServerCount;
-    afs_uint32  Server0;
-    afs_uint32  Server1;
-    afs_uint32  Server2;
-    afs_uint32  Server3;
-    afs_uint32  Server4;
-    afs_uint32  Server5;
-    afs_uint32  Server6;
-    afs_uint32  Server7;
+    afs_uint32 /* afs_in_addr_t */  Server0;
+    afs_uint32 /* afs_in_addr_t */ Server1;
+    afs_uint32 /* afs_in_addr_t */ Server2;
+    afs_uint32 /* afs_in_addr_t */ Server3;
+    afs_uint32 /* afs_in_addr_t */ Server4;
+    afs_uint32 /* afs_in_addr_t */ Server5;
+    afs_uint32 /* afs_in_addr_t */ Server6;
+    afs_uint32 /* afs_in_addr_t */ Server7;
     unsigned short Port0;
     unsigned short Port1;
     unsigned short Port2;
@@ -265,14 +265,14 @@ struct VolumeInfo {
     afs_uint32 Type3;
     afs_uint32 Type4;
     afs_uint32 ServerCount;
-    afs_uint32 Server0;
-    afs_uint32 Server1;
-    afs_uint32 Server2;
-    afs_uint32 Server3;
-    afs_uint32 Server4;
-    afs_uint32 Server5;
-    afs_uint32 Server6;
-    afs_uint32 Server7;
+    afs_uint32 /* afs_in_addr_t */ Server0;
+    afs_uint32 /* afs_in_addr_t */ Server1;
+    afs_uint32 /* afs_in_addr_t */ Server2;
+    afs_uint32 /* afs_in_addr_t */ Server3;
+    afs_uint32 /* afs_in_addr_t */ Server4;
+    afs_uint32 /* afs_in_addr_t */ Server5;
+    afs_uint32 /* afs_in_addr_t */ Server6;
+    afs_uint32 /* afs_in_addr_t */ Server7;
 };
 
 typedef afs_int32 ViceLockType;
@@ -408,7 +408,7 @@ struct FsCmdOutputs {
 
 const FLUSHMAX = 10;
 typedef afs_int32 ViceIds<FLUSHMAX>;
-typedef	afs_int32 IPAddrs<FLUSHMAX>;
+typedef	afs_int32 /* afs_in_addr_t */ IPAddrs<FLUSHMAX>;
 
 package RXAFS_
 prefix S
@@ -639,7 +639,7 @@ Lookup(
 
 FlushCPS(
   IN  ViceIds *IdsArray,
-  IPAddrs *AddrsArray,
+  IPAddrs *AddrsArray, /* afs_in_addr_t : /afs/afsint.h:773 */
   afs_int32    spare1,
   OUT afs_int32    *spare2,
   afs_int32    *spare3
@@ -704,7 +704,7 @@ GetCapabilities(
 ) multi = 65540;
 
 CallBackRxConnAddr(
-  IN afs_int32 *addr
+  IN afs_int32 /* afs_in_addr_t */ *addr
 ) = 65541;
 
 %#define STATS64_CURRENTTIME 0

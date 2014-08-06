@@ -39,9 +39,9 @@ struct AFSDBLockDesc {
 };
 
 struct AFSDBCacheEntry {
-    afs_int32 addr;
-    afs_int32 cell;				/*Cell part of the fid*/
-    AFSFid netFid;			/*Network part of the fid*/
+    afs_int32 addr;                     /* Memory location */
+    afs_int32 cell;			/* Cell part of the fid */
+    AFSFid netFid;			/* Network part of the fid */
     afs_int32 Length;
     afs_int32 DataVersion;
     struct AFSDBLockDesc lock;
@@ -55,9 +55,9 @@ struct AFSDBCacheEntry {
 };
 
 struct AFSDBCacheEntry64 {
-    afs_int32 addr;
-    afs_int32 cell;				/*Cell part of the fid*/
-    AFSFid netFid;			/*Network part of the fid*/
+    afs_int32 addr;                     /* Memory location */
+    afs_int32 cell;			/* Cell part of the fid */
+    AFSFid netFid;			/* Network part of the fid */
     afs_int64 Length;
     afs_int32 DataVersion;
     struct AFSDBLockDesc lock;
@@ -76,9 +76,9 @@ struct AFSDBLock {
 };
 
 struct AFSDEntry {
-    afs_int32 addr;
-    afs_int32 cell;				/*Cell part of the fid*/
-    AFSFid netFid;			/*Network part of the fid*/
+    afs_int32 addr;                     /* Memory location */
+    afs_int32 cell;			/* Cell part of the fid */
+    AFSFid netFid;			/* Network part of the fid */
     afs_int32 Length;
     afs_int32 DataVersion;
     struct AFSDBLockDesc lock;
@@ -163,13 +163,13 @@ const AFS_MAX_INTERFACE_ADDR  =  32;
 struct interfaceAddr {		/* for multihomed clients */
     int 	numberOfInterfaces;
     afsUUID	uuid;
-    afs_int32	addr_in[AFS_MAX_INTERFACE_ADDR]; /* interface addresses */
-    afs_int32       subnetmask[AFS_MAX_INTERFACE_ADDR]; /* subnet masks in net ord */
+    afs_int32 /* afs_in_addr_t */ addr_in[AFS_MAX_INTERFACE_ADDR]; /* interface addresses */
+    afs_int32 /* afs_in_addr_t */ subnetmask[AFS_MAX_INTERFACE_ADDR]; /* subnet masks in net ord */
     afs_int32       mtu[AFS_MAX_INTERFACE_ADDR]; /* MTU */
 };
 
 const AFSMAXCELLHOSTS = 8;	/*Max VLDB servers per cell*/
-typedef afs_int32 serverList<AFSMAXCELLHOSTS>;
+typedef afs_int32 /* afs_in_addr_t */ serverList<AFSMAXCELLHOSTS>;
 
 typedef afs_uint32 cacheConfig<>;
 

@@ -34,7 +34,7 @@ struct t10cap {
 	afs_uint32 oid_lo;
 	afs_uint32 maxlen_hi;
 	afs_uint32 maxlen_lo;
-	afs_uint32 ip;
+	afs_uint32 /* afs_in_addr_t */ ip;
 	short port;
 	short reserved;
 	afsUUID uuid;
@@ -89,7 +89,7 @@ struct osd_obj_desc {
 	afs_uint64 oid;
 	afs_uint64 pid;
 	afs_uint32 id;
-	afs_uint32 ip;
+	afs_uint32 /* afs_in_addr_t */ ip;
 	afs_uint32 stripe;
 };
 typedef struct osd_obj_desc osd_obj_descList <>;
@@ -107,7 +107,7 @@ struct rxosd_fetch_entry {
 	afs_uint64 obj_id;
 	afs_uint32 user;
 	afs_uint32 time;
-	afs_uint32 fileserver;
+	afs_uint32 /* afs_in_addr_t */ fileserver;
 	struct osd_segm_descList list;
 };
 typedef struct rxosd_fetch_entry rxosd_fetch_entryList<>;
@@ -138,7 +138,7 @@ typedef WipeCandidate WipeCandidateList<>;
 
 struct activerpc {
         afs_uint32 num;
-        afs_uint32 ip;
+        afs_uint32 /* afs_in_addr_t */ ip;
         afs_uint64 part;
         afs_uint64 obj;
 };

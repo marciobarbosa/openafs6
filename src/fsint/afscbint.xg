@@ -71,7 +71,7 @@ proc ProbeUuid(
 
 proc GetServerPrefs(
   IN afs_int32 serverIndex,
-  OUT afs_int32 *srvrAddr,
+  OUT afs_int32 *srvrAddr, /* afs_in_addr_t */
   OUT afs_int32 *srvrRank
 ) = 215;
 
@@ -111,7 +111,7 @@ proc TellMeAboutYourself(
 /*
 proc GetDE(
   IN  afs_int32 index,
-  OUT afs_int32 addr,
+  OUT afs_int32 addr, //afs_in_addr_t
   OUT afs_int32 inode,
   OUT afs_int32 flags,
   OUT afs_int32 time,

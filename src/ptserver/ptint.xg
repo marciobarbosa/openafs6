@@ -213,13 +213,13 @@ ListOwned(
 
 GetCPS2(
   IN afs_int32 id,
-  IN afs_int32 host,
+  IN afs_int32 /* afs_in_addr_t */ host,
   OUT prlist *elist,
   OUT afs_int32 *over
 ) = 518;
 
 GetHostCPS(
-  IN afs_int32 host,
+  IN afs_int32 /* afs_in_addr_t */ host,
   OUT prlist *elist,
   OUT afs_int32 *over
 ) = 519;

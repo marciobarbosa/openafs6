@@ -54,7 +54,7 @@ struct tc_dumpDesc
     afs_int32 partition;		/* partition at which to find the volume */
     afs_int32 date;			/* date from which to do the dump */
     afs_int32 cloneDate;		/* clone date of the volume */
-    afs_uint32 hostAddr;		/* file server for this volume */
+    afs_uint32 /* afs_in_addr_t */ hostAddr;		/* file server for this volume */
 };
 
 /*define how to restore a volume */
@@ -71,7 +71,7 @@ struct tc_restoreDesc {
 	afs_int32 vid;			/* 0 means allocate new volid */
 	afs_int32 partition;		/* where to restore the volume */
 	afs_int32 dumpLevel;		/* flags */
-	afs_uint32 hostAddr;	/* file server to restore the volume to */
+	afs_uint32 /* afs_in_addr_t */ hostAddr;	/* file server to restore the volume to */
 	char oldName[TC_MAXNAMELEN];   /*name of volume whose clone is to be dumped */
 	opaque newName[TC_MAXNAMELEN];	/* new name suffix */
 

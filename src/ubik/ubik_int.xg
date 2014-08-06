@@ -10,7 +10,7 @@
 prefix S
 
 struct BDesc {
-    afs_int32 host;
+    afs_int32 /* afs_in_addr_t */ host;
     short portal;
     afs_int32 session;
 };
@@ -31,12 +31,12 @@ struct ubik_debug {
     /* variables from basic voting module */
     afs_int32 now;			/* time of day now */
     afs_int32 lastYesTime;		/* last time we sent last yes vote */
-    afs_int32 lastYesHost;		/* host to which we sent last yes vote */
+    afs_int32 /* afs_in_addr_t */ lastYesHost;		/* host to which we sent last yes vote */
     afs_int32 lastYesState;		/* did last yes host claim to be sync site */
     afs_int32 lastYesClaim;		/* time last vote started; claim sync site until .+SMALLTIME */
-    afs_int32 lowestHost;		/* host we'd prefer to vote for */
+    afs_int32 /* afs_in_addr_t */ lowestHost;		/* host we'd prefer to vote for */
     afs_int32 lowestTime;		/* time we last chose lowestHost */
-    afs_int32 syncHost;			/* sync site we've heard from last (even if we didn't vote) */
+    afs_int32 /* afs_in_addr_t */ syncHost;			/* sync site we've heard from last (even if we didn't vote) */
     afs_int32 syncTime;			/* time of above */
     struct ubik_version syncVersion;	/* sync site's claimed db version */
     struct ubik_tid syncTid;		/* sync site's claimed tid */
@@ -67,12 +67,12 @@ struct ubik_debug {
     /* variables from the ubik module */
     afs_int32 epochTime;		/* time this server started */
 		/* all network interface addresses of host in host order*/
-    afs_int32 interfaceAddr[UBIK_MAX_INTERFACE_ADDR];
+    afs_int32 /* afs_in_addr_t */ interfaceAddr[UBIK_MAX_INTERFACE_ADDR];
 };
 
 /* data from the per-server structure */
 struct ubik_sdebug {
-    afs_int32 addr;			/* primary address in *host* order */
+    afs_int32 /* afs_in_addr_t */ addr;			/* primary address in *host* order */
     afs_int32 lastVoteTime;		/* time last vote received */
     afs_int32 lastBeaconSent;		/* time last beacon sent */
     afs_int32 lastVote;			/* was last vote yes? */
@@ -80,7 +80,7 @@ struct ubik_sdebug {
     afs_int32 currentDB;			/* is current DB up to date? */
     afs_int32 beaconSinceDown;		/* beacon sent since last noticed up? */
     afs_int32 up;			/* is site up */
-    afs_int32 altAddr[255];		/*alternate addresses:host byte */
+    afs_int32 /* afs_in_addr_t */ altAddr[255];		/*alternate addresses:host byte */
 				/*this is actually UBIK_MAX_INTERFACE_ADDR-1*/
 };
 
@@ -88,12 +88,12 @@ struct ubik_debug_old {
     /* variables from basic voting module */
     afs_int32 now;			/* time of day now */
     afs_int32 lastYesTime;		/* last time we sent last yes vote */
-    afs_int32 lastYesHost;		/* host to which we sent last yes vote */
+    afs_int32 /* afs_in_addr_t */ lastYesHost;		/* host to which we sent last yes vote */
     afs_int32 lastYesState;		/* did last yes host claim to be sync site */
     afs_int32 lastYesClaim;		/* time last vote started; claim sync site until .+SMALLTIME */
-    afs_int32 lowestHost;		/* host we'd prefer to vote for */
+    afs_int32 /* afs_in_addr_t */ lowestHost;		/* host we'd prefer to vote for */
     afs_int32 lowestTime;		/* time we last chose lowestHost */
-    afs_int32 syncHost;			/* sync site we've heard from last (even if we didn't vote) */
+    afs_int32 /* afs_in_addr_t */ syncHost;			/* sync site we've heard from last (even if we didn't vote) */
     afs_int32 syncTime;			/* time of above */
     struct ubik_version syncVersion;	/* sync site's claimed db version */
     struct ubik_tid syncTid;		/* sync site's claimed tid */
@@ -127,7 +127,7 @@ struct ubik_debug_old {
 
 /* data from the per-server structure */
 struct ubik_sdebug_old {
-    afs_int32 addr;			/* address in *host* order */
+    afs_int32 /* afs_in_addr_t */ addr;			/* address in *host* order */
     afs_int32 lastVoteTime;		/* time last vote received */
     afs_int32 lastBeaconSent;		/* time last beacon sent */
     afs_int32 lastVote;			/* was last vote yes? */
@@ -138,7 +138,7 @@ struct ubik_sdebug_old {
 };
 		/* list of network interface addresses in hostbyte order */
 struct UbikInterfaceAddr {
-    afs_int32 hostAddr[UBIK_MAX_INTERFACE_ADDR];
+    afs_int32 /* afs_in_addr_t */ hostAddr[UBIK_MAX_INTERFACE_ADDR];
 } ;
 
 

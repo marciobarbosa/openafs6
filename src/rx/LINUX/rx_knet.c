@@ -37,10 +37,9 @@
  * open and bind RX socket
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct sockaddr *saddr)
 {
     struct socket *sockp;
-    struct sockaddr_in myaddr;
     int code;
 #ifdef AFS_ADAPT_PMTU
     int pmtu = IP_PMTUDISC_WANT;
@@ -59,11 +58,8 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 	return NULL;
 
     /* Bind socket */
-    myaddr.sin_family = AF_INET;
-    myaddr.sin_addr.s_addr = ahost;
-    myaddr.sin_port = aport;
     code =
-	sockp->ops->bind(sockp, (struct sockaddr *)&myaddr, sizeof(myaddr));
+	sockp->ops->bind(sockp, saddr, sizeof(struct sockaddr_in));
 
     if (code < 0) {
 	printk("sock_release(rx_socket) FIXME\n");
@@ -85,7 +81,9 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(htonl(INADDR_ANY), aport);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), aport);
+
+    return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }
 
 /* free socket allocated by osi_NetSocket */
@@ -132,7 +130,7 @@ osi_HandleSocketError(osi_socket so, char *cmsgbuf, size_t cmsgbuf_len)
 	}
 
 	err = CMSG_DATA(cmsg);
-	rxi_ProcessNetError(err, addr.sin_addr.s_addr, addr.sin_port);
+	rxi_ProcessNetError(err, (struct sockaddr *)&addr);
     }
 
     return 1;

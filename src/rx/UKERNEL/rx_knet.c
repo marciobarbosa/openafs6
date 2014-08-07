@@ -64,8 +64,7 @@ void
 rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 {
     struct rx_packet *tp;
-    afs_uint32 host;
-    u_short port;
+    struct sockaddr_storage saddr;
     int rc;
 
     /*
@@ -79,9 +78,9 @@ rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 
 	tp = rxi_AllocPacket(RX_PACKET_CLASS_RECEIVE);
 	usr_assert(tp != NULL);
-	rc = rxi_ReadPacket(usockp, tp, &host, &port);
+	rc = rxi_ReadPacket(usockp, tp, (struct sockaddr *)&saddr);
 	if (rc != 0) {
-	    tp = rxi_ReceivePacket(tp, usockp, host, port, tnop, newcallp);
+	    tp = rxi_ReceivePacket(tp, usockp, (struct sockaddr *)&saddr, tnop, newcallp);
 	    if (newcallp && *newcallp) {
 		if (tp) {
 		    rxi_FreePacket(tp);
@@ -174,7 +173,7 @@ rx_ServerProc(void *unused)
  * we start the receiver threads.
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct sockaddr *saddr)
 {
     struct usr_socket *usockp;
 
@@ -189,7 +188,9 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(htonl(INADDR_ANY), aport);
+    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), aport);
+
+    return rxk_NewSocketHost((struct sockaddr *)&saddr);
 }
 
 /*

@@ -66,6 +66,7 @@
 struct rx_connection;
 struct rx_call;
 struct rx_packet;
+struct rx_sockaddr;
 
 /* Connection management */
 
@@ -107,6 +108,7 @@ extern void rx_RecordCallStatistics(struct rx_call *call,
 /* Peer management */
 extern afs_uint32 rx_HostOf(struct rx_peer *peer);
 extern u_short rx_PortOf(struct rx_peer *peer);
+extern struct rx_sockaddr *rx_SockAddrOf(struct rx_peer *peer);
 
 /* Packets */
 
@@ -199,7 +201,7 @@ extern u_short rx_PortOf(struct rx_peer *peer);
 #ifndef KERNEL
 typedef void (*rx_destructor_t) (void *);
 int rx_KeyCreate(rx_destructor_t);
-osi_socket rxi_GetHostUDPSocket(u_int host, u_short port);
+osi_socket rxi_GetHostUDPSocket(struct rx_sockaddr *saddr);
 osi_socket rxi_GetUDPSocket(u_short port);
 #endif /* KERNEL */
 
@@ -331,8 +333,7 @@ returned with an error code of RX_CALL_DEAD ( transient error ) */
 
 struct rx_service {
     u_short serviceId;		/* Service number */
-    afs_uint32 serviceHost;	/* IP address for this service */
-    u_short servicePort;	/* UDP port for this service */
+    struct rx_sockaddr *saddr;	/* IP address and UDP port for this service */
     char *serviceName;		/* Name of the service */
     osi_socket socket;		/* socket structure or file descriptor */
     u_short nRequestsRunning;	/* Number of requests currently in progress */

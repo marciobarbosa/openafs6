@@ -19,9 +19,13 @@
 #include "rx_peer.h"
 
 afs_uint32 rx_HostOf(struct rx_peer *peer) {
-    return peer->host;
+    return xxx_rx_IpSockAddr((struct sockaddr *)&peer->saddr);
 }
 
 u_short rx_PortOf(struct rx_peer *peer) {
-    return peer->port;
+    return xxx_rx_PortSockAddr((struct sockaddr *)&peer->saddr);
+}
+
+struct sockaddr *rx_SockAddrOf(struct rx_peer *peer) {
+    return ((struct sockaddr *)&peer->saddr);
 }

@@ -522,10 +522,6 @@ EXT afs_kmutex_t rx_peerHashTable_lock;
 EXT afs_kmutex_t rx_connHashTable_lock;
 #endif /* RX_ENABLE_LOCKS */
 
-#define CONN_HASH(host, port, cid, epoch, type) ((((cid)>>RX_CIDSHIFT)%rx_hashTableSize))
-
-#define PEER_HASH(host, port)  ((host ^ port) % rx_hashTableSize)
-
 /* Forward definitions of internal procedures */
 #define	rxi_ChallengeOff(conn)	\
 	rxevent_Cancel(&(conn)->challengeEvent)

@@ -40,8 +40,8 @@ struct AFSDBLockDesc {
 
 struct AFSDBCacheEntry {
     afs_int32 addr;                     /* Memory location */
-    afs_int32 cell;			/* Cell part of the fid */
-    AFSFid netFid;			/* Network part of the fid */
+    afs_int32 cell;                             /*Cell part of the fid*/
+    AFSFid netFid;                      /*Network part of the fid*/
     afs_int32 Length;
     afs_int32 DataVersion;
     struct AFSDBLockDesc lock;
@@ -56,8 +56,8 @@ struct AFSDBCacheEntry {
 
 struct AFSDBCacheEntry64 {
     afs_int32 addr;                     /* Memory location */
-    afs_int32 cell;			/* Cell part of the fid */
-    AFSFid netFid;			/* Network part of the fid */
+    afs_int32 cell;                             /*Cell part of the fid*/
+    AFSFid netFid;                      /*Network part of the fid*/
     afs_int64 Length;
     afs_int32 DataVersion;
     struct AFSDBLockDesc lock;
@@ -77,8 +77,8 @@ struct AFSDBLock {
 
 struct AFSDEntry {
     afs_int32 addr;                     /* Memory location */
-    afs_int32 cell;			/* Cell part of the fid */
-    AFSFid netFid;			/* Network part of the fid */
+    afs_int32 cell;                             /*Cell part of the fid*/
+    AFSFid netFid;                      /*Network part of the fid*/
     afs_int32 Length;
     afs_int32 DataVersion;
     struct AFSDBLockDesc lock;

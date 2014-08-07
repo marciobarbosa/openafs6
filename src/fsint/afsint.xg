@@ -105,7 +105,7 @@ struct AFSFetchStatus {
 };
 
 struct AFSStoreStatus {
-    afs_uint32 /* afs_in_addr_t */ Mask;
+    afs_uint32 Mask;
     afs_uint32 ClientModTime;
     afs_uint32 Owner;
     afs_uint32 Group;

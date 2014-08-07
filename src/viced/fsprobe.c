@@ -22,7 +22,7 @@ struct rx_connection *serverconns[MAXSERVERS];
 char *(args[50]);
 
 afs_int32
-pxclient_Initialize(int auth, afs_int32 serverAddr)
+pxclient_Initialize(int auth, afs_address serverAddr)
 {
     afs_int32 code;
     rx_securityIndex scIndex;
@@ -58,7 +58,7 @@ main(int argc, char **argv)
     char **av = argv;
     struct sockaddr_in host;
     afs_int32 code;
-    struct hostent *hp;
+    struct hostent *hp; /* afs_in_addr_t */
     struct timeval tv;
     int noAuth = 1;		/* Default is authenticated connections */
 
@@ -69,15 +69,15 @@ main(int argc, char **argv)
     }
     memset(&host, 0, sizeof(struct sockaddr_in));
     host.sin_family = AF_INET;
-    host.sin_addr.s_addr = inet_addr(av[0]);
+    host.sin_addr.s_addr = inet_addr(av[0]); /* afs_in_addr_t */
 #ifdef STRUCT_SOCKADDR_HAS_SA_LEN
     host.sin_len = sizeof(struct sockaddr_in);
 #endif
     if (host.sin_addr.s_addr == -1) {
-	hp = gethostbyname(av[0]);
+	hp = gethostbyname(av[0]); /* afs_in_addr_t */
 	if (hp) {
 	    host.sin_family = hp->h_addrtype;
-	    memcpy((caddr_t) & host.sin_addr, hp->h_addr, hp->h_length);
+	    memcpy((caddr_t) & host.sin_addr, hp->h_addr, hp->h_length); /* afs_in_addr_t */
 	} else {
 	    printf("unknown server host %s\n", av[0]);
 	    exit(1);

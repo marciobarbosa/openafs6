@@ -184,9 +184,10 @@ pthread_key_t viced_uclient_key;
 
 char FS_HostName[128] = "localhost";
 char *FS_configPath = NULL;
-afs_uint32 FS_HostAddr_NBO;
-afs_uint32 FS_HostAddr_HBO;
-afs_uint32 FS_HostAddrs[ADDRSPERSITE], FS_HostAddr_cnt = 0, FS_registered = 0;
+afs_address FS_HostAddr_NBO;
+afs_address FS_HostAddr_HBO;
+afs_address FS_HostAddrs[ADDRSPERSITE];
+afs_uint32 FS_HostAddr_cnt = 0, FS_registered = 0;
 /* All addresses in FS_HostAddrs are in NBO */
 afsUUID FS_HostUUID;
 
@@ -1713,7 +1714,7 @@ Do_VLRegisterRPC(void)
 {
     int code;
     bulkaddrs addrs;
-    afs_uint32 FS_HostAddrs_HBO[ADDRSPERSITE];
+    afs_address FS_HostAddrs_HBO[ADDRSPERSITE];
     int i = 0;
 
     for (i = 0; i < FS_HostAddr_cnt; i++)
@@ -1835,7 +1836,7 @@ main(int argc, char *argv[])
     int curLimit;
     time_t t;
     struct tm tm;
-    afs_uint32 rx_bindhost;
+    afs_address rx_bindhost;
     VolumePackageOptions opts;
 
 #ifdef	AFS_AIX32_ENV

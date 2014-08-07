@@ -2265,7 +2265,7 @@ common_FetchData64(struct rx_call *acall, struct AFSFid *Fid,
     struct host *thost;
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct VCallByVol tcbv, *cbv = NULL;
     static int remainder = 0;	/* shared access protected by FS_LOCK */
     struct fsstats fsstats;
@@ -2422,7 +2422,7 @@ SRXAFS_FetchACL(struct rx_call * acall, struct AFSFid * Fid,
     struct rx_connection *tcon = rx_ConnectionOf(acall);
     struct host *thost;
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct fsstats fsstats;
 
     fsstats_StartOp(&fsstats, FS_STATS_RPCIDX_FETCHACL);
@@ -2511,7 +2511,7 @@ SAFSS_FetchStatus(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to the client data */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     /* Get ptr to client data for user Id for logging */
@@ -2902,7 +2902,7 @@ common_StoreData64(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon;
     struct host *thost;
     struct fsstats fsstats;
@@ -3062,7 +3062,7 @@ SRXAFS_StoreACL(struct rx_call * acall, struct AFSFid * Fid,
     struct rx_connection *tcon;
     struct host *thost;
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct fsstats fsstats;
 
     fsstats_StartOp(&fsstats, FS_STATS_RPCIDX_STOREACL);
@@ -3155,7 +3155,7 @@ SAFSS_StoreStatus(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     /* Get ptr to client data for user Id for logging */
@@ -3277,7 +3277,7 @@ SAFSS_RemoveFile(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     FidZero(&dir);
@@ -3411,7 +3411,7 @@ SAFSS_CreateFile(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     FidZero(&dir);
@@ -3566,7 +3566,7 @@ SAFSS_Rename(struct rx_call *acall, struct AFSFid *OldDirFid, char *OldName,
     int updatefile = 0;		/* are we changing the renamed file? (we do this
 				 * if we need to update .. on a renamed dir) */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
     afs_ino_str_t stmp;
 
@@ -4057,7 +4057,7 @@ SAFSS_Symlink(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     FdHandle_t *fdP;
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
@@ -4234,7 +4234,7 @@ SAFSS_Link(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     FidZero(&dir);
@@ -4416,7 +4416,7 @@ SAFSS_MakeDir(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     FidZero(&dir);
@@ -4581,7 +4581,7 @@ SAFSS_RemoveDir(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     FidZero(&dir);
@@ -4705,7 +4705,7 @@ SAFSS_SetLock(struct rx_call *acall, struct AFSFid *Fid, ViceLockType type,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     static char *locktype[4] = { "LockRead", "LockWrite", "LockExtend", "LockRelease" };
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
@@ -4808,7 +4808,7 @@ SAFSS_ExtendLock(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     /* Get ptr to client data for user Id for logging */
@@ -4907,7 +4907,7 @@ SAFSS_ReleaseLock(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
 
     /* Get ptr to client data for user Id for logging */
@@ -5703,7 +5703,8 @@ SRXAFS_FlushCPS(struct rx_call * acall, struct ViceIds * vids,
 {
     int i;
     afs_int32 nids, naddrs;
-    afs_int32 *vd, *addr;
+    afs_int32 *vd;
+    afs_address *addr;
     Error errorCode = 0;		/* return code to caller */
 
     ViceLog(1, ("SRXAFS_FlushCPS\n"));
@@ -5768,7 +5769,8 @@ CopyVolumeEntry(char *aname, struct vldbentry *ave,
 {
     int i, j, vol;
     afs_int32 mask, whichType;
-    afs_uint32 *serverHost, *typePtr;
+    afs_uint32 *typePtr;
+    afs_address *serverHost;
 
     /* figure out what type we want if by name */
     i = strlen(aname);
@@ -6419,7 +6421,7 @@ StoreData_RXStyle(Volume * volptr, Vnode * targetptr, struct AFSFid * Fid,
     int linkCount = 0;		/* link count on inode */
     ssize_t nBytes;
     FdHandle_t *fdP;
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */ /* afs_address */
     afs_ino_str_t stmp;
 
     /*
@@ -6816,7 +6818,7 @@ init_sys_error_to_et(void)
  */
 
 afs_int32
-SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr)
+SRXAFS_CallBackRxConnAddr (struct rx_call * acall, afs_int32 *addr) /* afs_in_addr_t */
 {
     Error errorCode = 0;
     struct rx_connection *tcon;

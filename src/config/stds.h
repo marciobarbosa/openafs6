@@ -32,10 +32,6 @@
 
 typedef void *opaque;
 
-/* IPv4 addresses */
-typedef afs_uint32 afs_in_addr_t;   /* for compatibility */
-typedef afs_uint32 afs_address;  /* placeholder: to be replaced by generic IPv4/IPv6 address */
-
 #ifndef _ATT4
 #if defined(__HIGHC__)
 /*
@@ -65,6 +61,11 @@ typedef short afs_int16;
 typedef unsigned short afs_uint16;
 typedef int afs_int32;
 typedef unsigned int afs_uint32;
+
+/* IPv4 addresses */
+typedef afs_uint32 afs_in_addr_t;   /* for compatibility */
+typedef afs_uint32 afs_address;     /* placeholder: to be replaced by generic IPv4/IPv6 address */
+
 #if defined(AFS_NT40_ENV) && defined(_MSC_VER)
 typedef __int64 afs_int64;
 typedef unsigned __int64 afs_uint64;

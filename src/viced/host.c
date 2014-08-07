@@ -368,7 +368,7 @@ hpr_GetHostCPS(afs_address host, prlist *CPS)
 	return code;
 
     over = 0;
-    code = ubik_PR_GetHostCPS(uclient, 0, (afs_int32)host, CPS, &over);
+    code = ubik_PR_GetHostCPS(uclient, 0, (afs_in_addr_t)host, CPS, &over);
     if (code != PRSUCCESS)
         return code;
     if (over) {
@@ -503,7 +503,7 @@ h_NBLock_r(struct host *host)
  *------------------------------------------------------------------------*/
 
 static char
-h_AddrInSameNetwork(afs_address a_targetAddr, afs_address a_candAddr)
+h_AddrInSameNetwork(afs_in_addr_hbo_t a_targetAddr, afs_in_addr_hbo_t a_candAddr)
 {				/*h_AddrInSameNetwork */
 
     afs_uint32 targetNet;
@@ -651,7 +651,7 @@ h_Alloc_r(struct rx_connection *r_con)
 {
     struct servent *serverentry;
     struct host *host;
-    afs_address newHostAddr_HBO;	/*New host IP addr, in host byte order */
+    afs_in_addr_hbo_t newHostAddr_HBO;	/*New host IP addr, in host byte order */
 
     host = GetHT();
     if (!host)
@@ -3946,7 +3946,7 @@ h_GetHostNetStats(afs_int32 * a_numHostsP, afs_int32 * a_sameNetOrSubnetP,
 {				/*h_GetHostNetStats */
 
     struct host *hostP;	/*Ptr to current host entry */
-    afs_address currAddr_HBO;	/*Curr host addr, host byte order */
+    afs_in_addr_hbo_t currAddr_HBO;	/*Curr host addr, host byte order */
     int count;
 
     /*

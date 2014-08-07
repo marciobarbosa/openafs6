@@ -185,7 +185,7 @@ pthread_key_t viced_uclient_key;
 char FS_HostName[128] = "localhost";
 char *FS_configPath = NULL;
 afs_address FS_HostAddr_NBO;
-afs_address FS_HostAddr_HBO;
+afs_in_addr_hbo_t FS_HostAddr_HBO;
 afs_address FS_HostAddrs[ADDRSPERSITE];
 afs_uint32 FS_HostAddr_cnt = 0, FS_registered = 0;
 /* All addresses in FS_HostAddrs are in NBO */
@@ -1714,7 +1714,7 @@ Do_VLRegisterRPC(void)
 {
     int code;
     bulkaddrs addrs;
-    afs_address FS_HostAddrs_HBO[ADDRSPERSITE];
+    afs_in_addr_hbo_t FS_HostAddrs_HBO[ADDRSPERSITE];
     int i = 0;
 
     for (i = 0; i < FS_HostAddr_cnt; i++)

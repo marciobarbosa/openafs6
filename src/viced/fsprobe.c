@@ -58,7 +58,7 @@ main(int argc, char **argv)
     char **av = argv;
     struct sockaddr_in host;
     afs_int32 code;
-    struct hostent *hp; /* afs_in_addr_t */
+    struct hostent *hp; /* struct rx_sockaddr */
     struct timeval tv;
     int noAuth = 1;		/* Default is authenticated connections */
 

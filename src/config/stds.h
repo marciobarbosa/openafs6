@@ -64,6 +64,7 @@ typedef unsigned int afs_uint32;
 
 /* IPv4 addresses */
 typedef afs_uint32 afs_in_addr_t;   /* for compatibility */
+typedef afs_uint32 afs_in_addr_hbo_t; /* host byte order */
 typedef afs_uint32 afs_address;     /* placeholder: to be replaced by generic IPv4/IPv6 address */
 
 #if defined(AFS_NT40_ENV) && defined(_MSC_VER)

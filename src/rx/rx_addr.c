@@ -230,10 +230,10 @@ rx_hash_sockaddr(struct rx_sockaddr *sa, int size)
 	return ((sa->addr.sin.sin_addr.s_addr ^ sa->addr.sin.sin_port) % size);
 #if HAVE_IPV6
     case AF_INET6:
-	return 0;		/* EAFNOSUPPORT */
+	return 0;
 #endif
     default:
-	return 0;		/* EAFNOSUPPORT */
+	return 0;
     }
 }
 
@@ -285,6 +285,7 @@ rx_is_loopback_sockaddr(struct rx_sockaddr *sa)
 }
 
 /**
+ * XXX: just use memcpy?
  * Copy a sockaddr.
  *
  * \param[in] src source address
@@ -326,7 +327,10 @@ rx_addrinfo_to_sockaddr(struct addrinfo *ai, rx_service_t service,
 	sa->service = service;
 	sa->socktype = SOCK_DGRAM;
 	sa->addrlen = ai->ai_addrlen;
-	memcpy(&sa->addr.sa, ai->ai_addr, ai->ai_addrlen);
+#ifdef STRUCT_SOCKADDR_HAS_SA_LEN
+	sa->addr.sin.sin_len = ai->ai_addrlen;
+#endif
+	memcpy(&sa->addr.sin, ai->ai_addr, ai->ai_addrlen);
 	break;
 #if HAVE_IPV6
     case AF_INET6:
@@ -357,6 +361,9 @@ rx_address_to_sockaddr(struct rx_address *a, rx_port_t port,
 	sa->socktype = SOCK_DGRAM;
 	sa->addrlen = sizeof(struct sockaddr_in);
 	sa->addr.family = AF_INET;
+#ifdef STRUCT_SOCKADDR_HAS_SA_LEN
+	sa->addr.sin.sin_len = sizeof(struct sockaddr_in);
+#endif
 	sa->addr.sin.sin_port = port;	/* network byte order */
 	memcpy(&(sa->addr.sin.sin_addr), a->address.val,
 	       sizeof(sa->addr.sin.sin_addr));
@@ -442,6 +449,14 @@ rx_try_address_to_ipv4(struct rx_address * a, rx_in_addr_t * ipv4)
     return 0;			/* not an ipv4 address */
 }
 
+/**
+ * Convert an IPv4 address and port into an rx_sockaddr.
+ *
+ * \param[in] ipv4  IPv4 address (network byte order)
+ * \param[in] port  port number (network byte order)
+ * \param[in] service rx service id
+ * \param[out] sa address of an rx_sockaddr to fill
+ */
 void
 rx_ipv4_to_sockaddr(rx_in_addr_t ipv4, rx_port_t port,
 		    rx_service_t service, struct rx_sockaddr *sa)
@@ -450,6 +465,9 @@ rx_ipv4_to_sockaddr(rx_in_addr_t ipv4, rx_port_t port,
     sa->socktype = SOCK_DGRAM;
     sa->addrlen = sizeof(struct sockaddr_in);
     sa->addr.family = AF_INET;
+#ifdef STRUCT_SOCKADDR_HAS_SA_LEN
+    sa->addr.sin.sin_len = sizeof(struct sockaddr_in);
+#endif
     sa->addr.sin.sin_port = port;	/* network byte order */
     memcpy(&(sa->addr.sin.sin_addr), &ipv4, sizeof(sa->addr.sin.sin_addr));	/* network byte order */
 }

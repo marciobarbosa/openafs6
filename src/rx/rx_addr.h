@@ -38,6 +38,7 @@
 typedef int rx_bool_t;
 typedef u_short rx_port_t;     /**< network byte order */
 typedef u_short rx_service_t;
+typedef char rx_addr_str_t[64];	/**< for rx_print_sockaddr, rx_print_address */
 
 /**
  * IPv4 address (for compatibilty with old RPCs)
@@ -58,18 +59,39 @@ struct rx_address {
 /**
  * Socket address for rx
  */
+
+struct rx_sockaddr_hdr {
+   sa_family_t family;
+   rx_port_t port;
+};
+
 struct rx_sockaddr {
     rx_service_t service; /**< rx service id */
     int socktype;	  /**< socket type (SOCK_DGRAM) */
-    int addrlen;    /**< addr length */
+    int addrlen;	  /**< addr length */
     union {
 	sa_family_t family;
+	struct rx_sockaddr_hdr sh;
 	struct sockaddr sa;
 	struct sockaddr_in sin;
+#if HAVE_IPV6
 	struct sockaddr_in6 sin6;
-	struct sockaddr_storage ss;	/* ensure alignment */
-    } addr;		 /**< sockaddr */
+	struct sockaddr_storage ss;	/* for alignment */
+#endif
+    } addr;
 };
+
+static_inline rx_port_t
+rx_get_sockaddr_port(struct rx_sockaddr *sa)
+{
+    return sa->addr.sh.port;
+}
+
+static_inline rx_port_t
+rx_set_sockaddr_port(struct rx_sockaddr *sa, rx_port_t port)
+{
+    return (sa->addr.sh.port = port);
+}
 
 /* rx_sockaddr */
 #ifndef KERNEL
@@ -84,9 +106,8 @@ int rx_copy_sockaddr(struct rx_sockaddr *src, struct rx_sockaddr *dst);
 
 /* For compability with IPv4-only interfaces. */
 void rx_ipv4_to_sockaddr(rx_in_addr_t ipv4, rx_port_t port,
-			rx_service_t service, struct rx_sockaddr *sa);
+			 rx_service_t service, struct rx_sockaddr *sa);
 rx_bool_t rx_try_sockaddr_to_ipv4(struct rx_sockaddr *a, rx_in_addr_t * ipv4);
-
 
 /* rx_address */
 char *rx_print_address(struct rx_address *a, char *dst, size_t size);

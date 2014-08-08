@@ -123,7 +123,7 @@ make_any_sockaddr(struct rx_sockaddr *sa)
 
 /* example usage */
 int
-example_legacy_api(afs_uint32 addr, char dst[16])
+example_legacy_api(afs_uint32 addr, afs_uint16 port, char dst[16])
 {
     addr = ntohl(addr);
     sprintf(dst, "%d.%d.%d.%d",
@@ -141,7 +141,7 @@ example_try_sockaddr_to_ipv4(struct rx_sockaddr *sa)
 
     memset(buffer, 0, sizeof(buffer));
     if (rx_try_sockaddr_to_ipv4(sa, &ipv4)) {
-	code = example_legacy_api(ipv4, buffer);
+	code = example_legacy_api(ipv4, rx_get_sockaddr_port(sa), buffer);
     } else {
 	/* Not an IPv4 address: Need a new API, or return unsupported. */
 	code = EAFNOSUPPORT;
@@ -171,6 +171,10 @@ main(void)
     is_string("1.2.3.4:1234", rx_print_sockaddr(sa, buf, sizeof(buf)),
 	      "rx_addrinfo_to_sockaddr");
 
+    ok(rx_get_sockaddr_port(sa) == htons(1234), "rx_get_sockaddr_port");
+    ok(rx_set_sockaddr_port(sa, ntohs(9999)) == htons(9999), "rx_set_sockaddr_port");
+
+    make_sockaddr("1.2.3.4", sa);
     /* printf("hash %s -> %d\n", rx_print_sockaddr(sa, buf, sizeof(buf)),
      * rx_hash_sockaddr(sa, hashsize)); */
     ok(rx_hash_sockaddr(sa, hashsize) == 53, "rx_hash_sockaddr");

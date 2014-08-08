@@ -67,9 +67,6 @@ rxi_inet_ntop_v4(const void *src, char *dst, size_t size)
 #ifndef INET_ADDRSTRLEN
 #define INET_ADDRSTRLEN  16
 #endif
-#ifndef INET6_ADDRSTRLEN
-#define INET6_ADDRSTRLEN 46
-#endif
 
 static_inline void
 rxi_addr_error(int error)
@@ -115,6 +112,11 @@ rxi_inet_ntop_v4(const void *src, char *dst, size_t size)
 }
 
 #ifdef HAVE_IPV6
+
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+
 /* inet_ntop for ipv4 */
 /* Adapted from Heimdal libroken. */
 static char *
@@ -204,7 +206,10 @@ rx_print_sockaddr(struct rx_sockaddr *sa, char *dst, size_t size)
 	    ;
 	sprintf(p, ":%hu", ntohs(sa->addr.sin.sin_port));
 	return dst;
+#if HAVE_IPV6
     case AF_INET6:
+	return NULL;
+#endif
     default:
 	return NULL;
     }
@@ -223,7 +228,10 @@ rx_hash_sockaddr(struct rx_sockaddr *sa, int size)
     case AF_INET:
 	/* Use the original rx peer hash function for now. */
 	return ((sa->addr.sin.sin_addr.s_addr ^ sa->addr.sin.sin_port) % size);
+#if HAVE_IPV6
     case AF_INET6:
+	return 0;		/* EAFNOSUPPORT */
+#endif
     default:
 	return 0;		/* EAFNOSUPPORT */
     }
@@ -267,7 +275,10 @@ rx_is_loopback_sockaddr(struct rx_sockaddr *sa)
     switch (sa->addr.family) {
     case AF_INET:
 	return rxi_is_loopback_ipv4(sa->addr.sin.sin_addr.s_addr);
+#if HAVE_IPV6
     case AF_INET6:
+	return EAFNOSUPPORT;
+#endif
     default:
 	return EAFNOSUPPORT;
     }
@@ -286,7 +297,10 @@ rx_copy_sockaddr(struct rx_sockaddr *src, struct rx_sockaddr *dst)
     case AF_INET:
 	memcpy(dst, src, sizeof(*dst));
 	return 0;
+#if HAVE_IPV6
     case AF_INET6:
+	return EAFNOSUPPORT;
+#endif
     default:
 	return EAFNOSUPPORT;
     }
@@ -314,7 +328,10 @@ rx_addrinfo_to_sockaddr(struct addrinfo *ai, rx_service_t service,
 	sa->addrlen = ai->ai_addrlen;
 	memcpy(&sa->addr.sa, ai->ai_addr, ai->ai_addrlen);
 	break;
+#if HAVE_IPV6
     case AF_INET6:
+	return EAFNOSUPPORT;
+#endif
     default:
 	return EAFNOSUPPORT;
     }
@@ -344,7 +361,10 @@ rx_address_to_sockaddr(struct rx_address *a, rx_port_t port,
 	memcpy(&(sa->addr.sin.sin_addr), a->address.val,
 	       sizeof(sa->addr.sin.sin_addr));
 	break;
+#if HAVE_IPV6
     case AF_INET6:
+	return EAFNOSUPPORT;
+#endif
     default:
 	return EAFNOSUPPORT;
     }
@@ -369,27 +389,10 @@ rx_sockaddr_to_address(struct rx_sockaddr *sa, struct rx_address *a)
 	rx_opaque_populate(&(a->address), &(sa->addr.sin.sin_addr),
 			   sizeof(rx_in_addr_t));
 	break;
+#if HAVE_IPV6
     case AF_INET6:
-    default:
 	return EAFNOSUPPORT;
-    }
-    return 0;
-}
-
-/**
- * Get the port number from an rx sockaddr.
- *
- * \param[in]  sa     rx sockaddr
- * \param[out] port   port number
- */
-int
-rx_sockaddr_to_port(struct rx_sockaddr *sa, rx_port_t * port)
-{
-    switch (sa->addr.family) {
-    case AF_INET:
-	*port = sa->addr.sin.sin_port;
-	break;
-    case AF_INET6:
+#endif
     default:
 	return EAFNOSUPPORT;
     }
@@ -471,12 +474,8 @@ rx_try_sockaddr_to_ipv4(struct rx_sockaddr * a, rx_in_addr_t * ipv4)
 	memcpy(ipv4, &a->addr.sin.sin_addr.s_addr, sizeof(*ipv4));
 	return 1;
     }
-    ipv4 = 0;
     return 0;			/* not an ipv4 address */
 }
-
-
-
 
 /**
  * Print the address to a buffer as a readable string.
@@ -491,7 +490,10 @@ rx_print_address(struct rx_address *a, char *dst, size_t size)
     switch (a->atype) {
     case AF_INET:
 	return rxi_inet_ntop_v4(a->address.val, dst, size);
+#if HAVE_IPV6
     case AF_INET6:
+	return NULL;
+#endif
     default:
 	return NULL;
     }
@@ -524,7 +526,10 @@ rx_is_loopback_address(struct rx_address *a)
     switch (a->atype) {
     case AF_INET:
 	return rxi_is_loopback_ipv4(*(rx_in_addr_t *) a->address.val);
+#if HAVE_IPV6
     case AF_INET6:
+	return EAFNOSUPPORT;
+#endif
     default:
 	return EAFNOSUPPORT;
     }

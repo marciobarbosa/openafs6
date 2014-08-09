@@ -17,8 +17,8 @@ extern int (*registerProgram) (PROCESS, char *);
 extern int (*swapNameProgram) (PROCESS, const char *, char *);
 #endif
 #endif
-extern int (*rx_justReceived) (struct rx_packet *, struct sockaddr_in *);
-extern int (*rx_almostSent) (struct rx_packet *, struct sockaddr_in *);
+extern int (*rx_justReceived) (struct rx_packet *, struct rx_sockaddr *);
+extern int (*rx_almostSent) (struct rx_packet *, struct rx_sockaddr *);
 
 extern void rx_rto_setPeerTimeoutSecs(struct rx_peer *, int secs);
 
@@ -38,7 +38,7 @@ extern struct rx_connection *rx_NewConnection(afs_uint32 shost,
 					      struct rx_securityClass
 					      *securityObject,
 					      int serviceSecurityIndex);
-extern struct rx_connection *rx_NewConnection2(struct rx_sockaddr *saddr, u_short sservice,
+extern struct rx_connection *rx_NewConnection2(struct rx_sockaddr *saddr,
 					      struct rx_securityClass *securityObject,
 					      int serviceSecurityIndex);
 extern void rx_SetConnDeadTime(struct rx_connection *conn,
@@ -71,7 +71,6 @@ extern struct rx_service *rx_NewServiceHost(afs_uint32 host, u_short port,
 								     rx_call *
 								     acall));
 extern struct rx_service *rx_NewServiceHost2(struct rx_sockaddr *saddr,
-					    u_short serviceId,
 					    char *serviceName,
 					    struct rx_securityClass
 					    **securityObjects,
@@ -456,7 +455,6 @@ extern struct rx_packet *rxi_AllocSendPacket(struct rx_call *call,
 extern int rxi_ReadPacket(osi_socket socket, struct rx_packet *p,
 			  struct rx_sockaddr *saddr);
 extern struct rx_packet *rxi_SplitJumboPacket(struct rx_packet *p,
-					      struct rx_sockaddr *saddr,
 					      int first);
 #ifndef KERNEL
 extern int osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec,

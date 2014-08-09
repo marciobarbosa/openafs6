@@ -339,7 +339,7 @@ shutdown_rxkernel(void)
  */
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvec, afs_int32 asize, int istack)
 {
     struct mbuf *tm, *um;
@@ -350,6 +350,13 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
     char *tdata;
     caddr_t tpa;
     int i, tl, rlen;
+    struct sockaddr_in *addr;
+
+    if (saddr->addr.family == AF_INET) {
+    	addr = &saddr->addr.sin;
+    } else {
+    	return EAFNOSUPPOT;
+    }
 
     AFS_STATCNT(osi_NetSend);
 #ifndef	AFS_AIX41_ENV

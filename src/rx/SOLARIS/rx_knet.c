@@ -478,7 +478,7 @@ osi_FreeSocket(osi_socket asocket)
 }
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 asize, int istack)
 {
     struct sonode *so = (struct sonode *)asocket;
@@ -492,8 +492,8 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 	osi_Panic("osi_NetSend: %d: Too many iovecs.\n", nvecs);
     }
 
-    msg.msg_name = (struct sockaddr *)addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_name = &saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
     msg.msg_control = NULL;

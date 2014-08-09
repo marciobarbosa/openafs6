@@ -350,7 +350,7 @@ extern void afs_cv_timedwait(afs_kcondvar_t * cv, afs_kmutex_t * l,
 
 /* ARCH/rx_knet.c */
 # if !defined(AFS_SGI_ENV)
-extern int osi_NetSend(osi_socket asocket, struct sockaddr_in *addr,
+extern int osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr,
 		       struct iovec *dvec, int nvecs, afs_int32 asize,
 		       int istack);
 # endif
@@ -456,10 +456,9 @@ extern struct rx_packet *rxi_AllocSendPacket(struct rx_call *call,
 extern int rxi_ReadPacket(osi_socket socket, struct rx_packet *p,
 			  struct rx_sockaddr *saddr);
 extern struct rx_packet *rxi_SplitJumboPacket(struct rx_packet *p,
-					      struct rx_sockaddr *saddr,
 					      int first);
 #ifndef KERNEL
-extern int osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec,
+extern int osi_NetSend(osi_socket socket, rx_sockaddr *saddr, struct iovec *dvec,
 		       int nvecs, int length, int istack);
 #endif
 extern struct rx_packet *rxi_ReceiveDebugPacket(struct rx_packet *ap,

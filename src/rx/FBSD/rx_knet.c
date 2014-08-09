@@ -128,7 +128,7 @@ osi_StopListener(void)
 }
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 alength, int istack)
 {
     afs_int32 code;
@@ -152,15 +152,13 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
     u.uio_rw = UIO_WRITE;
     u.uio_td = NULL;
 
-    addr->sin_len = sizeof(struct sockaddr_in);
-
     if (haveGlock)
 	AFS_GUNLOCK();
 #if KNET_DEBUG
     printf("+");
 #endif
     code =
-	sosend(asocket, (struct sockaddr *)addr, &u, NULL, NULL, 0,
+	sosend(asocket, &saddr->addr.sa, &u, NULL, NULL, 0,
 	       curthread);
 #if KNET_DEBUG
     if (code) {
@@ -376,7 +374,7 @@ trysblock(sb)
 /* We only have to do all the mbuf management ourselves if we can be called at
    interrupt time. in RXK_LISTENER_ENV, we can just call sosend() */
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvec, afs_int32 asize, int istack)
 {
     struct mbuf *tm, *um;
@@ -390,9 +388,16 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
     int i, tl, rlen;
     int mlen;
     int haveGlock;
+    struct sockaddr_in *addr;
 #if KNET_DEBUG
     static int before = 0;
 #endif
+
+    if(saddr->addr.family == AF_INET) {
+    	addr = &saddr->addr.sin;
+    } else {
+    	return EAFNOSUPPOT;
+    }
 
     AFS_STATCNT(osi_NetSend);
 /* Actually, the Ultrix way is as good as any for us, so we don't bother with

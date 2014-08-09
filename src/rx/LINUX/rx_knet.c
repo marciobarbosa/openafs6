@@ -164,15 +164,15 @@ do_handlesocketerror(osi_socket so)
  * non-zero = failure
  */
 int
-osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
+osi_NetSend(osi_socket sop, struct rx_sockaddr *saddr, struct iovec *iovec,
 	    int iovcnt, afs_int32 size, int istack)
 {
     struct msghdr msg;
     int code;
 
 
-    msg.msg_name = to;
-    msg.msg_namelen = sizeof(*to);
+    msg.msg_name = (void *)&saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_control = NULL;
     msg.msg_controllen = 0;
     msg.msg_flags = 0;

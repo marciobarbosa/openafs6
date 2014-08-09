@@ -83,7 +83,7 @@ osi_StopListener(void)
  */
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 alength, int istack)
 {
     int i, code;
@@ -91,6 +91,12 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
     struct uio u;
     struct mbuf *nam;
     int haveGlock = ISAFS_GLOCK();
+    struct sockaddr_in *addr;
+
+    if(saddr->addr.family == AF_INET)
+        addr = &saddr->addr.sin;
+    else
+        return EAFNOSUPPORT;
 
     AFS_STATCNT(osi_NetSend);
     if (nvecs > RX_MAXIOVECS)

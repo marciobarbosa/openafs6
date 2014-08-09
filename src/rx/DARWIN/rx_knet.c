@@ -274,7 +274,7 @@ osi_StopListener(void)
 #endif
 
 int
-osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 alength, int istack)
 {
 #ifdef AFS_DARWIN80_ENV
@@ -297,8 +297,6 @@ osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     for (i = 0; i < nvecs; i++)
 	iov[i] = dvec[i];
 
-    addr->sin_len = sizeof(struct sockaddr_in);
-
     if ((afs_termState == AFSOP_STOP_RXK_LISTENER) ||
 	(afs_termState == AFSOP_STOP_COMPLETE))
 	return -1;
@@ -311,8 +309,8 @@ osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
 #endif
 #ifdef AFS_DARWIN80_ENV
     memset(&msg, 0, sizeof(struct msghdr));
-    msg.msg_name = addr;
-    msg.msg_namelen = ((struct sockaddr *)addr)->sa_len;
+    msg.msg_name = (void *)&saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_iov = &iov[0];
     msg.msg_iovlen = nvecs;
     code = sock_send(asocket, &msg, 0, &slen);
@@ -324,7 +322,7 @@ osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     u.uio_segflg = UIO_SYSSPACE;
     u.uio_rw = UIO_WRITE;
     u.uio_procp = NULL;
-    code = sosend(asocket, (struct sockaddr *)addr, &u, NULL, NULL, 0);
+    code = sosend(asocket, &saddr->addr.sa, &u, NULL, NULL, 0);
 #endif
 
 #if defined(KERNEL_FUNNEL)

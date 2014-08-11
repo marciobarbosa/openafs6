@@ -1836,7 +1836,7 @@ rx_NewServiceHost2(struct rx_sockaddr *saddr,
     for (i = 0; i < RX_MAX_SERVICES; i++) {
 	struct rx_service *service = rx_services[i];
 	if (service) {
-	    if (rx_compare_sockaddr(saddr, &service->serviceAddr)) {
+	    if (rx_compare_sockaddr(saddr, &service->serviceAddr, RXA_AP)) {
 		if (service->serviceId == saddr->service) {
 		    /* The identical service has already been
 		     * installed; if the caller was intending to
@@ -2932,14 +2932,14 @@ rxi_SetPeerMtu(struct rx_peer *peer, struct rx_sockaddr *saddr, int mtu)
 		    peer = *peer_ptr;
 		for ( ; peer; peer = next) {
 		    next = peer->next;
-		    if (rx_compare_sockaddr_addr(saddr, &peer->saddr))
+		    if (rx_compare_sockaddr(saddr, &peer->saddr, RXA_ADDR))
 			break;
 		}
 	    }
 	} else {
 	    hashIndex = PEER_HASH(saddr);
 	    for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-                if (rx_compare_sockaddr(saddr, &peer->saddr))
+                if (rx_compare_sockaddr(saddr, &peer->saddr, RXA_ADDR))
                     break;
 	    }
 	}
@@ -2987,7 +2987,7 @@ rxi_SetPeerDead(struct sock_extended_err *err, struct rx_sockaddr *saddr)
     MUTEX_ENTER(&rx_peerHashTable_lock);
 
     for (peer = rx_peerHashTable[hashIndex]; peer; peer = peer->next) {
-        if (rx_compare_sockaddr(&peer->saddr, saddr)) {
+        if (rx_compare_sockaddr(&peer->saddr, saddr, RXA_AP)) {
             peer->refCount++;
             break;
         }
@@ -3120,7 +3120,7 @@ rxi_FindPeer(struct rx_sockaddr *saddr, int create)
     hashIndex = PEER_HASH(saddr);
     MUTEX_ENTER(&rx_peerHashTable_lock);
     for (pp = rx_peerHashTable[hashIndex]; pp; pp = pp->next) {
-        if (rx_compare_sockaddr(&pp->saddr, saddr))
+        if (rx_compare_sockaddr(&pp->saddr, saddr, RXA_AP))
             break;
     }
     if (!pp) {
@@ -3186,7 +3186,7 @@ rxi_FindConnection(osi_socket socket, struct rx_sockaddr *saddr,
 		MUTEX_EXIT(&rx_connHashTable_lock);
 		return (struct rx_connection *)0;
 	    }
-            if (rx_compare_sockaddr(&pp->saddr, saddr))
+            if (rx_compare_sockaddr(&pp->saddr, saddr, RXA_AP))
                 break;
 	    if (type == RX_CLIENT_CONNECTION && rx_get_sockaddr_port(&pp->saddr) == rx_get_sockaddr_port(saddr))
 		break;
@@ -7994,7 +7994,7 @@ rx_GetLocalPeers2(struct rx_sockaddr *saddr,
 	MUTEX_ENTER(&rx_peerHashTable_lock);
 	for(tp = rx_peerHashTable[hashValue];
 	      tp != NULL; tp = tp->next) {
-	    if(rx_compare_sockaddr_addr(&tp->saddr, saddr))
+	    if(rx_compare_sockaddr(&tp->saddr, saddr, RXA_ADDR))
 		break;
 	}
 

@@ -1593,7 +1593,7 @@ osi_NetSend(osi_socket socket, struct rx_sockaddr *saddr, struct iovec *dvec, in
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
     msg.msg_name = (void *)&saddr->addr.sa;
-    msg.msg_namelen = saddr->addrlen;
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
 
     ret = rxi_Sendmsg(socket, &msg, 0);
 

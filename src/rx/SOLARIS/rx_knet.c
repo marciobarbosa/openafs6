@@ -325,7 +325,7 @@ struct sockaddr_in rx_sockaddr;
 
 /* Allocate a new socket at specified port in network byte order. */
 osi_socket *
-rxk_NewSocketHost(struct sockaddr *saddr)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     vnode_t *accessvp;
     struct sonode *so;
@@ -413,7 +413,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 	return NULL;
     }
 
-    error = sockfs_sobind(so, saddr, sizeof(struct sockaddr_in), 0, 0);
+    error = sockfs_sobind(so, &saddr->addr.sa, sizeof(struct sockaddr_in), 0, 0);
     if (error != 0) {
 	return NULL;
     }
@@ -493,7 +493,7 @@ osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
     }
 
     msg.msg_name = &saddr->addr.sa;
-    msg.msg_namelen = saddr->addrlen;
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
     msg.msg_control = NULL;

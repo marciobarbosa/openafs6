@@ -310,7 +310,7 @@ osi_NetSend(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 #ifdef AFS_DARWIN80_ENV
     memset(&msg, 0, sizeof(struct msghdr));
     msg.msg_name = (void *)&saddr->addr.sa;
-    msg.msg_namelen = saddr->addrlen;
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
     msg.msg_iov = &iov[0];
     msg.msg_iovlen = nvecs;
     code = sock_send(asocket, &msg, 0, &slen);

@@ -28,7 +28,7 @@
  * open and bind RX socket
  */
 osi_socket *
-rxk_NewSocketHost(struct sockaddr *saddr)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     struct socket *sockp;
     int code;
@@ -48,7 +48,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 
     /* Bind socket */
     code =
-	sockp->ops->bind(sockp, saddr, sizeof(struct sockaddr_in));
+	sockp->ops->bind(sockp, &saddr->addr.sa, sizeof(struct sockaddr_in));
 
     if (code < 0) {
 #if defined(AFS_LINUX24_ENV)
@@ -99,7 +99,7 @@ osi_NetSend(osi_socket sop, struct rx_sockaddr *saddr, struct iovec *iovec,
     msg.msg_iovlen = iovcnt;
     msg.msg_iov = iovec;
     msg.msg_name = (void *)&saddr->addr.sa;
-    msg.msg_namelen = saddr->addrlen;
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
     msg.msg_control = NULL;
     msg.msg_controllen = 0;
     msg.msg_flags = 0;

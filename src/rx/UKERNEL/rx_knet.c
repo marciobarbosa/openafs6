@@ -173,7 +173,7 @@ rx_ServerProc(void *unused)
  * we start the receiver threads.
  */
 osi_socket *
-rxk_NewSocketHost(struct sockaddr *saddr)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     struct usr_socket *usockp;
 
@@ -309,7 +309,7 @@ osi_NetSend(osi_socket sockp, struct rx_sockaddr *saddr, struct iovec *iov,
 
     memset(&msg, 0, sizeof(msg));
     msg.msg_name = (void *)&saddr->addr.sa;
-    msg.msg_namelen = saddr->addrlen;
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
     msg.msg_iov = &tmpiov[0];
     msg.msg_iovlen = nio;
 

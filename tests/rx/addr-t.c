@@ -61,10 +61,9 @@ make_in_addr(const char *text)
 
 /* Create an client rx_sockaddr; suitable for rx_NewConnection2() */
 void
-make_sockaddr(const char *address, struct rx_sockaddr *sa)
+make_sockaddr(const char *address, const char *port, struct rx_sockaddr *sa)
 {
     int code;
-    const char *service = "1234";	/* test port number */
     struct addrinfo hints;
     struct addrinfo *results = NULL;
 
@@ -73,7 +72,7 @@ make_sockaddr(const char *address, struct rx_sockaddr *sa)
     hints.ai_flags = AI_NUMERICHOST;	/* conversion only; no dns lookup */
     hints.ai_socktype = SOCK_DGRAM;
 
-    code = getaddrinfo(address, service, &hints, &results);
+    code = getaddrinfo(address, port, &hints, &results);
     if (code) {
 	bail("getaddrinfo: %s (%d)", gai_strerror(code), code);
     }
@@ -165,18 +164,18 @@ main(void)
     sa2 = malloc(sizeof(*sa2));
     memset(buf, 0, sizeof(buf));
 
-    plan(11);
+    plan(22);
 
-    make_sockaddr("1.2.3.4", sa);
+    make_sockaddr("1.2.3.4", "1234", sa);
     is_string("1.2.3.4:1234", rx_print_sockaddr(sa, buf, sizeof(buf)),
 	      "rx_addrinfo_to_sockaddr");
 
     ok(rx_get_sockaddr_port(sa) == htons(1234), "rx_get_sockaddr_port");
-    ok(rx_set_sockaddr_port(sa, ntohs(9999)) == htons(9999), "rx_set_sockaddr_port");
+    ok(rx_set_sockaddr_port(sa, ntohs(9999)) == htons(9999),
+       "rx_set_sockaddr_port");
 
-    make_sockaddr("1.2.3.4", sa);
-    /* printf("hash %s -> %d\n", rx_print_sockaddr(sa, buf, sizeof(buf)),
-     * rx_hash_sockaddr(sa, hashsize)); */
+    make_sockaddr("1.2.3.4", "1234", sa);
+    /* Spot check the hash function. 1.2.3.4:1234 hashes to 53. */
     ok(rx_hash_sockaddr(sa, hashsize) == 53, "rx_hash_sockaddr");
     ok(!rx_is_loopback_sockaddr(sa), "rx_is_loopback");
 
@@ -184,17 +183,37 @@ main(void)
     is_string("0.0.0.0:1234", rx_print_sockaddr(sa, buf, sizeof(buf)),
 	      "rx_addrinfo_to_sockaddr any");
 
-    make_sockaddr("1.2.3.4", sa);
+    make_sockaddr("1.2.3.4", "1234", sa);
     example_try_sockaddr_to_ipv4(sa);
 
     ok(rx_copy_sockaddr(sa, sa2) == 0, "rx_copy_sockaddr");
     is_string("1.2.3.4:1234", rx_print_sockaddr(sa, buf, sizeof(buf)),
 	      "rx_copy_sockaddr: contents");
+    make_sockaddr("1.2.3.4", "1234", sa);
+    make_sockaddr("1.2.3.4", "1234", sa2);
+    ok(rx_compare_sockaddr(sa, sa2, RXA_ALL) == 1, "rx_compare_sockaddr: same, all");
+    ok(rx_compare_sockaddr(sa, sa2, RXA_AP) == 1, "rx_compare_sockaddr: same, addr/port");
+    ok(rx_compare_sockaddr(sa, sa2, RXA_ADDR) == 1, "rx_compare_sockaddr: same, addr");
+    ok(rx_compare_sockaddr(sa, sa2, RXA_PORT) == 1, "rx_compare_sockaddr: same, port");
 
-    ok(rx_compare_sockaddr(sa, sa2), "rx_compare_sockaddr: same");
+    make_sockaddr("9.9.9.9", "1234", sa);
+    make_sockaddr("1.2.3.4", "1234", sa2);
+    ok(rx_compare_sockaddr(sa, sa2, RXA_ALL) == 0, "rx_compare_sockaddr: diff, all");
+    ok(rx_compare_sockaddr(sa, sa2, RXA_AP) == 0, "rx_compare_sockaddr: diff, addr/port");
+    ok(rx_compare_sockaddr(sa, sa2, RXA_ADDR) == 0, "rx_compare_sockaddr: diff addr, same port");
+    ok(rx_compare_sockaddr(sa, sa2, RXA_PORT) == 1, "rx_compare_sockaddr: diff addr, same port");
 
-    make_sockaddr("9.9.9.9", sa);
-    ok(!rx_compare_sockaddr(sa, sa2), "rx_compare_sockaddr: diff");
+    make_sockaddr("1.2.3.4", "1234", sa);
+    make_sockaddr("1.2.3.4", "9999", sa2);
+    ok(rx_compare_sockaddr(sa, sa2, RXA_ADDR) == 1, "rx_compare_sockaddr: same addr, diff port");
+    ok(rx_compare_sockaddr(sa, sa2, RXA_PORT) == 0, "rx_compare_sockaddr: same addr, diff port");
+
+
+    /* sockaddr -> address */
+    make_sockaddr("1.2.3.4", "1234", sa);
+    rx_sockaddr_to_address(sa, a);
+    is_string("1.2.3.4", rx_print_address(a, buf, sizeof(buf)), "rx_sockaddr_to_address"); 
+
 
     /* address -> ipv4 */
     a4 = make_in_addr("1.2.3.4");
@@ -203,7 +222,6 @@ main(void)
        "rx_address_to_sockaddr");
     is_string("1.2.3.4:1234", rx_print_sockaddr(sa, buf, sizeof(buf)),
 	      "test rx_address_to_sockaddr");
-    rx_free_address(a);
     memset(buf, 0, sizeof(buf));
 
     free(a);

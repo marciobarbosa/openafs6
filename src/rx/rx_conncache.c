@@ -50,7 +50,7 @@ afs_kmutex_t rxi_connCacheMutex;
  */
 
 typedef struct rx_connParts {
-    struct sockaddr_storage saddr;
+    struct rx_sockaddr saddr;
     unsigned short service;
     struct rx_securityClass *securityObject;
     int securityIndex;
@@ -89,8 +89,7 @@ typedef struct cache_entry {
 static int
 rxi_CachedConnectionsEqual(rx_connParts_p a, rx_connParts_p b)
 {
-    return (rx_IsSockAddrEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
-        && rx_IsSockPortEqual((struct sockaddr *)&a->saddr, (struct sockaddr *)&b->saddr)
+    return (rx_compare_sockaddr(&a->saddr, &b->saddr, RXA_AP)
 	    && (a->service == b->service)
 	    && (a->securityObject == b->securityObject)
 	    && (a->securityIndex == b->securityIndex));
@@ -180,7 +179,7 @@ rxi_GetCachedConnection(rx_connParts_p parts, struct rx_connection **conn)
 	 * Create a new connection and enter it in the cache
 	 */
 	if ((*conn =
-	     rx_NewConnectionSA((struct sockaddr *)&parts->saddr, parts->service,
+	     rx_NewConnection2(&parts->saddr,
 			      parts->securityObject, parts->securityIndex))) {
 	    rxi_AddCachedConnection(parts, conn);
 	} else {
@@ -225,7 +224,30 @@ rxi_DeleteCachedConnections(void)
  */
 
 struct rx_connection *
-rx_GetCachedConnection(struct sockaddr *saddr,
+rx_GetCachedConnection(unsigned int remoteAddr, unsigned short port,
+                       unsigned short service,
+                       struct rx_securityClass *securityObject,
+                       int securityIndex)
+{
+    struct rx_connection *conn = NULL;
+    rx_connParts_t parts;
+
+    rx_ipv4_to_sockaddr(remoteAddr, port, 0, &parts.saddr);
+    parts.service = service; /* duplicate code: service here and inside parts.saddr */
+    parts.securityObject = securityObject;
+    parts.securityIndex = securityIndex;
+    /*
+     * Get a connection matching the user's request
+     * note we don't propagate the error returned by rxi_GetCachedConnection
+     * since rx_NewConnection doesn't return errors either.
+     */
+    rxi_GetCachedConnection(&parts, &conn);
+
+    return conn;
+}
+
+struct rx_connection *
+rx_GetCachedConnection2(struct rx_sockaddr *saddr,
 		       unsigned short service,
 		       struct rx_securityClass *securityObject,
 		       int securityIndex)
@@ -233,8 +255,8 @@ rx_GetCachedConnection(struct sockaddr *saddr,
     struct rx_connection *conn = NULL;
     rx_connParts_t parts;
 
-    rx_CopySockAddr((struct sockaddr *)&parts.saddr, saddr);
-    parts.service = service;
+    rx_copy_sockaddr(saddr, &parts.saddr);
+    parts.service = service; /* duplicate code? */
     parts.securityObject = securityObject;
     parts.securityIndex = securityIndex;
     /*

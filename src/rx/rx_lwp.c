@@ -152,7 +152,7 @@ rxi_StartListener(void)
 static void
 rxi_ListenerProc(fd_set * rfds, int *tnop, struct rx_call **newcallp)
 {
-    struct sockaddr_storage saddr;
+    struct rx_sockaddr saddr;
     struct rx_packet *p = (struct rx_packet *)0;
     osi_socket socket;
     struct clock cv;
@@ -265,9 +265,9 @@ rxi_ListenerProc(fd_set * rfds, int *tnop, struct rx_call **newcallp)
 #ifdef AFS_NT40_ENV
 	    for (i = 0; p && i < rfds->fd_count; i++) {
 		socket = rfds->fd_array[i];
-		if (rxi_ReadPacket(socket, p, (struct sockaddr *)&saddr)) {
+		if (rxi_ReadPacket(socket, p, &saddr)) {
 		    *newcallp = NULL;
-		    p = rxi_ReceivePacket(p, socket, (struct sockaddr *)&saddr, tnop, newcallp);
+		    p = rxi_ReceivePacket(p, socket, &saddr, tnop, newcallp);
 		    if (newcallp && *newcallp) {
 			if (p) {
 			    rxi_FreePacket(p);
@@ -285,8 +285,8 @@ rxi_ListenerProc(fd_set * rfds, int *tnop, struct rx_call **newcallp)
 		 p && socket <= rx_maxSocketNumber; socket++) {
 		if (!FD_ISSET(socket, rfds))
 		    continue;
-		if (rxi_ReadPacket(socket, p, (struct sockaddr *)&saddr)) {
-		    p = rxi_ReceivePacket(p, socket, (struct sockaddr *)&saddr, tnop, newcallp);
+		if (rxi_ReadPacket(socket, p, &saddr)) {
+		    p = rxi_ReceivePacket(p, socket, &saddr, tnop, newcallp);
 		    if (newcallp && *newcallp) {
 			if (p) {
 			    rxi_FreePacket(p);

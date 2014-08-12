@@ -271,7 +271,7 @@ extern int rxevent_RaiseEvents(struct clock *next);
 
 /* rx_getaddr.c */
 extern void rxi_setaddr(struct rx_sockaddr *x);
-extern struct sockaddr_storage rxi_getaddr(void);
+extern struct rx_sockaddr rxi_getaddr(void);
 extern int rx_getAllAddr(afs_uint32 * buffer, int maxSize);
 extern int rx_getAllAddr2(struct rx_sockaddr buffer[], int maxSize);
 extern int rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[],

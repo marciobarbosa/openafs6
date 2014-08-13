@@ -103,8 +103,6 @@ rx_upcall(socket_t so, void *arg, __unused int waitflag)
 	error = 0;
 
     if (!error) {
-	int host, port;
-
 	nbytes -= resid;
 
 	if (sa->sa_family == AF_INET)
@@ -126,9 +124,6 @@ rx_upcall(socket_t so, void *arg, __unused int waitflag)
 	} else {
 	    /* Extract packet header. */
 	    rxi_DecodePacketHeader(p);
-
-	    host = from.sin_addr.s_addr;
-	    port = from.sin_port;
 	    if (p->header.type > 0 && p->header.type < RX_N_PACKET_TYPES) {
 		if (rx_stats_active) {
 		    rx_atomic_inc(&rx_stats.packetsRead[p->header.type - 1]);
@@ -140,7 +135,7 @@ rx_upcall(socket_t so, void *arg, __unused int waitflag)
 	    rxi_TrimDataBufs(p, 1);
 #endif
 	    /* receive pcket */
-	    p = rxi_ReceivePacket(p, so, host, port, 0, 0);
+	    p = rxi_ReceivePacket(p, so, (struct sockaddr *)&from, 0, 0);
 	}
     }
     /* free packet? */

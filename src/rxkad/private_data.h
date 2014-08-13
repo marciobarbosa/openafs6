@@ -45,7 +45,7 @@ struct rxkad_cidgen {
     afs_int32 random1;		/* some implementation-specific random info */
     afs_int32 random2;		/* more random info */
     afs_int32 counter;		/* a counter */
-    afs_int32 ipAddr;		/* or an approximation to it */
+    rx_in_addr_t ipAddr;		/* or an approximation to it */
 };
 
 #define PDATA_SIZE(l) (sizeof(struct rxkad_cprivate) - MAXKTCTICKETLEN + (l))

@@ -18,10 +18,19 @@
 #include "rx_clock.h"
 #include "rx_peer.h"
 
-afs_uint32 rx_HostOf(struct rx_peer *peer) {
-    return peer->host;
+rx_in_addr_t rx_HostOf(struct rx_peer *peer) {
+    rx_in_addr_t ipv4;
+
+    if(!rx_try_sockaddr_to_ipv4(&peer->saddr, &ipv4))
+    	return EAFNOSUPPORT;
+    else
+    	return ipv4;
 }
 
-u_short rx_PortOf(struct rx_peer *peer) {
-    return peer->port;
+rx_port_t rx_PortOf(struct rx_peer *peer) {
+    return rx_get_sockaddr_port(&peer->saddr);
+}
+
+struct rx_sockaddr *rx_SockAddrOf(struct rx_peer *peer) {
+    return &peer->saddr;
 }

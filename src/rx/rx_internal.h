@@ -13,6 +13,8 @@
 # endif
 #endif
 
+struct rx_sockaddr;
+
 /* Globals that we don't want the world to know about */
 extern rx_atomic_t rx_nWaiting;
 extern rx_atomic_t rx_nWaited;
@@ -22,17 +24,14 @@ extern rx_atomic_t rx_nWaited;
 /* rx.c */
 extern void rxi_CancelDelayedAckEvent(struct rx_call *);
 extern void rxi_PacketsUnWait(void);
-extern void rxi_SetPeerMtu(struct rx_peer *peer, afs_uint32 host,
-			   afs_uint32 port, int mtu);
+extern void rxi_SetPeerMtu(struct rx_peer *peer, struct rx_sockaddr *saddr, int mtu);
 #ifdef AFS_RXERRQ_ENV
 extern void rxi_ProcessNetError(struct sock_extended_err *err,
-                                afs_uint32 addr, afs_uint16 port);
+                                struct rx_sockaddr *saddr);
 #endif
-extern struct rx_peer *rxi_FindPeer(afs_uint32 host, u_short port,
-				    int create);
+extern struct rx_peer *rxi_FindPeer(struct rx_sockaddr *saddr, int create);
 extern struct rx_packet *rxi_ReceivePacket(struct rx_packet *np,
-					   osi_socket socket, afs_uint32 host,
-					   u_short port, int *tnop,
+					   osi_socket socket, struct rx_sockaddr *saddr, int *tnop,
 					   struct rx_call **newcallp);
 extern int rxi_IsConnInteresting(struct rx_connection *aconn);
 extern void rxi_PostDelayedAckEvent(struct rx_call *call, struct clock *now);

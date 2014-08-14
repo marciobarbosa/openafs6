@@ -51,6 +51,7 @@
 #include "rx_peer.h"
 #include "rx_packet.h"
 #include "rx_internal.h"
+#include "rx_addr.h"
 
 #ifdef AFS_PTHREAD_ENV
 

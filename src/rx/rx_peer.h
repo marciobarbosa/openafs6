@@ -10,6 +10,8 @@
 #ifndef OPENAFS_RX_PEER_H
 #define OPENAFS_RX_PEER_H
 
+#include "rx_addr.h"
+
 /* A peer refers to a peer process, specified by a (host,port) pair.  There may
  * be more than one peer on a given host. */
 

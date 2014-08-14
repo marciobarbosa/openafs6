@@ -59,7 +59,6 @@
 #include "rx_misc.h"
 #include "rx_null.h"
 #include "rx_multi.h"
-#include "rx_addr.h"
 
 /* These items are part of the new RX API. They're living in this section
  * for now, to keep them separate from everything else... */
@@ -67,7 +66,7 @@
 struct rx_connection;
 struct rx_call;
 struct rx_packet;
-//struct rx_sockaddr;
+struct rx_sockaddr;
 
 /* Connection management */
 
@@ -334,7 +333,7 @@ returned with an error code of RX_CALL_DEAD ( transient error ) */
 
 struct rx_service {
     u_short serviceId;		/* Service number */
-    struct rx_sockaddr serviceAddr;	/* IP address and port for this service */
+    struct rx_sockaddr* serviceAddr;	/* IP address and port for this service */
     char *serviceName;		/* Name of the service */
     osi_socket socket;		/* socket structure or file descriptor */
     u_short nRequestsRunning;	/* Number of requests currently in progress */

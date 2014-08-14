@@ -35,6 +35,7 @@
 #ifdef AFS_NT40_ENV
 #include "rx_xmit_nt.h"
 #endif
+#include "rx_addr.h"
 
 static void rxi_SetThreadNum(int threadID);
 

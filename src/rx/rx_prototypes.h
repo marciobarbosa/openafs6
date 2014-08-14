@@ -10,6 +10,8 @@
 #ifndef	_RX_PROTOTYPES_H
 #define _RX_PROTOTYPES_H
 
+struct rx_sockaddr;
+
 /* rx.c */
 #ifndef KERNEL
 #ifndef AFS_PTHREAD_ENV
@@ -273,13 +275,13 @@ extern int rxevent_RaiseEvents(struct clock *next);
 extern void rxi_setaddr(struct rx_sockaddr *x);
 extern struct rx_sockaddr rxi_getaddr(void);
 extern int rx_getAllAddr(afs_uint32 * buffer, int maxSize);
-extern int rx_getAllAddr2(struct rx_sockaddr buffer[], int maxSize);
+extern int rx_getAllAddr2(struct rx_sockaddr *buffer, int maxSize);
 extern int rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[],
 			  	 afs_uint32 maskBuffer[],
 				 afs_uint32 mtuBuffer[],
 				 int maxSize);
-extern int rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[],
-				 struct rx_sockaddr maskBuffer[],
+extern int rx_getAllAddrMaskMtu2(struct rx_sockaddr *addrBuffer,
+				 struct rx_sockaddr *maskBuffer,
 				 afs_uint32 mtuBuffer[],
 				 int maxSize);
 

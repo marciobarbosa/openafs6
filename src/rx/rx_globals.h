@@ -533,6 +533,7 @@ EXT afs_kmutex_t rx_connHashTable_lock;
 #define	rxi_AllocService()	rxi_Alloc(sizeof(struct rx_service))
 #define	rxi_FreeService(obj) \
 do { \
+    rxi_Free(&(obj)->serviceAddr, sizeof(*(obj)->serviceAddr)); \
     MUTEX_DESTROY(&(obj)->svc_data_lock);  \
     rxi_Free((obj), sizeof(struct rx_service)); \
 } while (0)

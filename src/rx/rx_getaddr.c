@@ -44,6 +44,7 @@
 # include <net/if.h>
 # include <sys/sockio.h>
 #endif
+#include "rx_addr.h"
 
 #ifdef KERNEL
 /* only used for generating random noise */

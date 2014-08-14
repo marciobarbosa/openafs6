@@ -39,6 +39,7 @@
 #ifdef AFS_NT40_ENV
 #include "rx_xmit_nt.h"
 #endif
+#include "rx_addr.h"
 
 #define MAXTHREADNAMELENGTH 64
 

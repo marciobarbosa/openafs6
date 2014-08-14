@@ -1836,7 +1836,7 @@ rx_NewServiceHost2(struct rx_sockaddr *saddr,
     for (i = 0; i < RX_MAX_SERVICES; i++) {
 	struct rx_service *service = rx_services[i];
 	if (service) {
-	    if (rx_compare_sockaddr(saddr, &service->serviceAddr, RXA_AP)) {
+	    if (rx_compare_sockaddr(saddr, service->serviceAddr, RXA_AP)) {
 		if (service->serviceId == saddr->service) {
 		    /* The identical service has already been
 		     * installed; if the caller was intending to
@@ -1868,7 +1868,8 @@ rx_NewServiceHost2(struct rx_sockaddr *saddr,
 	    }
 	    service = tservice;
 	    service->socket = socket;
-	    rx_copy_sockaddr(&service->serviceAddr, saddr);
+	    service->serviceAddr = rxi_Alloc(sizeof(struct rx_sockaddr));
+	    rx_copy_sockaddr(saddr, service->serviceAddr);
 	    service->serviceId = saddr->service;
 	    service->serviceName = serviceName;
 	    service->nSecurityObjects = nSecurityObjects;
@@ -2227,7 +2228,7 @@ rx_GetCall(int tno, struct rx_service *cur_service, osi_socket * socketp)
 
 	rxi_calltrace(RX_CALL_START, call);
 	dpf(("rx_GetCall(port=%d, service=%d) ==> call %" AFS_PTR_FMT "\n",
-	     rx_get_sockaddr_port(&call->conn->service->serviceAddr),
+	     rx_get_sockaddr_port(call->conn->service->serviceAddr),
 	     call->conn->service->serviceId, call));
 
 	MUTEX_EXIT(&call->lock);
@@ -2388,7 +2389,7 @@ rx_GetCall(int tno, struct rx_service *cur_service, osi_socket * socketp)
 
 	rxi_calltrace(RX_CALL_START, call);
 	dpf(("rx_GetCall(port=%d, service=%d) ==> call %p\n",
-	     rx_get_sockaddr_port(&call->conn->service->serviceAddr),
+	     rx_get_sockaddr_port(call->conn->service->serviceAddr),
 	     call->conn->service->serviceId, call));
 
     } else {

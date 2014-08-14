@@ -20,6 +20,7 @@
 #include "rx.h"
 
 #include "rx_conn.h"
+#include "rx_addr.h"
 
 /*
  * We initialize rxi_connectionCache at compile time, so there is no

@@ -173,7 +173,7 @@ rx_ServerProc(void *unused)
  * we start the receiver threads.
  */
 osi_socket *
-rxk_NewSocketHost(struct sockaddr *saddr)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     struct usr_socket *usockp;
 
@@ -188,9 +188,11 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), aport);
+    struct rx_sockaddr saddr;
 
-    return rxk_NewSocketHost((struct sockaddr *)&saddr);
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), aport, 0, &saddr);
+
+    return rxk_NewSocketHost(&saddr);
 }
 
 /*

@@ -29,11 +29,11 @@
 #include "afsint.h"
 
 #ifndef RXK_LISTENER_ENV
-int (*rxk_PacketArrivalProc) (struct rx_packet * ahandle, struct sockaddr_in * afrom, struct socket *arock, afs_int32 asize);	/* set to packet allocation procedure */
+int (*rxk_PacketArrivalProc) (struct rx_packet * ahandle, struct rx_sockaddr * afrom, struct socket *arock, afs_int32 asize);	/* set to packet allocation procedure */
 int (*rxk_GetPacketProc) (struct rx_packet **ahandle, int asize);
 #endif
 
-osi_socket *rxk_NewSocketHost(struct sockaddr *saddr);
+osi_socket *rxk_NewSocketHost(struct rx_sockaddr *saddr);
 extern struct afs_interfaceAddr afs_cb_interface;
 
 rxk_ports_t rxk_ports;
@@ -43,7 +43,7 @@ int rxk_initDone = 0;
 
 #if !defined(AFS_SUN5_ENV) && !defined(AFS_SGI62_ENV)
 #define ADDRSPERSITE 16
-static struct sockaddr_storage myNetAddrs[ADDRSPERSITE];
+static struct rx_sockaddr myNetAddrs[ADDRSPERSITE];
 static int myNetMTUs[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
 #endif
@@ -111,22 +111,24 @@ rxk_shutdownPorts(void)
 }
 
 osi_socket
-rxi_GetHostUDPSocket(struct sockaddr *saddr)
+rxi_GetHostUDPSocket(struct rx_sockaddr *saddr)
 {
     osi_socket *sockp;
     sockp = (osi_socket *)rxk_NewSocketHost(saddr);
     if (sockp == (osi_socket *)0)
 	return OSI_NULLSOCKET;
-    rxk_AddPort(xxx_rx_PortSockAddr(saddr), (char *)sockp);
+    rxk_AddPort(rx_get_sockaddr_port(saddr), (char *)sockp);
     return (osi_socket) sockp;
 }
 
 osi_socket
 rxi_GetUDPSocket(u_short port)
 {
-    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), port);
+    struct rx_sockaddr saddr;
 
-    return rxi_GetHostUDPSocket((struct sockaddr *)&saddr);
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), port, 0, &saddr);
+
+    return rxi_GetHostUDPSocket(&saddr);
 }
 
 /*
@@ -330,7 +332,7 @@ MyPacketProc(struct rx_packet **ahandle, int asize)
 
 static int
 MyArrivalProc(struct rx_packet *ahandle,
-	      struct sockaddr_in *afrom,
+	      struct rx_sockaddr *afrom,
 	      struct socket *arock,
 	      afs_int32 asize)
 {
@@ -338,9 +340,7 @@ MyArrivalProc(struct rx_packet *ahandle,
     ahandle->length = asize - RX_HEADER_SIZE;
     rxi_DecodePacketHeader(ahandle);
     ahandle =
-	rxi_ReceivePacket(ahandle, arock,
-			  (struct sockaddr *)afrom, NULL,
-			  NULL);
+	rxi_ReceivePacket(ahandle, arock, afrom, NULL, NULL);
 
     /* free the packet if it has been returned */
     if (ahandle)
@@ -372,7 +372,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
     afs_int32 i;
     afs_int32 mtu;
 
-    i = rxi_Findcbi((struct sockaddr *)&pp->saddr);
+    i = rxi_Findcbi(&pp->saddr);
     if (i == -1) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
 	pp->ifMTU = MIN(RX_REMOTE_PACKET_SIZE, rx_MyMaxSendSize);
@@ -396,7 +396,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 	(void)rxi_GetIFInfo();
 #  endif
 
-    ifn = rxi_FindIfnet((struct sockaddr *)&pp->saddr, NULL);
+    ifn = rxi_FindIfnet(&pp->saddr, NULL);
     if (ifn) {
 	rx_rto_setPeerTimeoutSecs(pp, 2);
 	pp->ifMTU = MIN(RX_MAX_PACKET_SIZE, rx_MyMaxSendSize);
@@ -422,7 +422,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 #else /* AFS_SUN5_ENV */
     afs_int32 mtu;
 
-    mtu = rxi_FindIfMTU((struct sockaddr *)&pp->saddr);
+    mtu = rxi_FindIfMTU(&pp->saddr);
 
     if (mtu <= 0) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
@@ -490,51 +490,53 @@ shutdown_rxkernel(void)
 
 #ifdef AFS_USERSPACE_IP_ADDR
 int
-rxi_GetcbiInfo(void)
+rxi_GetcbiInfo(void) /* ipv4 only */
 {
     int i, j, different = 0, num = ADDRSPERSITE;
     int rxmtu, maxmtu;
     afs_uint32 ifinaddr;
     afs_uint32 addrs[ADDRSPERSITE];
     int mtus[ADDRSPERSITE];
-    struct sockaddr_in saddr;
+    rx_in_addr_t ipv4;
 
     memset((void *)addrs, 0, sizeof(addrs));
     memset((void *)mtus, 0, sizeof(mtus));
 
     if (afs_cb_interface.numberOfInterfaces < num)
-	num = afs_cb_interface.numberOfInterfaces;
+        num = afs_cb_interface.numberOfInterfaces;
     for (i = 0; i < num; i++) {
-	if (!afs_cb_interface.mtu[i])
-	    afs_cb_interface.mtu[i] = htonl(1500);
-	rxmtu = (ntohl(afs_cb_interface.mtu[i]) - RX_IPUDP_SIZE);
-	ifinaddr = ntohl(((struct sockaddr_in *)&afs_cb_interface.addr_in[i])->sin_addr.s_addr);
-	if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
-	    different++;
+        if (!afs_cb_interface.mtu[i])
+            afs_cb_interface.mtu[i] = htonl(1500);
+        rxmtu = (ntohl(afs_cb_interface.mtu[i]) - RX_IPUDP_SIZE);
+        ifinaddr = ntohl(afs_cb_interface.addr_in[i]);
+        rx_try_address_to_ipv4(&myNetAddrs[i], &ipv4);
+        ipv4 = ntohl(ipv4);
+        if (ipv4 != ifinaddr)
+            different++;
 
-	mtus[i] = rxmtu;
-	rxmtu = rxi_AdjustIfMTU(rxmtu);
-	maxmtu =
-	    rxmtu * rxi_nRecvFrags + ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
-	maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
-	addrs[i++] = ifinaddr;
-        saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
-	if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && (maxmtu > rx_maxReceiveSize)) {
-	    rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
-	    rx_maxReceiveSize = MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
-	}
+        mtus[i] = rxmtu;
+        rxmtu = rxi_AdjustIfMTU(rxmtu);
+        maxmtu =
+            rxmtu * rxi_nRecvFrags + ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
+        maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
+        addrs[i++] = ifinaddr;
+        if (!rx_IsLoopbackAddr(ifinaddr) && (maxmtu > rx_maxReceiveSize)) {
+            rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
+            rx_maxReceiveSize = MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
+        }
     }
 
     rx_maxJumboRecvSize =
-	RX_HEADER_SIZE + (rxi_nDgramPackets * RX_JUMBOBUFFERSIZE) +
-	((rxi_nDgramPackets - 1) * RX_JUMBOHEADERSIZE);
+        RX_HEADER_SIZE + (rxi_nDgramPackets * RX_JUMBOBUFFERSIZE) +
+        ((rxi_nDgramPackets - 1) * RX_JUMBOHEADERSIZE);
     rx_maxJumboRecvSize = MAX(rx_maxJumboRecvSize, rx_maxReceiveSize);
 
     if (different) {
-	for (j = 0; j < i; j++) {
-	    myNetMTUs[j] = mtus[j];
-            xxx_rx_SetSockAddr(addrs[j], 0, (struct sockaddr *)&myNetAddrs[j]);
-	}
+        for (j = 0; j < i; j++) {
+            myNetMTUs[j] = mtus[j];
+            myNetAddrs[j] = addrs[j];
+            rx_ipv4_to_address(addrs[j], &myNetAddrs[j]);
+        }
     }
     return different;
 }
@@ -544,7 +546,7 @@ rxi_GetcbiInfo(void)
  * If none is found, we return -1.
  */
 afs_int32
-rxi_Findcbi(struct sockaddr *saddr)
+rxi_Findcbi(struct rx_sockaddr *saddr) /* ipv4 only */
 {
     int j;
     afs_uint32 myAddr, thisAddr, netMask, subnetMask;
@@ -554,7 +556,10 @@ rxi_Findcbi(struct sockaddr *saddr)
     if (numMyNetAddrs == 0)
 	(void)rxi_GetcbiInfo();
 
-    myAddr = ntohl(xxx_rx_IpSockAddr(saddr));
+    if (rx_try_sockaddr_to_ipv4(saddr, myAddr))
+        myAddr = ntohl(myAddr);
+    else
+        return EAFNOSUPPORT;
 
     if (IN_CLASSA(myAddr))
 	netMask = IN_CLASSA_NET;
@@ -566,8 +571,8 @@ rxi_Findcbi(struct sockaddr *saddr)
 	netMask = 0;
 
     for (j = 0; j < afs_cb_interface.numberOfInterfaces; j++) {
-	thisAddr = ntohl(((struct sockaddr_in *)&afs_cb_interface.addr_in[j])->sin_addr.s_addr);
-	subnetMask = ntohl(((struct sockaddr_in *)&afs_cb_interface.subnetmask[j])->sin_addr.s_addr);
+	thisAddr = ntohl(afs_cb_interface.addr_in[j]);
+        subnetMask = ntohl(afs_cb_interface.subnetmask[j]);
 	if ((myAddr & netMask) == (thisAddr & netMask)) {
 	    if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
 		if (myAddr == thisAddr) {
@@ -600,7 +605,7 @@ rxi_Findcbi(struct sockaddr *saddr)
 #endif
 
 int
-rxi_GetIFInfo(void)
+rxi_GetIFInfo(void) /* ipv4 only */
 {
     int i = 0;
     int different = 0;
@@ -609,7 +614,6 @@ rxi_GetIFInfo(void)
     afs_uint32 addrs[ADDRSPERSITE];
     int mtus[ADDRSPERSITE];
     afs_uint32 ifinaddr;
-    struct sockaddr_in saddr;
 #if defined(AFS_DARWIN80_ENV)
     errno_t t;
     unsigned int count;
@@ -619,6 +623,7 @@ rxi_GetIFInfo(void)
     struct sockaddr sout;
     struct sockaddr_in *sin;
     struct in_addr pin;
+    rx_in_addr_t ipv4;
 #else
     rx_ifaddr_t ifad;	/* ifnet points to a if_addrlist of ifaddrs */
     rx_ifnet_t ifn;
@@ -636,7 +641,9 @@ rxi_GetIFInfo(void)
 			sin = (struct sockaddr_in *)&sout;
 			rxmtu = rx_ifnet_mtu(rx_ifaddr_ifnet(ifads[j])) - RX_IPUDP_SIZE;
 			ifinaddr = ntohl(sin->sin_addr.s_addr);
-			if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
+                        rx_try_address_to_ipv4(&myNetAddrs[i], &ipv4);
+                        ipv4 = ntohl(ipv4);
+			if (ipv4 != ifinaddr) {
 			    different++;
 			}
 			mtus[i] = rxmtu;
@@ -646,8 +653,7 @@ rxi_GetIFInfo(void)
 			    ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
 			maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
 			addrs[i++] = ifinaddr;
-                        saddr = xxx_rx_CreateSockAddr(ifinaddr);
-			if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) &&
+			if (!rx_IsLoopbackAddr(ifinaddr) &&
 			    (maxmtu > rx_maxReceiveSize)) {
 			    rx_maxReceiveSize =
 				MIN(RX_MAX_PACKET_SIZE, maxmtu);
@@ -694,7 +700,9 @@ rxi_GetIFInfo(void)
 		ifinaddr =
 		    ntohl(((struct sockaddr_in *)IFADDR2SA(ifad))->sin_addr.
 			  s_addr);
-		if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
+                rx_try_address_to_ipv4(&myNetAddrs[i], &ipv4);
+                ipv4 = ntohl(ipv4);
+		if (ipv4 != ifinaddr) {
 		    different++;
 		}
 		mtus[i] = rxmtu;
@@ -704,8 +712,7 @@ rxi_GetIFInfo(void)
 		    ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
 		maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
 		addrs[i++] = ifinaddr;
-                saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
-		if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && (maxmtu > rx_maxReceiveSize)) {
+		if (!rx_IsLoopbackAddr(ifinaddr) && (maxmtu > rx_maxReceiveSize)) {
 		    rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
 		    rx_maxReceiveSize =
 			MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
@@ -724,7 +731,7 @@ rxi_GetIFInfo(void)
 	int l;
 	for (l = 0; l < i; l++) {
 	    myNetMTUs[l] = mtus[l];
-            xxx_rx_SetSockAddr(addrs[l], 0, (struct sockaddr *)&myNetAddrs[l]);
+            rx_ipv4_to_address(addrs[l], &myNetAddrs[l]); /* should we convert from NBO to HBO inside this function or not? */
 	}
     }
     return different;
@@ -733,7 +740,7 @@ rxi_GetIFInfo(void)
 #if defined(AFS_DARWIN_ENV) || defined(AFS_XBSD_ENV)
 /* Returns ifnet which best matches address */
 rx_ifnet_t
-rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
+rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp)
 {
     struct sockaddr_storage sr;
     rx_ifaddr_t ifad;
@@ -747,20 +754,44 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
     return (ifad ? rx_ifaddr_ifnet(ifad) : NULL);
 }
 
+rx_ifnet_t
+rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp) /* ipv4 only */
+{
+    struct sockaddr_in s, sr;
+    rx_ifaddr_t ifad;
+    rx_in_addr_t maskp;
+
+    s.sin_family = AF_INET;
+    rx_try_sockaddr_to_ipv4(saddr, &s.sin_addr.s_addr);
+    ifad = rx_ifaddr_withnet((struct sockaddr *)&s);
+
+    rx_try_sockaddr_to_ipv4(smaskp, &maskp);
+
+    if (ifad && maskp) {
+        rx_ifaddr_netmask(ifad, (struct sockaddr *)&sr, sizeof(sr));
+        rx_ipv4_to_sockaddr(sr.sin_addr.s_addr, 0, 0, smaskp);
+    }
+    return (ifad ? rx_ifaddr_ifnet(ifad) : NULL);
+}
+
 #else /* DARWIN || XBSD */
 
 /* Returns ifnet which best matches address */
 rx_ifnet_t
-rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
+rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp) /* ipv4 only */
 {
     int match_value = 0;
     extern struct in_ifaddr *in_ifaddr;
     struct in_ifaddr *ifa, *ifad = NULL;
+    rx_in_addr_t ipv4;
+
+    rx_try_sockaddr_to_ipv4(saddr, &ipv4);
+    ipv4 = ntohl(ipv4);
 
     for (ifa = in_ifaddr; ifa; ifa = ifa->ia_next) {
-	if ((ntohl(xxx_rx_IpSockAddr(saddr)) & ifa->ia_netmask) == ifa->ia_net) {
-	    if ((ntohl(xxx_rx_IpSockAddr(saddr)) & ifa->ia_subnetmask) == ifa->ia_subnet) {
-		if (IA_SIN(ifa)->sin_addr.s_addr == ntohl(xxx_rx_IpSockAddr(saddr))) {	/* ie, ME!!!  */
+	if ((ipv4 & ifa->ia_netmask) == ifa->ia_net) {
+	    if ((ipv4 & ifa->ia_subnetmask) == ifa->ia_subnet) {
+		if (IA_SIN(ifa)->sin_addr.s_addr == ipv4) {	/* ie, ME!!!  */
 		    match_value = 4;
 		    ifad = ifa;
 		    goto done;
@@ -780,7 +811,7 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
 
   done:
     if (ifad && maskp)
-        xxx_rx_SetSockAddr(ifad->ia_subnetmask, 0, smaskp);
+        rx_ipv4_to_sockaddr(ifad->ia_subnetmask, 0, 0, smaskp);
 
     return (ifad ? ifad->ia_ifp : NULL);
 }
@@ -800,7 +831,7 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
  * in network byte order.
  */
 osi_socket *
-rxk_NewSocketHost(struct sockaddr *saddr)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     afs_int32 code;
 #ifdef AFS_DARWIN80_ENV
@@ -815,7 +846,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
     /* prototype copied from kernel source file streams/str_proto.h */
     extern MBLKP allocb_wait(int, int);
     MBLKP bindnam;
-    int addrsize = sizeof(struct sockaddr_in);
+    int addrsize = sizeof(struct sockaddr_storage);
     struct file *fp;
     extern struct fileops socketops;
 #endif
@@ -834,7 +865,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
     /* we need a file associated with the socket so sosend in NetSend
      * will not fail */
     /* blocking socket */
-    code = socreate(AF_INET, &newSocket, SOCK_DGRAM, 0, 0);
+    code = socreate(saddr->addrtype, &newSocket, SOCK_DGRAM, 0, 0);
     fp = falloc();
     if (!fp)
 	goto bad;
@@ -846,32 +877,28 @@ rxk_NewSocketHost(struct sockaddr *saddr)
     newSocket->so_fp = (void *)fp;
 
 #else /* AFS_HPUX110_ENV */
-    code = socreate(AF_INET, &newSocket, SOCK_DGRAM, 0, SS_NOWAIT);
+    code = socreate(saddr->addrtype, &newSocket, SOCK_DGRAM, 0, SS_NOWAIT);
 #endif /* else AFS_HPUX110_ENV */
 #elif defined(AFS_SGI65_ENV) || defined(AFS_OBSD_ENV)
-    code = socreate(AF_INET, &newSocket, SOCK_DGRAM, IPPROTO_UDP);
+    code = socreate(saddr->addrtype, &newSocket, SOCK_DGRAM, IPPROTO_UDP);
 #elif defined(AFS_FBSD_ENV)
-    code = socreate(AF_INET, &newSocket, SOCK_DGRAM, IPPROTO_UDP,
+    code = socreate(saddr->addrtype, &newSocket, SOCK_DGRAM, IPPROTO_UDP,
 		    afs_osi_credp, curthread);
 #elif defined(AFS_DARWIN80_ENV)
 #ifdef RXK_LISTENER_ENV
-    code = sock_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, NULL, &newSocket);
+    code = sock_socket(saddr->addrtype, SOCK_DGRAM, IPPROTO_UDP, NULL, NULL, &newSocket);
 #else
-    code = sock_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, rx_upcall, NULL, &newSocket);
+    code = sock_socket(saddr->addrtype, SOCK_DGRAM, IPPROTO_UDP, rx_upcall, NULL, &newSocket);
 #endif
 #elif defined(AFS_NBSD50_ENV)
-    code = socreate(AF_INET, &newSocket, SOCK_DGRAM, 0, osi_curproc(), NULL);
+    code = socreate(saddr->addrtype, &newSocket, SOCK_DGRAM, 0, osi_curproc(), NULL);
 #elif defined(AFS_NBSD40_ENV)
-    code = socreate(AF_INET, &newSocket, SOCK_DGRAM, 0, osi_curproc());
+    code = socreate(saddr->addrtype, &newSocket, SOCK_DGRAM, 0, osi_curproc());
 #else
-    code = socreate(AF_INET, &newSocket, SOCK_DGRAM, 0);
+    code = socreate(saddr->addrtype, &newSocket, SOCK_DGRAM, 0);
 #endif /* AFS_HPUX102_ENV */
     if (code)
 	goto bad;
-
-#ifdef STRUCT_SOCKADDR_HAS_SA_LEN
-    ((struct sockaddr_in *)saddr)->sin_len = sizeof(struct sockaddr_in);
-#endif
 
 #ifdef AFS_HPUX110_ENV
     bindnam = allocb_wait((addrsize + SO_MSGOFFSET + 1), BPRI_MED);
@@ -879,8 +906,8 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 	setuerror(ENOBUFS);
 	goto bad;
     }
-    memcpy((caddr_t) bindnam->b_rptr + SO_MSGOFFSET, (caddr_t) (struct sockaddr_in *)saddr,
-	   addrsize);
+    memcpy((caddr_t) bindnam->b_rptr + SO_MSGOFFSET, (caddr_t) &saddr->addr.sa,
+	   addrsize); /* used to be sockaddr_in */
     bindnam->b_wptr = bindnam->b_rptr + (addrsize + SO_MSGOFFSET + 1);
     code = sobind(newSocket, bindnam, addrsize);
     if (code) {
@@ -925,9 +952,9 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 #endif
 #if defined(AFS_DARWIN_ENV) || defined(AFS_FBSD_ENV)
 #if defined(AFS_FBSD_ENV)
-    code = sobind(newSocket, saddr, curthread);
+    code = sobind(newSocket, &saddr->addr.sa, curthread);
 #else
-    code = sobind(newSocket, saddr);
+    code = sobind(newSocket, &saddr->addr.sa);
 #endif
     if (code) {
 	dpf(("sobind fails (%d)\n", (int)code));
@@ -946,8 +973,8 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 #endif
 	goto bad;
     }
-    nam->m_len = sizeof(struct sockaddr_in);
-    memcpy(mtod(nam, caddr_t), (struct sockaddr_in *)saddr, sizeof(struct sockaddr_in));
+    nam->m_len = sizeof(struct sockaddr_storage);
+    memcpy(mtod(nam, caddr_t), &saddr->addr.sa, sizeof(struct sockaddr_storage)); /* used to be sockaddr_in */
 #if defined(AFS_SGI65_ENV)
     BHV_PDATA(&bhv) = (void *)newSocket;
     code = sobind(&bhv, nam);
@@ -985,9 +1012,11 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(0, aport);
+    struct rx_sockaddr saddr;
 
-    return rxk_NewSocketHost((struct sockaddr *)&saddr);
+    rx_ipv4_to_sockaddr(0, aport, 0, &saddr);
+
+    return rxk_NewSocketHost(&saddr);
 }
 
 /* free socket allocated by rxk_NewSocket */
@@ -1085,14 +1114,15 @@ afs_rxevent_daemon(void)
 
 /* rxk_ReadPacket returns 1 if valid packet, 0 on error. */
 int
-rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct sockaddr *saddr)
+rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct rx_sockaddr *saddr)
 {
     int code;
-    struct sockaddr_in from;
+    struct rx_sockaddr from;
     int nbytes;
     afs_int32 rlen;
     afs_int32 tlen;
     afs_int32 savelen;		/* was using rlen but had aliasing problems */
+    rx_addr_str_t hoststr;
     rx_computelen(p, tlen);
     rx_SetDataSize(p, tlen);	/* this is the size of the user data area */
 
@@ -1124,7 +1154,7 @@ rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct sockaddr *saddr)
 	AFS_GUNLOCK();
     }
 #endif
-    code = osi_NetReceive(rx_socket, &from, p->wirevec, p->niovecs, &nbytes);
+    code = osi_NetReceive(rx_socket, &from->addr.sa, p->wirevec, p->niovecs, &nbytes);
 
 #ifdef RX_KERNEL_TRACE
     if (ICL_SETACTIVE(afs_iclSetp)) {
@@ -1144,18 +1174,18 @@ rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct sockaddr *saddr)
                 if (rx_stats_active) {
                     MUTEX_ENTER(&rx_stats_mutex);
                     rx_atomic_inc(&rx_stats.bogusPacketOnRead);
-                    rx_stats.bogusHost = from.sin_addr.s_addr;
+                    rx_try_sockaddr_to_ipv4(&from, &rx_stats.bogusHost);
                     MUTEX_EXIT(&rx_stats_mutex);
                 }
-		dpf(("B: bogus packet from [%x,%d] nb=%d\n",
-		     from.sin_addr.s_addr, from.sin_port, nbytes));
+		dpf(("B: bogus packet from [%s] nb=%d\n",
+		     rx_print_sockaddr(&from, hoststr, sizeof(hoststr)), nbytes));
 	    }
 	    return -1;
 	} else {
 	    /* Extract packet header. */
 	    rxi_DecodePacketHeader(p);
 
-	    rx_CopySockAddr(saddr, (struct sockaddr *)&from);
+            rx_copy_sockaddr(&from, saddr);
 
 	    if (p->header.type > 0 && p->header.type < RX_N_PACKET_TYPES) {
                 if (rx_stats_active) {
@@ -1197,7 +1227,7 @@ rxk_Listener(void)
 {
     struct rx_packet *rxp = NULL;
     int code;
-    struct sockaddr_storage saddr;
+    struct rx_sockaddr saddr;
 
 #ifdef AFS_LINUX20_ENV
     rxk_ListenerPid = current->pid;
@@ -1228,8 +1258,8 @@ rxk_Listener(void)
 	    if (!rxp)
 		osi_Panic("rxk_Listener: No more Rx buffers!\n");
 	}
-	if (!(code = rxk_ReadPacket(rx_socket, rxp, (struct sockaddr *)&saddr))) {
-	    rxp = rxi_ReceivePacket(rxp, rx_socket, (struct sockaddr *)&saddr, 0, 0);
+	if (!(code = rxk_ReadPacket(rx_socket, rxp, &saddr))) {
+	    rxp = rxi_ReceivePacket(rxp, rx_socket, &saddr, 0, 0);
 	}
     }
 

@@ -325,7 +325,7 @@ struct sockaddr_in rx_sockaddr;
 
 /* Allocate a new socket at specified port in network byte order. */
 osi_socket *
-rxk_NewSocketHost(struct sockaddr *saddr)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     vnode_t *accessvp;
     struct sonode *so;
@@ -393,19 +393,19 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 #endif
 
 #ifdef SOLOOKUP_TAKES_SOCKPARAMS
-    error = sockfs_solookup(AF_INET, SOCK_DGRAM, 0, &sp);
+    error = sockfs_solookup(saddr->addrtype, SOCK_DGRAM, 0, &sp);
     if (error != 0) {
 	return NULL;
     }
 
-    so = sockfs_socreate(sp, AF_INET, SOCK_DGRAM, 0, SOV_STREAM, &error);
+    so = sockfs_socreate(sp, saddr->addrtype, SOCK_DGRAM, 0, SOV_STREAM, &error);
 #else
-    accessvp = sockfs_solookup(AF_INET, SOCK_DGRAM, 0, "/dev/udp", &error);
+    accessvp = sockfs_solookup(saddr->addrtype, SOCK_DGRAM, 0, "/dev/udp", &error);
     if (accessvp == NULL) {
 	return NULL;
     }
 
-    so = sockfs_socreate(accessvp, AF_INET, SOCK_DGRAM, 0, SOV_STREAM, NULL,
+    so = sockfs_socreate(accessvp, saddr->addrtype, SOCK_DGRAM, 0, SOV_STREAM, NULL,
 			 &error);
 #endif /* SOLOOKUP_TAKES_SOCKPARAMS */
 
@@ -413,7 +413,7 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 	return NULL;
     }
 
-    error = sockfs_sobind(so, saddr, sizeof(struct sockaddr_in), 0, 0);
+    error = sockfs_sobind(so, &saddr->addr.sa, sizeof(struct sockaddr_storage), 0, 0);
     if (error != 0) {
 	return NULL;
     }
@@ -436,9 +436,11 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), aport);
+    struct rx_sockaddr saddr;
 
-    return rxk_NewSocketHost((struct sockaddr *)&saddr);
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), aport, 0, &saddr);
+
+    return rxk_NewSocketHost(&saddr);
 }
 
 int

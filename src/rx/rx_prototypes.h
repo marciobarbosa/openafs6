@@ -271,7 +271,7 @@ extern int rxevent_RaiseEvents(struct clock *next);
 
 /* rx_getaddr.c */
 extern void rxi_setaddr(struct rx_sockaddr *x);
-extern struct sockaddr_storage rxi_getaddr(void);
+extern struct rx_sockaddr rxi_getaddr(void);
 extern int rx_getAllAddr(afs_uint32 * buffer, int maxSize);
 extern int rx_getAllAddr2(struct rx_sockaddr buffer[], int maxSize);
 extern int rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[],
@@ -295,7 +295,7 @@ extern void rx_SetMinPeerTimeout(int msecs);
 /* rx_kcommon.c */
 struct socket;
 extern int (*rxk_PacketArrivalProc) (struct rx_packet * ahandle,
-				     struct sockaddr_in * afrom,
+				     struct rx_sockaddr * afrom,
 				     struct socket *arock,
 				     afs_int32 asize);
 extern int (*rxk_GetPacketProc) (struct rx_packet **ahandle, int asize);

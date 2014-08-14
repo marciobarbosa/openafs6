@@ -337,7 +337,26 @@ rx_getAllAddr(struct rx_sockaddr * buffer, int maxSize)
  * in network byte order.
  */
 int
-rx_getAllAddrMaskMtu(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBuffer[],
+rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
+                     afs_uint32 mtuBuffer[], int maxSize)
+{
+    int count = 0, offset = 0;
+
+    /* The IP address list can change so we must query for it */
+    rx_GetIFInfo();
+
+    for (count = 0;
+         offset < rxi_numNetAddrs && maxSize > 0;
+         count++, offset++, maxSize--) {
+        rx_try_address_to_ipv4(&rxi_NetAddrs[offset], &addrBuffer[count]); /* do not convert to NBO inside rx_try_address_to_ipv4() */
+        rx_try_address_to_ipv4(&myNetMasks[offset], &maskBuffer[count]);
+        mtuBuffer[count]  = htonl(myNetMTUs[offset]);
+    }
+    return count;
+}
+
+int
+rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBuffer[],
                      afs_uint32 mtuBuffer[], int maxSize)
 {
     int count = 0, offset = 0;

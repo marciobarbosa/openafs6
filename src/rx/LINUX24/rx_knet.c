@@ -28,7 +28,7 @@
  * open and bind RX socket
  */
 osi_socket *
-rxk_NewSocketHost(struct sockaddr *saddr)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     struct socket *sockp;
     int code;
@@ -39,16 +39,16 @@ rxk_NewSocketHost(struct sockaddr *saddr)
      * how to detect it. 
      */
 #ifdef LINUX_KERNEL_SOCK_CREATE_V
-    code = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockp, 0);
+    code = sock_create(saddr->addrtype, SOCK_DGRAM, IPPROTO_UDP, &sockp, 0);
 #else
-    code = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockp);
+    code = sock_create(saddr->addrtype, SOCK_DGRAM, IPPROTO_UDP, &sockp);
 #endif
     if (code < 0)
 	return NULL;
 
     /* Bind socket */
     code =
-	sockp->ops->bind(sockp, saddr, sizeof(struct sockaddr_in));
+	sockp->ops->bind(sockp, &saddr->addr.sa, sizeof(struct sockaddr_storage));
 
     if (code < 0) {
 #if defined(AFS_LINUX24_ENV)
@@ -69,9 +69,11 @@ rxk_NewSocketHost(struct sockaddr *saddr)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    struct sockaddr_in saddr = xxx_rx_CreateSockAddr(htonl(INADDR_ANY), aport);
+    struct rx_sockaddr saddr;
 
-    return rxk_NewSocketHost((struct sockaddr *)&saddr);
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), aport, 0, &saddr);
+
+    return rxk_NewSocketHost(&saddr);
 }
 
 /* free socket allocated by osi_NetSocket */

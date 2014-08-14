@@ -103,12 +103,17 @@ osi_HandleSocketError(osi_socket so, char *cmsgbuf, size_t cmsgbuf_len)
     struct msghdr msg;
     struct cmsghdr *cmsg;
     struct sock_extended_err *err;
-    struct sockaddr_in addr;
+    struct rx_sockaddr saddr;
     int code;
     struct socket *sop = (struct socket *)so;
 
-    msg.msg_name = &addr;
-    msg.msg_namelen = sizeof(addr);
+    saddr.service = 0;
+    saddr.socktype = SOCK_DGRAM;
+    saddr.addrlen = sizeof(struct sockaddr_in);
+    saddr.addrtype = AF_INET;
+
+    msg.msg_name = &saddr.addr.sin;
+    msg.msg_namelen = sizeof(struct sockaddr_in);
     msg.msg_control = cmsgbuf;
     msg.msg_controllen = cmsgbuf_len;
     msg.msg_flags = 0;
@@ -132,7 +137,7 @@ osi_HandleSocketError(osi_socket so, char *cmsgbuf, size_t cmsgbuf_len)
 	}
 
 	err = CMSG_DATA(cmsg);
-	rxi_ProcessNetError(err, (struct sockaddr *)&addr);
+	rxi_ProcessNetError(err, &saddr);
     }
 
     return 1;
@@ -166,15 +171,15 @@ do_handlesocketerror(osi_socket so)
  * non-zero = failure
  */
 int
-osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
+osi_NetSend(osi_socket sop, struct rx_sockaddr *saddr, struct iovec *iovec,
 	    int iovcnt, afs_int32 size, int istack)
 {
     struct msghdr msg;
     int code;
 
 
-    msg.msg_name = to;
-    msg.msg_namelen = sizeof(*to);
+    msg.msg_name = &saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_control = NULL;
     msg.msg_controllen = 0;
     msg.msg_flags = 0;
@@ -211,7 +216,7 @@ osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
 int rxk_lastSocketError;
 int rxk_nSocketErrors;
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *from, struct iovec *iov,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *iov,
 	       int iovcnt, int *lengthp)
 {
     struct msghdr msg;
@@ -224,7 +229,13 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *from, struct iovec *iov,
     }
 
     memcpy(tmpvec, iov, iovcnt * sizeof(struct iovec));
-    msg.msg_name = from;
+
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
+    saddr->addrtype = AF_INET;
+
+    msg.msg_name = &saddr->addr.sin;
     msg.msg_iov = tmpvec;
     msg.msg_iovlen = iovcnt;
     msg.msg_control = NULL;

@@ -1449,8 +1449,13 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct rx_sockaddr *saddr
     p->wirevec[p->niovecs - 1].iov_len += RX_EXTRABUFFERSIZE;
 
     memset(&msg, 0, sizeof(msg));
+#ifdef HAVE_IPV6
     msg.msg_name = (char *)&from.addr.ss;
     msg.msg_namelen = sizeof(struct sockaddr_storage);
+#else
+    msg.msg_name = (char *)&from.addr.sin;
+    msg.msg_namelen = sizeof(struct sockaddr_in);
+#endif
     msg.msg_iov = p->wirevec;
     msg.msg_iovlen = p->niovecs;
     nbytes = rxi_Recvmsg(socket, &msg, 0);
@@ -1593,9 +1598,8 @@ osi_NetSend(osi_socket socket, void *addr, struct iovec *dvec, int nvecs,
     memset(&msg, 0, sizeof(msg));
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
-    msg.msg_name = (void *)&saddr->addr.sa; /* which one? */
-    msg.msg_namelen = sizeof(struct sockaddr_storage);
-
+    msg.msg_name = (void *)&saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     ret = rxi_Sendmsg(socket, &msg, 0);
 
     return ret;

@@ -91,7 +91,7 @@ rxk_FreeSocket(struct socket *asocket)
  * non-zero = failure
  */
 int
-osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
+osi_NetSend(osi_socket sop, struct rx_sockaddr *saddr, struct iovec *iovec,
 	    int iovcnt, afs_int32 size, int istack)
 {
     KERNEL_SPACE_DECL;
@@ -100,8 +100,8 @@ osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
 
     msg.msg_iovlen = iovcnt;
     msg.msg_iov = iovec;
-    msg.msg_name = to;
-    msg.msg_namelen = sizeof(*to);
+    msg.msg_name = &saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_control = NULL;
     msg.msg_controllen = 0;
     msg.msg_flags = 0;
@@ -135,7 +135,7 @@ osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
 int rxk_lastSocketError;
 int rxk_nSocketErrors;
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *from, struct iovec *iov,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *iov,
 	       int iovcnt, int *lengthp)
 {
     KERNEL_SPACE_DECL;
@@ -148,7 +148,13 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *from, struct iovec *iov,
 	osi_Panic("Too many (%d) iovecs passed to osi_NetReceive\n", iovcnt);
     }
     memcpy(tmpvec, iov, iovcnt * sizeof(struct iovec));
-    msg.msg_name = from;
+
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
+    saddr->addrtype = AF_INET;
+
+    msg.msg_name = &saddr->addr.sin;
     msg.msg_iov = tmpvec;
     msg.msg_iovlen = iovcnt;
     msg.msg_control = NULL;

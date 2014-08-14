@@ -204,6 +204,7 @@ UAFSOBJ = \
 	$(UOBJ)/rx_call.o \
 	$(UOBJ)/rx_conn.o \
 	$(UOBJ)/rx_peer.o \
+	$(UOBJ)/rx_addr.o \
 	$(UOBJ)/xdr_rx.o \
 	$(UOBJ)/Kvldbint.cs.o \
 	$(UOBJ)/Kvldbint.xdr.o \
@@ -327,6 +328,7 @@ PICUAFSOBJ = \
 	$(PICOBJ)/rx_call.o \
 	$(PICOBJ)/rx_conn.o \
 	$(PICOBJ)/rx_peer.o \
+	$(PICOBJ)/rx_addr.o \
 	$(PICOBJ)/xdr_rx.o \
 	$(PICOBJ)/Kvldbint.cs.o \
 	$(PICOBJ)/Kvldbint.xdr.o \
@@ -450,6 +452,7 @@ AFSWEBOBJ = \
 	$(WEBOBJ)/rx_call.o \
 	$(WEBOBJ)/rx_conn.o \
 	$(WEBOBJ)/rx_peer.o \
+	$(WEBOBJ)/rx_addr.o \
 	$(WEBOBJ)/xdr_rx.o \
 	$(WEBOBJ)/Kvldbint.cs.o \
 	$(WEBOBJ)/Kvldbint.xdr.o \
@@ -567,6 +570,7 @@ AFSWEBOBJKRB = \
 	$(WEBOBJ)/rx_call.o \
 	$(WEBOBJ)/rx_conn.o \
 	$(WEBOBJ)/rx_peer.o \
+	$(WEBOBJ)/rx_addr.o \
 	$(WEBOBJ)/xdr_rx.o \
 	$(WEBOBJ)/Kvldbint.cs.o \
 	$(WEBOBJ)/Kvldbint.xdr.o \
@@ -689,6 +693,7 @@ JUAFSOBJ = \
 	$(JUAFS)/rx_call.o \
 	$(JUAFS)/rx_conn.o \
 	$(JUAFS)/rx_peer.o \
+	$(JUAFS)/rx_addr.o \
 	$(JUAFS)/xdr_rx.o \
 	$(JUAFS)/Kvldbint.cs.o \
 	$(JUAFS)/Kvldbint.xdr.o \
@@ -870,6 +875,8 @@ $(UOBJ)/rx_call.o: $(TOP_SRCDIR)/rx/rx_call.c
 $(UOBJ)/rx_conn.o: $(TOP_SRCDIR)/rx/rx_conn.c
 	$(CRULE1)
 $(UOBJ)/rx_peer.o: $(TOP_SRCDIR)/rx/rx_peer.c
+	$(CRULE1)
+$(UOBJ)/rx_addr.o: $(TOP_SRCDIR)/rx/rx_addr.c
 	$(CRULE1)
 $(UOBJ)/xdr_rx.o: $(TOP_SRC_RX)/xdr_rx.c
 	$(CRULE1)
@@ -1121,6 +1128,8 @@ $(PICOBJ)/rx_call.o: $(TOP_SRCDIR)/rx/rx_call.c
 $(PICOBJ)/rx_conn.o: $(TOP_SRCDIR)/rx/rx_conn.c
 	$(CRULEPIC)
 $(PICOBJ)/rx_peer.o: $(TOP_SRCDIR)/rx/rx_peer.c
+	$(CRULEPIC)
+$(PICOBJ)/rx_addr.o: $(TOP_SRCDIR)/rx/rx_addr.c
 	$(CRULEPIC)
 $(PICOBJ)/xdr_rx.o: $(TOP_SRC_RX)/xdr_rx.c
 	$(CRULEPIC)
@@ -1374,6 +1383,8 @@ $(WEBOBJ)/rx_call.o: $(TOP_SRCDIR)/rx_rx_call.c
 $(WEBOBJ)/rx_conn.o: $(TOP_SRCDIR)/rx/rx_conn.c
 	$(CRULE2)
 $(WEBOBJ)/rx_peer.o: $(TOP_SRCDIR)/rx/rx_peer.c
+	$(CRULE2)
+$(WEBOBJ)/rx_addr.o: $(TOP_SRCDIR)/rx/rx_addr.c
 	$(CRULE2)
 $(WEBOBJ)/xdr_rx.o: $(TOP_SRC_RX)/xdr_rx.c
 	$(CRULE2)
@@ -1631,6 +1642,8 @@ $(JUAFS)/rx_call.o: $(TOP_SRC_RX)/rx_call.c
 $(JUAFS)/rx_conn.o: $(TOP_SRC_RX)/rx_conn.c
 	$(CRULE1)
 $(JUAFS)/rx_peer.o: $(TOP_SRC_RX)/rx_peer.c
+	$(CRULE1)
+$(JUAFS)/rx_addr.o: $(TOP_SRC_RX)/rx_addr.c
 	$(CRULE1)
 $(JUAFS)/xdr_rx.o: $(TOP_SRC_RX)/xdr_rx.c
 	$(CRULE1)

@@ -351,14 +351,14 @@ extern void afs_cv_timedwait(afs_kcondvar_t * cv, afs_kmutex_t * l,
 
 /* ARCH/rx_knet.c */
 # if !defined(AFS_SGI_ENV)
-extern int osi_NetSend(osi_socket asocket, struct sockaddr_in *addr,
+extern int osi_NetSend(osi_socket asocket, struct rx_sockaddr *addr,
 		       struct iovec *dvec, int nvecs, afs_int32 asize,
 		       int istack);
 # endif
 # ifdef RXK_UPCALL_ENV
 extern void rx_upcall(socket_t so, void *arg, __unused int waitflag);
 # else
-extern int osi_NetReceive(osi_socket so, struct sockaddr_in *addr,
+extern int osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr,
 			  struct iovec *dvec, int nvecs, int *lengthp);
 # endif
 # if defined(AFS_SUN510_ENV)

@@ -34,7 +34,7 @@ int (*rxk_GetPacketProc) (struct rx_packet **ahandle, int asize);
 #endif
 
 osi_socket *rxk_NewSocketHost(struct rx_sockaddr *saddr);
-extern struct afs_interfaceAddr afs_cb_interface;
+extern struct interfaceAddr afs_cb_interface;
 
 rxk_ports_t rxk_ports;
 rxk_portRocks_t rxk_portRocks;
@@ -43,7 +43,7 @@ int rxk_initDone = 0;
 
 #if !defined(AFS_SUN5_ENV) && !defined(AFS_SGI62_ENV)
 #define ADDRSPERSITE 16
-static struct rx_sockaddr myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];
 static int myNetMTUs[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
 #endif
@@ -534,7 +534,6 @@ rxi_GetcbiInfo(void) /* ipv4 only */
     if (different) {
         for (j = 0; j < i; j++) {
             myNetMTUs[j] = mtus[j];
-            myNetAddrs[j] = addrs[j];
             rx_ipv4_to_address(addrs[j], &myNetAddrs[j]);
         }
     }
@@ -1154,7 +1153,7 @@ rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct rx_sockaddr *saddr)
 	AFS_GUNLOCK();
     }
 #endif
-    code = osi_NetReceive(rx_socket, &from->addr.sa, p->wirevec, p->niovecs, &nbytes);
+    code = osi_NetReceive(rx_socket, &from.addr.sa, p->wirevec, p->niovecs, &nbytes);
 
 #ifdef RX_KERNEL_TRACE
     if (ICL_SETACTIVE(afs_iclSetp)) {

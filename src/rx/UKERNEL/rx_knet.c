@@ -15,6 +15,8 @@
 #include "rx_atomic.h"
 #include "rx_internal.h"
 
+#include <rx/rx_addr.h>
+
 #define SECONDS_TO_SLEEP	0
 #define NANO_SECONDS_TO_SLEEP	100000000	/* 100 milliseconds */
 #define LOOPS_PER_WAITCHECK	10	/* once per second */
@@ -64,7 +66,7 @@ void
 rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 {
     struct rx_packet *tp;
-    struct sockaddr_storage saddr;
+    struct rx_sockaddr saddr;
     int rc;
 
     /*
@@ -78,9 +80,9 @@ rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 
 	tp = rxi_AllocPacket(RX_PACKET_CLASS_RECEIVE);
 	usr_assert(tp != NULL);
-	rc = rxi_ReadPacket(usockp, tp, (struct sockaddr *)&saddr);
+	rc = rxi_ReadPacket(usockp, tp, &saddr);
 	if (rc != 0) {
-	    tp = rxi_ReceivePacket(tp, usockp, (struct sockaddr *)&saddr, tnop, newcallp);
+	    tp = rxi_ReceivePacket(tp, usockp, &saddr, tnop, newcallp);
 	    if (newcallp && *newcallp) {
 		if (tp) {
 		    rxi_FreePacket(tp);
@@ -291,7 +293,7 @@ osi_StopListener(void)
 }
 
 int
-osi_NetSend(osi_socket sockp, struct sockaddr_in *addr, struct iovec *iov,
+osi_NetSend(osi_socket sockp, struct rx_sockaddr *saddr, struct iovec *iov,
 	    int nio, afs_int32 size, int stack)
 {
     int rc;
@@ -310,8 +312,8 @@ osi_NetSend(osi_socket sockp, struct sockaddr_in *addr, struct iovec *iov,
     }
 
     memset(&msg, 0, sizeof(msg));
-    msg.msg_name = (void *)addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_name = (void *)&saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_iov = &tmpiov[0];
     msg.msg_iovlen = nio;
 

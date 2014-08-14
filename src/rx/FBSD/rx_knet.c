@@ -16,7 +16,7 @@
 
 #ifdef RXK_LISTENER_ENV
 int
-osi_NetReceive(osi_socket asocket, struct sockaddr_in *addr,
+osi_NetReceive(osi_socket asocket, struct rx_sockaddr *saddr,
 	       struct iovec *dvec, int nvecs, int *alength)
 {
     struct uio u;
@@ -61,8 +61,15 @@ osi_NetReceive(osi_socket asocket, struct sockaddr_in *addr,
     *alength -= u.uio_resid;
     if (sa) {
 	if (sa->sa_family == AF_INET) {
-	    if (addr)
-		*addr = *(struct sockaddr_in *)sa;
+	    if (saddr) {
+		saddr->addrtype = sa->sa_family;
+		memcpy(&saddr->addr.sin, (struct sockaddr_in *)sa, sizeof(struct sockaddr_in));
+	    }
+	} else if (sa->sa_family == AF_INET6) {
+	    if (saddr) {
+	    	saddr->addrtype = sa->sa_family;
+	    	memcpy(&saddr->addr.sin6, (struct sockaddr_in6 *)sa, sizeof(struct sockaddr_in6));
+	    }
 	} else
 	    printf("Unknown socket family %d in NetReceive\n", sa->sa_family);
 	FREE(sa, M_SONAME);
@@ -128,7 +135,7 @@ osi_StopListener(void)
 }
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 alength, int istack)
 {
     afs_int32 code;
@@ -152,15 +159,13 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
     u.uio_rw = UIO_WRITE;
     u.uio_td = NULL;
 
-    addr->sin_len = sizeof(struct sockaddr_in);
-
     if (haveGlock)
 	AFS_GUNLOCK();
 #if KNET_DEBUG
     printf("+");
 #endif
     code =
-	sosend(asocket, (struct sockaddr *)addr, &u, NULL, NULL, 0,
+	sosend(asocket, &saddr->addr.sa, &u, NULL, NULL, 0,
 	       curthread);
 #if KNET_DEBUG
     if (code) {
@@ -376,7 +381,7 @@ trysblock(sb)
 /* We only have to do all the mbuf management ourselves if we can be called at
    interrupt time. in RXK_LISTENER_ENV, we can just call sosend() */
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvec, afs_int32 asize, int istack)
 {
     struct mbuf *tm, *um;
@@ -496,8 +501,8 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 	splx(s);
 	return 1;
     }
-    memcpy(mtod(um, caddr_t), addr, sizeof(*addr));
-    addr->sin_len = um->m_len = sizeof(*addr);
+    memcpy(mtod(um, caddr_t), &saddr->addr.sa, saddr->addrlen);
+    um->m_len = saddr->addrlen;
     /* note that udp_usrreq frees funny mbuf.  We hold onto data, but mbuf
      * around it is gone. */
     /*    haveGlock = ISAFS_GLOCK();
@@ -512,8 +517,7 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 #endif
     code =
 	(*asocket->so_proto->pr_usrreqs->pru_send) (asocket, 0, tm,
-						    (struct sockaddr *)
-						    addr, um, &proc0);
+						    &saddr->addr.sa, um, &proc0);
     /* SOCKET_UNLOCK(asocket); */
     /* if (haveGlock) {
      * AFS_GLOCK();

@@ -480,7 +480,7 @@ osi_FreeSocket(osi_socket asocket)
 }
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 asize, int istack)
 {
     struct sonode *so = (struct sonode *)asocket;
@@ -494,8 +494,8 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 	osi_Panic("osi_NetSend: %d: Too many iovecs.\n", nvecs);
     }
 
-    msg.msg_name = (struct sockaddr *)addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_name = &saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
     msg.msg_control = NULL;
@@ -520,7 +520,7 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 }
 
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	       int nvecs, int *alength)
 {
     struct sonode *asocket = (struct sonode *)so;
@@ -535,7 +535,7 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     }
 
     msg.msg_name = NULL;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
     msg.msg_iov = NULL;
     msg.msg_iovlen = 0;
     msg.msg_control = NULL;
@@ -554,12 +554,17 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     uio.uio_limit = 0;
     uio.uio_resid = *alength;
 
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
+    saddr->addrtype = AF_INET;
+
     error = sockfs_sorecvmsg(asocket, &msg, &uio);
     if (error == 0) {
 	if (msg.msg_name == NULL) {
 	    error = -1;
 	} else {
-	    memcpy(addr, msg.msg_name, msg.msg_namelen);
+	    memcpy(&saddr->addr.ss, msg.msg_name, msg.msg_namelen);
 	    kmem_free(msg.msg_name, msg.msg_namelen);
 	    *alength = *alength - uio.uio_resid;
 	}

@@ -45,7 +45,7 @@ int rxk_nSocketErrors = 0;
 int rxk_nSignalsCleared = 0;
 
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	       int nvecs, int *alength)
 {
     struct uio tuio;
@@ -66,6 +66,11 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     tuio.uio_resid = *alength;
     tuio.uio_pio = 0;
     tuio.uio_pbuf = 0;
+
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
+    saddr->addrtype = AF_INET;
 
     if (nvecs > RX_MAXWVECS + 2) {
 	osi_Panic("Too many (%d) iovecs passed to osi_NetReceive\n", nvecs);
@@ -104,8 +109,8 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     } else {
 	*alength = *alength - tuio.uio_resid;
 	if (maddr) {
-	    memcpy((char *)addr, (char *)mtod(maddr, struct sockaddr_in *),
-		   sizeof(struct sockaddr_in));
+	    memcpy((char *)&saddr->addr.ss, (char *)mtod(maddr, struct sockaddr_storage *),
+		   sizeof(struct sockaddr_storage));
 	    m_freem(maddr);
 	} else {
 	    return -1;

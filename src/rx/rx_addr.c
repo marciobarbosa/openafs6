@@ -37,11 +37,12 @@
 #include <afsconfig.h>
 #include <afs/param.h>
 
-#ifndef KERNEL
-#include <roken.h>
-#else
+#ifdef KERNEL
 #include "afs/sysincludes.h"
 #include "afsincludes.h"
+
+#else
+#include <roken.h>
 #endif
 
 #include <rx/rx.h>
@@ -119,6 +120,7 @@ rxi_inet_ntop_v4(void *src, char *dst, size_t size)
 
 /* inet_ntop for ipv4 */
 /* Adapted from Heimdal libroken. */
+#if 0 /* to be used when ipv6 is supported in this file */
 static char *
 rxi_inet_ntop_v6(const void *src, char *dst, size_t size)
 {
@@ -174,6 +176,7 @@ rxi_inet_ntop_v6(const void *src, char *dst, size_t size)
     *dst++ = '\0';
     return orig_dst;
 }
+#endif /* if 0 - until ipv6 is supported */
 #endif /* HAVE_IPV6 */
 #endif /* KERNEL */
 

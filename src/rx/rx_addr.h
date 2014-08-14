@@ -33,12 +33,15 @@
 #ifndef OPENAFS_RX_ADDR_H
 #define OPENAFS_RX_ADDR_H
 
-#define HAVE_IPV6 1 /* todo: configure check */
+#undef HAVE_IPV6 /* todo: configure check */
+
+#include <netinet/in.h>
 
 typedef int rx_bool_t;
-typedef in_addr_t rx_in_addr_t;
-typedef in_port_t rx_port_t;
+typedef afs_uint32 rx_in_addr_t;  /* really should be u_long */
+typedef u_short rx_port_t;
 typedef u_short rx_service_t;
+typedef size_t  rx_socklen_t;
 typedef char rx_addr_str_t[64];	/**< for rx_print_sockaddr, rx_print_address */
 
 /**
@@ -64,7 +67,7 @@ struct rx_address {
 struct rx_sockaddr {
     rx_service_t service; /**< rx service id */
     int socktype;         /**< socket type (SOCK_DGRAM) */
-    socklen_t   addrlen;  /**< addr length */
+    rx_socklen_t   addrlen;  /**< addr length */
     sa_family_t addrtype; /**< addr discriminator (AF_INET, AF_INET6) */
     union {
 	struct sockaddr sa;
@@ -81,7 +84,7 @@ struct rx_sockaddr {
 #define rxsa_in_family    addr.sin.sin_family
 #define rxsa_in_addr      addr.sin.sin_addr.s_addr
 #define rxsa_in_port      addr.sin.sin_port
-#if HAVE_IPV6
+#ifdef HAVE_IPV6
 # ifdef STRUCT_SOCKADDR_HAS_SA6_LEN
 #  define rxsa_in6_len    addr.sin6.sin6_len
 # endif
@@ -102,7 +105,7 @@ static_inline rx_port_t
 rx_get_sockaddr_port(struct rx_sockaddr *sa)
 {
     return sa->addrtype == AF_INET ? sa->rxsa_in_port :
-#if HAVE_IVP6
+#ifdef HAVE_IVP6
 	(sa->addrtype == AF_INET6 ? sa->rxsa_in6_port : 0);
 #else
 	0;
@@ -113,7 +116,7 @@ static_inline rx_port_t
 rx_set_sockaddr_port(struct rx_sockaddr * sa, rx_port_t port)
 {
     return sa->addrtype == AF_INET ? (sa->rxsa_in_port = port) :
-#if HAVE_IVP6
+#ifdef HAVE_IVP6
 	(sa->addrtype == AF_INET6 ? (sa->rxsa_in6_port = port) : port);
 #else
 	port;

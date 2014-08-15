@@ -1449,10 +1449,16 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct rx_sockaddr *saddr
     p->wirevec[p->niovecs - 1].iov_len += RX_EXTRABUFFERSIZE;
 
     memset(&msg, 0, sizeof(msg));
+    from.service = 0;
+    from.socktype = SOCK_DGRAM;
 #ifdef HAVE_IPV6
+    from.addrlen = sizeof(struct sockaddr_storage);
+    from.addrtype = AF_INET6;
     msg.msg_name = (char *)&from.addr.ss;
     msg.msg_namelen = sizeof(struct sockaddr_storage);
 #else
+    from.addrlen = sizeof(struct sockaddr_in);
+    from.addrtype = AF_INET;
     msg.msg_name = (char *)&from.addr.sin;
     msg.msg_namelen = sizeof(struct sockaddr_in);
 #endif

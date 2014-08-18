@@ -484,8 +484,8 @@ void printReplyBuffer_AFSDB(PDNS_HDR replyBuff)
 
 };
 
-void processReplyBuffer_AFSDB(SOCKET commSock, PDNS_HDR replyBuff, int *cellHostAddrs, char cellHostNames[][MAXHOSTCHARS],
-                              unsigned short ports[], unsigned short adminRanks[], int *numServers, int *ttl)
+void processReplyBuffer_AFSDB(SOCKET commSock, PDNS_HDR replyBuff, struct rx_sockaddr *cellHostAddrs, char cellHostNames[][MAXHOSTCHARS],
+                              unsigned short adminRanks[], int *numServers, int *ttl)
   /*PAFS_SRV_LIST (srvList)*/
 {
   u_char *ptr = (u_char *) replyBuff;
@@ -535,11 +535,10 @@ void processReplyBuffer_AFSDB(SOCKET commSock, PDNS_HDR replyBuff, int *cellHost
 #ifdef DEBUG
       fprintf(stderr, "processRep_AFSDB: resolved name %s to addr %x\n", hostName, addr);
 #endif /* DEBUG */
-      memcpy(&cellHostAddrs[srvCount], &addr.s_addr, sizeof(addr.s_addr));
+      rx_ipv4_to_sockaddr(addr.s_addr, htons(7003), 0, &cellHostAddrs[srvCount]);
 	  strncpy(cellHostNames[srvCount], hostName, CELL_MAXNAMELEN);
 	  cellHostNames[srvCount][CELL_MAXNAMELEN-1] = '\0';
       adminRanks[srvCount] = 0;
-      ports[srvCount] = htons(7003);
       srvCount++;
     }
     else {
@@ -627,8 +626,7 @@ int DNSgetAddr(SOCKET commSock, char *hostName, struct in_addr *iNet)
 
 int getAFSServer(const char *service, const char *protocol, const char *cellName,
                  unsigned short afsdbPort,  /* network byte order */
-                 int *cellHostAddrs, char cellHostNames[][MAXHOSTCHARS],
-                 unsigned short ports[],    /* network byte order */
+                 struct rx_sockaddr *cellHostAddrs, char cellHostNames[][MAXHOSTCHARS],
                  unsigned short adminRanks[],
                  int *numServers, int *ttl)
 {
@@ -688,7 +686,7 @@ int getAFSServer(const char *service, const char *protocol, const char *cellName
 
     /*printReplyBuffer_AFSDB(pDNShdr);*/
     if (pDNShdr)
-        processReplyBuffer_AFSDB(commSock, pDNShdr, cellHostAddrs, cellHostNames, ports, adminRanks, numServers, ttl);
+        processReplyBuffer_AFSDB(commSock, pDNShdr, cellHostAddrs, cellHostNames, adminRanks, numServers, ttl);
 
     closesocket(commSock);
     if (*numServers == 0)
@@ -725,7 +723,7 @@ int getAFSServer(const char *service, const char *protocol, const char *cellName
                 StringCbCopyA(cellHostNames[*numServers], sizeof(cellHostNames[*numServers]),
                               pDnsIter->Data.SRV.pNameTarget);
                 adminRanks[*numServers] = pDnsIter->Data.SRV.wPriority;
-                ports[*numServers] = htons(pDnsIter->Data.SRV.wPort);
+                rx_set_sockaddr_port(&cellHostAddrs[*numServers], htons(pDnsIter->Data.SRV.wPort));
                 (*numServers)++;
 
                 if (!*ttl)
@@ -736,7 +734,7 @@ int getAFSServer(const char *service, const char *protocol, const char *cellName
         }
 
         for (i=0;i<*numServers;i++)
-            cellHostAddrs[i] = 0;
+            rx_ipv4_to_sockaddr(0, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
 
         /* now check if there are any A records in the results */
         for (pDnsIter = pDnsCell; pDnsIter; pDnsIter = pDnsIter->pNext) {
@@ -744,29 +742,29 @@ int getAFSServer(const char *service, const char *protocol, const char *cellName
                 /* check if its for one of the service */
                 for (i=0;i<*numServers;i++)
                     if(cm_stricmp_utf8(pDnsIter->pName, cellHostNames[i]) == 0)
-                        cellHostAddrs[i] = pDnsIter->Data.A.IpAddress;
+                        rx_ipv4_to_sockaddr(pDnsIter->Data.A.IpAddress, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
         }
 
         for (i=0;i<*numServers;i++) {
             /* if we don't have an IP yet, then we should try resolving the afs3-vlserver hostname
             in a separate query. */
-            if (!cellHostAddrs[i]) {
+            if (!cellHostAddrs[i].addr.sin.sin_addr.s_addr) {
                 if (DnsQuery_A(cellHostNames[i], DNS_TYPE_A, DNS_QUERY_STANDARD, NULL, &pDnsVol, NULL) == ERROR_SUCCESS) {
                     for (pDnsVolIter = pDnsVol; pDnsVolIter; pDnsVolIter=pDnsVolIter->pNext) {
                         /* if we get an A record, keep it */
                         if (pDnsVolIter->wType == DNS_TYPE_A && cm_stricmp_utf8(cellHostNames[i], pDnsVolIter->pName)==0) {
-                            cellHostAddrs[i] = pDnsVolIter->Data.A.IpAddress;
+                            rx_ipv4_to_sockaddr(pDnsVolIter->Data.A.IpAddress, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
                             break;
                         }
                         /* if we get a CNAME, look for a corresponding A record */
                         if (pDnsVolIter->wType == DNS_TYPE_CNAME && cm_stricmp_utf8(cellHostNames[i], pDnsVolIter->pName)==0) {
                             for (pDnsCIter=pDnsVolIter; pDnsCIter; pDnsCIter=pDnsCIter->pNext) {
                                 if (pDnsCIter->wType == DNS_TYPE_A && cm_stricmp_utf8(pDnsVolIter->Data.CNAME.pNameHost, pDnsCIter->pName)==0) {
-                                    cellHostAddrs[i] = pDnsCIter->Data.A.IpAddress;
+                                    rx_ipv4_to_sockaddr(pDnsCIter->Data.A.IpAddress, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
                                     break;
                                 }
                             }
-                            if (cellHostAddrs[i])
+                            if (cellHostAddrs[i].addr.sin.sin_addr.s_addr)
                                 break;
                             /* TODO: if the additional section is missing, then do another lookup for the CNAME */
                         }
@@ -793,7 +791,7 @@ int getAFSServer(const char *service, const char *protocol, const char *cellName
                     StringCbCopyA(cellHostNames[*numServers], sizeof(cellHostNames[*numServers]),
                                    pDnsIter->Data.Afsdb.pNameExchange);
                     adminRanks[*numServers] = 0;
-                    ports[*numServers] = afsdbPort;
+                    rx_set_sockaddr_port(&cellHostAddrs[*numServers], afsdbPort);
                     (*numServers)++;
 
                     if (!*ttl)
@@ -804,7 +802,7 @@ int getAFSServer(const char *service, const char *protocol, const char *cellName
             }
 
             for (i=0;i<*numServers;i++)
-                cellHostAddrs[i] = 0;
+                rx_ipv4_to_sockaddr(0, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
 
             /* now check if there are any A records in the results */
             for (pDnsIter = pDnsCell; pDnsIter; pDnsIter = pDnsIter->pNext) {
@@ -812,29 +810,29 @@ int getAFSServer(const char *service, const char *protocol, const char *cellName
                     /* check if its for one of the service */
                     for (i=0;i<*numServers;i++)
                         if(cm_stricmp_utf8(pDnsIter->pName, cellHostNames[i]) == 0)
-                            cellHostAddrs[i] = pDnsIter->Data.A.IpAddress;
+                            rx_ipv4_to_sockaddr(pDnsIter->Data.A.IpAddress, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
             }
 
             for (i=0;i<*numServers;i++) {
                 /* if we don't have an IP yet, then we should try resolving the service hostname
                 in a separate query. */
-                if (!cellHostAddrs[i]) {
+                if (!cellHostAddrs[i].addr.sin.sin_addr.s_addr) {
                     if (DnsQuery_A(cellHostNames[i], DNS_TYPE_A, DNS_QUERY_STANDARD, NULL, &pDnsVol, NULL) == ERROR_SUCCESS) {
                         for (pDnsVolIter = pDnsVol; pDnsVolIter; pDnsVolIter=pDnsVolIter->pNext) {
                             /* if we get an A record, keep it */
                             if (pDnsVolIter->wType == DNS_TYPE_A && cm_stricmp_utf8(cellHostNames[i], pDnsVolIter->pName)==0) {
-                                cellHostAddrs[i] = pDnsVolIter->Data.A.IpAddress;
+                                rx_ipv4_to_sockaddr(pDnsVolIter->Data.A.IpAddress, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
                                 break;
                             }
                             /* if we get a CNAME, look for a corresponding A record */
                             if (pDnsVolIter->wType == DNS_TYPE_CNAME && cm_stricmp_utf8(cellHostNames[i], pDnsVolIter->pName)==0) {
                                 for (pDnsCIter=pDnsVolIter; pDnsCIter; pDnsCIter=pDnsCIter->pNext) {
                                     if (pDnsCIter->wType == DNS_TYPE_A && cm_stricmp_utf8(pDnsVolIter->Data.CNAME.pNameHost, pDnsCIter->pName)==0) {
-                                        cellHostAddrs[i] = pDnsCIter->Data.A.IpAddress;
+                                        rx_ipv4_to_sockaddr(pDnsCIter->Data.A.IpAddress, rx_get_sockaddr_port(&cellHostAddrs[i]), 0, &cellHostAddrs[i]);
                                         break;
                                     }
                                 }
-                                if (cellHostAddrs[i])
+                                if (cellHostAddrs[i].addr.sin.sin_addr.s_addr)
                                     break;
                                 /* TODO: if the additional section is missing, then do another lookup for the CNAME */
                             }

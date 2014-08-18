@@ -127,9 +127,9 @@ convert_cell_to_ubik(struct afsconf_cell *cellinfo, afs_uint32 *myHost,
     memcpy(myHost, th->h_addr, sizeof(afs_uint32));
 
     for (i = 0; i < cellinfo->numServers; i++)
-	if (cellinfo->hostAddr[i].sin_addr.s_addr != *myHost) {
+	if (cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr != *myHost) {
 	    /* omit my host from serverList */
-	    *serverList++ = cellinfo->hostAddr[i].sin_addr.s_addr;
+	    *serverList++ = cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr;
 	}
     *serverList = 0;		/* terminate list */
     return 0;
@@ -340,7 +340,7 @@ main(int argc, char *argv[])
 	    afs_com_err(whoami, code, "Couldn't parse server list");
 	    exit(1);
 	}
-	cellinfo.hostAddr[0].sin_addr.s_addr = myHost;
+        rx_ipv4_to_sockaddr(myHost, 0, 0, &cellinfo.hostAddr[0]);
 	for (i = 1; i < MAXSERVERS; i++) {
 	    if (!serverList[i])
 		break;
@@ -349,7 +349,7 @@ main(int argc, char *argv[])
 			"Too many ubik servers specified on command line\n");
 		exit(1);
 	    }
-	    cellinfo.hostAddr[i].sin_addr.s_addr = serverList[i];
+            rx_ipv4_to_sockaddr(serverList[i], 0, 0, &cellinfo.hostAddr[i]);
 	}
 	cellinfo.numServers = i;
     } else {

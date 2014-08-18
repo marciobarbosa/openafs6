@@ -109,8 +109,8 @@ convert_cell_to_ubik(struct afsconf_cell *cellinfo, afs_uint32 *myHost,
 
     for (i = 0; i < cellinfo->numServers; i++)
 	/* omit my host from serverList */
-	if (cellinfo->hostAddr[i].sin_addr.s_addr != *myHost)
-	    *serverList++ = cellinfo->hostAddr[i].sin_addr.s_addr;
+	if (cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr != *myHost)
+	    *serverList++ = cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr;
 
     *serverList = 0;		/* terminate list */
     return 0;

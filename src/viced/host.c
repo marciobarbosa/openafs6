@@ -312,10 +312,9 @@ hpr_Initialize(struct ubik_client **uclient)
 
     memset(serverconns, 0, sizeof(serverconns));        /* terminate list!!! */
     for (i = 0; i < info.numServers; i++) {
+        info.hostAddr[i].service = PRSRV;
         serverconns[i] =
-            rx_NewConnection(info.hostAddr[i].sin_addr.s_addr,
-                             info.hostAddr[i].sin_port, PRSRV,
-			     sc, scIndex);
+            rx_NewConnection2(&info.hostAddr[i], sc, scIndex);
     }
 
     code = ubik_ClientInit(serverconns, uclient);

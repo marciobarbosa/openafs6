@@ -81,12 +81,11 @@ internal_client_init(struct afsconf_dir *dir, struct afsconf_cell *info,
 	    return -1;
 	}
 	for (i = 0; i < info->numServers; i++) {
-	    if (!info->hostAddr[i].sin_port && port)
-		info->hostAddr[i].sin_port = port;
+	    if (!rx_get_sockaddr_port(&info->hostAddr[i]) && port)
+		rx_set_sockaddr_port(&info->hostAddr[i], port);
+	    info->hostAddr[i].service = usrvid;
 	    serverconns[i] =
-		rx_NewConnection(info->hostAddr[i].sin_addr.s_addr,
-				 info->hostAddr[i].sin_port, usrvid,
-				 sc, scIndex);
+		rx_NewConnection2(&info->hostAddr[i], sc, scIndex);
 	}
     }
     /* Are we just setting up connections, or is this really ubik stuff? */

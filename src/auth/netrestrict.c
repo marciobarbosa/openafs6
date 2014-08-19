@@ -423,8 +423,34 @@ filterAddrs(struct rx_sockaddr addr1[], struct rx_sockaddr addr2[], struct rx_so
  * set of IP addresses to use
  */
 /* max - Entries in addrbuf, maskbuf and mtubuf */
+
 int
-afsconf_ParseNetFiles(struct rx_sockaddr addrbuf[], struct rx_sockaddr maskbuf[],
+afsconf_ParseNetFiles(afs_uint32 addrbuf[], afs_uint32 maskbuf[],
+	             afs_uint32 mtubuf[], afs_uint32 max,
+		     char reason[], const char *niFileName,
+		     const char *nrFileName)
+{
+    struct rx_sockaddr *addrbuf_ipv4, *maskbuf_ipv4;
+    int i, code;
+
+    addrbuf_ipv4 = (struct rx_sockaddr *)calloc(max, sizeof(struct rx_sockaddr));
+    maskbuf_ipv4 = (struct rx_sockaddr *)calloc(max, sizeof(struct rx_sockaddr));
+
+    for(i = 0; i < max; i++) {
+    	rx_ipv4_to_sockaddr(addrbuf[i], 0, 0, &addrbuf_ipv4[i]);
+    	rx_ipv4_to_sockaddr(maskbuf[i], 0, 0, &maskbuf_ipv4[i]);
+    }
+
+    code = afsconf_ParseNetFiles2(addrbuf_ipv4, maskbuf_ipv4, mtubuf, max, reason, niFileName, nrFileName);
+
+    free(addrbuf_ipv4);
+    free(maskbuf_ipv4);
+
+    return code;
+}
+
+int
+afsconf_ParseNetFiles2(struct rx_sockaddr addrbuf[], struct rx_sockaddr maskbuf[],
 		      afs_uint32 mtubuf[], afs_uint32 max, char reason[],
 		      const char *niFileName, const char *nrFileName)
 {

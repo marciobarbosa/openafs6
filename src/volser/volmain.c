@@ -82,7 +82,7 @@ char *logFile = NULL;
 char *configDir = NULL;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
 
 #define VS_EXIT(code)  {                                          \
                           osi_audit(VS_ExitEvent, code, AUD_END); \
@@ -381,7 +381,7 @@ main(int argc, char **argv)
     afs_int32 numClasses;
     struct rx_service *service;
     int rxpackets = 100;
-    afs_uint32 host = ntohl(INADDR_ANY);
+    struct rx_sockaddr host;
     VolumePackageOptions opts;
 
 #ifdef	AFS_AIX32_ENV
@@ -401,6 +401,8 @@ main(int argc, char **argv)
 #endif
     osi_audit_init();
     osi_audit(VS_StartEvent, 0, AUD_END);
+
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
 
     /* Initialize dirpaths */
     if (!(initAFSDirPath() & AFSDIR_SERVER_PATHS_OK)) {
@@ -469,19 +471,20 @@ main(int argc, char **argv)
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else
 	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
         if (ccode == 1)
-            host = SHostAddrs[0];
+            rx_copy_sockaddr(&SHostAddrs[0], &host);
     }
 
-    code = rx_InitHost(host, (int)htons(AFSCONF_VOLUMEPORT));
+    rx_set_sockaddr_port(&host, htons(AFSCONF_VOLUMEPORT));
+    code = rx_InitHost2(&host);
     if (code) {
 	fprintf(stderr, "rx init failed on socket AFSCONF_VOLUMEPORT %u\n",
 		AFSCONF_VOLUMEPORT);
@@ -532,8 +535,10 @@ main(int argc, char **argv)
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
     if (securityClasses[0] == NULL)
 	Abort("rxnull_NewServerSecurityObject");
+    host.service = VOLSERVICE_ID;
+    rx_set_sockaddr_port(&host, 0);
     service =
-	rx_NewServiceHost(host, 0, VOLSERVICE_ID, "VOLSER", securityClasses,
+	rx_NewServiceHost2(&host, "VOLSER", securityClasses,
 			  numClasses, AFSVolExecuteRequest);
     if (service == (struct rx_service *)0)
 	Abort("rx_NewService");

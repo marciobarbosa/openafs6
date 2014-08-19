@@ -106,7 +106,7 @@ afs_int32 lastLog;		/* Log last pass info */
 int rxBind = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
 
 /* dummy routine for the audit work.  It should do nothing since audits */
 /* occur at the server level and bos is not a server. */
@@ -848,8 +848,9 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 #else
     PROCESS dbWatcherPid;
 #endif
-    afs_uint32 host = htonl(INADDR_ANY);
+    struct rx_sockaddr host;
 
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
     debugLevel = 0;
 
     /*initialize the error tables */
@@ -1038,19 +1039,20 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else
 	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
         if (ccode == 1)
-            host = SHostAddrs[0];
+    	    rx_copy_sockaddr(&SHostAddrs[0], &host);
     }
 
-    code = rx_InitHost(host, htons(BC_TAPEPORT + portOffset));
+    rx_set_sockaddr_port(&host, htons(BC_TAPEPORT + portOffset));
+    code = rx_InitHost2(&host);
     if (code) {
 	TapeLog(0, 0, code, 0, "rx init failed on port %u\n",
 		BC_TAPEPORT + portOffset);
@@ -1087,8 +1089,10 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
+    host.service = 1;
+    rx_set_sockaddr_port(&host, 0);
     service =
-	rx_NewServiceHost(host, 0, 1, "BUTC", securityObjects, 1, TC_ExecuteRequest);
+	rx_NewServiceHost2(&host, "BUTC", securityObjects, 1, TC_ExecuteRequest);
     if (!service) {
 	TLog(0, "rx_NewService");
 	exit(1);

@@ -51,7 +51,7 @@ static int Quit(char *);
 int rxBind = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
 
 /* check whether caller is authorized to manage RX statistics */
 int
@@ -168,7 +168,7 @@ main(int argc, char *argv[])
     struct rx_securityClass **securityClasses;
     afs_int32 numClasses;
     struct rx_service *service;
-    afs_uint32 host = htonl(INADDR_ANY);
+    struct rx_sockaddr host;
 
     int a = 0;
     rxkad_level level;
@@ -191,6 +191,7 @@ main(int argc, char *argv[])
 #endif
 
     whoami = argv[0];
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
 
 #ifdef AFS_NT40_ENV
     /* dummy signal call to force afsprocmgmt.dll to load on NT */
@@ -264,21 +265,22 @@ main(int argc, char *argv[])
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else
 	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
         if (ccode == 1)
-            host = SHostAddrs[0];
+            rx_copy_sockaddr(&SHostAddrs[0], &host);
     }
 
     /* Initialize Rx, telling it port number this server will use for its
      * single service */
-    if (rx_InitHost(host, htons(AFSCONF_UPDATEPORT)) < 0)
+    rx_set_sockaddr_port(&host, htons(AFSCONF_UPDATEPORT));
+    if (rx_InitHost2(&host) < 0)
 	Quit("rx_init");
 
     afsconf_BuildServerSecurityObjects(cdir, &securityClasses, &numClasses);
@@ -289,8 +291,10 @@ main(int argc, char *argv[])
     /* Instantiate a single UPDATE service.  The rxgen-generated procedure
      * which is called to decode requests is passed in here
      * (UPDATE_ExecuteRequest). */
+    host.service = UPDATE_SERVICEID;
+    rx_set_sockaddr_port(&host, 0);
     service =
-	rx_NewServiceHost(host, 0, UPDATE_SERVICEID, "UPDATE", securityClasses,
+	rx_NewServiceHost2(&host, "UPDATE", securityClasses,
 			  numClasses, UPDATE_ExecuteRequest);
     if (service == (struct rx_service *)0)
 	Quit("rx_NewService");

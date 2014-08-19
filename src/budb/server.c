@@ -63,7 +63,7 @@ int lwps   = 3;
 #define MAXLWP 16
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
 
 /* check whether caller is authorized to manage RX statistics */
 int
@@ -361,7 +361,7 @@ main(int argc, char **argv)
     struct afsconf_cell *cellinfo = NULL;
     time_t currentTime;
     afs_int32 code = 0;
-    afs_uint32 host = ntohl(INADDR_ANY);
+    struct rx_sockaddr host;
 
     char  clones[MAXHOSTSPERCELL];
 
@@ -395,7 +395,7 @@ main(int argc, char **argv)
     sigaction(SIGSEGV, &nsa, NULL);
     sigaction(SIGABRT, &nsa, NULL);
 #endif
-
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
     memset(&cellinfo_s, 0, sizeof(cellinfo_s));
     memset(clones, 0, sizeof(clones));
 
@@ -507,17 +507,18 @@ main(int argc, char **argv)
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
         } else
 	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
         if (ccode == 1) {
-            host = SHostAddrs[0];
-	    rx_InitHost(host, htons(AFSCONF_BUDBPORT));
+            rx_copy_sockaddr(&SHostAddrs[0], &host);
+            rx_set_sockaddr_port(&host, htons(AFSCONF_BUDBPORT));
+	    rx_InitHost2(&host);
 	}
     }
 
@@ -546,8 +547,10 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(BU_conf, &securityClasses, &numClasses);
 
+    host.service = BUDB_SERVICE;
+    rx_set_sockaddr_port(&host, 0);
     tservice =
-	rx_NewServiceHost(host, 0, BUDB_SERVICE, "BackupDatabase",
+	rx_NewServiceHost2(&host, "BackupDatabase",
 			  securityClasses, numClasses, BUDB_ExecuteRequest);
 
     if (tservice == (struct rx_service *)0) {

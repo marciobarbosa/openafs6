@@ -621,9 +621,10 @@ ubeacon_Interact(void *dummy)
  * \return 0 on success, non-zero on failure
  */
 static int
-verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
+verifyInterfaceAddress(rx_in_addr_t *ame, struct afsconf_cell *info,
 		       afs_uint32 aservers[]) {
-    afs_uint32 myAddr[UBIK_MAX_INTERFACE_ADDR], *servList, tmpAddr;
+    struct rx_sockaddr myAddr[UBIK_MAX_INTERFACE_ADDR];
+    rx_in_addr_t *servList, tmpAddr;
     afs_uint32 myAddr2[UBIK_MAX_INTERFACE_ADDR];
     char hoststr[16];
     int tcount, count, found, i, j, totalServers, start, end, usednetfiles =
@@ -643,7 +644,7 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 	 * host as returned by rx_getAllAddr (in NBO)
 	 */
 	char reason[1024];
-	count = afsconf_ParseNetFiles(myAddr, NULL, NULL,
+	count = afsconf_ParseNetFiles2(myAddr, NULL, NULL,
 				      UBIK_MAX_INTERFACE_ADDR, reason,
 				      AFSDIR_SERVER_NETINFO_FILEPATH,
 				      AFSDIR_SERVER_NETRESTRICT_FILEPATH);
@@ -656,7 +657,7 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 	usednetfiles++;
     } else {
 	/* get all my interface addresses in net byte order */
-	count = rx_getAllAddr(myAddr, UBIK_MAX_INTERFACE_ADDR);
+	count = rx_getAllAddr2(myAddr, UBIK_MAX_INTERFACE_ADDR);
     }
 
     if (count <= 0) {		/* no address found */
@@ -666,7 +667,7 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 
     /* verify that the My-address passed in by ubik is correct */
     for (j = 0, found = 0; j < count; j++) {
-	if (*ame == myAddr[j]) {	/* both in net byte order */
+	if (*ame == myAddr[j].addr.sin.sin_addr.s_addr) {	/* both in net byte order */
 	    found = 1;
 	    break;
 	}
@@ -681,7 +682,7 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 	 * to avoid that big hole in their foot from the loaded gun. */
 	if (usednetfiles) {
 	    /* take the address we did get, then see if ame was masked */
-	    *ame = myAddr[0];
+	    rx_try_sockaddr_to_ipv4(&myAddr[0], ame);
 	    tcount = rx_getAllAddr(myAddr2, UBIK_MAX_INTERFACE_ADDR);
 	    if (tcount <= 0) {	/* no address found */
 		ubik_print("ubik: No network addresses found, aborting..\n");
@@ -710,7 +711,7 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
 		tmpAddr = (afs_uint32) info->hostAddr[i].addr.sin.sin_addr.s_addr;
 	    else
 		tmpAddr = aservers[i];
-	    if (myAddr[j] == tmpAddr) {
+	    if (myAddr[j].addr.sin.sin_addr.s_addr == tmpAddr) {
 		*ame = tmpAddr;
 		if (!info)
 		    aservers[i] = 0;
@@ -747,8 +748,8 @@ verifyInterfaceAddress(afs_uint32 *ame, struct afsconf_cell *info,
      */
     ubik_host[0] = *ame;
     for (j = 0, i = 1; j < count; j++)
-	if (*ame != myAddr[j])
-	    ubik_host[i++] = myAddr[j];
+	if (*ame != myAddr[j].addr.sin.sin_addr.s_addr)
+	    ubik_host[i++] = myAddr[j].addr.sin.sin_addr.s_addr;
 
     return 0;			/* return success */
 }

@@ -742,8 +742,7 @@ h_Lookup_r(struct rx_sockaddr *saddr, struct host **hostp)
     for (chain = hostAddrHashTable[index]; chain; chain = chain->next) {
 	host = chain->hostPtr;
 	opr_Assert(host);
-	if (!(host->hostFlags & HOSTDELETED) && chain->addr == saddr->rxsa_in_addr
-	    && chain->port == rx_get_sockaddr_port(saddr)) {
+	if (!(host->hostFlags & HOSTDELETED) && rx_compare_sockaddr(&chain->saddr, saddr, RXA_AP)) {
 	    if ((host->hostFlags & HWHO_INPROGRESS) &&
 		h_threadquota(host->lock.num_waiting)) {
 		*hostp = 0;
@@ -1319,8 +1318,7 @@ createHostAddrHashChain_r(int index, struct rx_sockaddr *saddr, struct host *hos
     }
     chain->hostPtr = host;
     chain->next = hostAddrHashTable[index];
-    chain->addr = saddr->rxsa_in_addr;
-    chain->port = rx_get_sockaddr_port(saddr);
+    rx_copy_sockaddr(saddr, &chain->saddr);
     hostAddrHashTable[index] = chain;
     ViceLog(125, ("h_AddHostToAddrHashTable_r: host %" AFS_PTR_FMT " added as %s\n",
 		  host, rx_print_sockaddr(saddr, hoststr, sizeof(hoststr))));
@@ -1425,7 +1423,7 @@ reconcileHosts_r(struct rx_sockaddr *saddr, struct host *newHost,
 	struct h_AddrHashChain *chain;
 	int index = h_HashIndex(saddr->rxsa_in_addr);
 	for (chain = hostAddrHashTable[index]; chain; chain = chain->next) {
-	    if (chain->addr == saddr->rxsa_in_addr && chain->port == rx_get_sockaddr_port(saddr)) {
+	    if (rx_compare_sockaddr(&chain->saddr, saddr, RXA_AP)) {
 		chain->hostPtr = newHost;
 		removeAddress_r(oldHost, saddr);
 		goto done;
@@ -1462,19 +1460,18 @@ h_AddHostToAddrHashTable_r(struct rx_sockaddr *saddr, struct host *host)
 {
     int index;
     struct h_AddrHashChain *chain;
-    char hoststr[16];
+    rx_addr_str_t hoststr;
 
     /* hash into proper bucket */
     index = h_HashIndex(saddr->rxsa_in_addr);
 
     /* don't add the same address:port pair entry multiple times */
     for (chain = hostAddrHashTable[index]; chain; chain = chain->next) {
-	if (chain->addr == saddr->rxsa_in_addr && chain->port == rx_get_sockaddr_port(saddr)) {
+	if (rx_compare_sockaddr(&chain->saddr, saddr, RXA_AP)) {
 	    if (chain->hostPtr == host) {
 	        ViceLog(125,
-	                ("h_AddHostToAddrHashTable_r: host %" AFS_PTR_FMT " (%s:%d) already hashed\n",
-	                  host, afs_inet_ntoa_r(chain->addr, hoststr),
-	                  ntohs(chain->port)));
+	                ("h_AddHostToAddrHashTable_r: host %" AFS_PTR_FMT " (%s) already hashed\n",
+	                  host, rx_print_sockaddr(&chain->saddr, hoststr, sizeof(hoststr))));
 	        return;
 	    }
 	    if (!(chain->hostPtr->hostFlags & HOSTDELETED)) {
@@ -3316,7 +3313,7 @@ h_stateVerifyAddrHash(struct fs_dump_state * state, struct host * h,
 	    ret = 1;
 	    goto done;
 	}
-	if ((chain->addr == saddr->rxsa_in_addr) && (chain->port == rx_get_sockaddr_port(saddr))) {
+	if (rx_compare_sockaddr(&chain->saddr, saddr, RXA_AP)) {
 	    if (host != h) {
 		if (valid) {
 		    ViceLog(0, ("h_stateVerifyAddrHash: warning: addr hash entry "
@@ -4241,7 +4238,7 @@ h_DeleteHostFromAddrHashTable_r(struct rx_sockaddr *saddr,
     for (hp = &hostAddrHashTable[h_HashIndex(saddr->rxsa_in_addr)]; (th = *hp);
 	 hp = &th->next) {
         opr_Assert(th->hostPtr);
-        if (th->hostPtr == host && th->addr == saddr->rxsa_in_addr && th->port == rx_get_sockaddr_port(saddr)) {
+        if (th->hostPtr == host && rx_compare_sockaddr(&th->saddr, saddr, RXA_AP)) {
 	    ViceLog(125, ("h_DeleteHostFromAddrHashTable_r: host %" AFS_PTR_FMT " (%s)\n",
 			  host, rx_print_sockaddr(&host->saddr, hoststr, sizeof(hoststr))));
             *hp = th->next;

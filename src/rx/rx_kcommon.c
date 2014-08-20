@@ -371,8 +371,11 @@ rxi_InitPeerParams(struct rx_peer *pp)
 # ifdef AFS_USERSPACE_IP_ADDR
     afs_int32 i;
     afs_int32 mtu;
+    rx_in_addr_t ipv4;
 
-    i = rxi_Findcbi(&pp->saddr);
+    rx_try_sockaddr_to_ipv4(&pp->saddr, &ipv4);
+
+    i = rxi_Findcbi(ipv4);
     if (i == -1) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
 	pp->ifMTU = MIN(RX_REMOTE_PACKET_SIZE, rx_MyMaxSendSize);
@@ -545,7 +548,7 @@ rxi_GetcbiInfo(void) /* ipv4 only */
  * If none is found, we return -1.
  */
 afs_int32
-rxi_Findcbi(struct rx_sockaddr *saddr) /* ipv4 only */
+rxi_Findcbi(afs_uint32 addr)
 {
     int j;
     afs_uint32 myAddr, thisAddr, netMask, subnetMask;
@@ -553,43 +556,40 @@ rxi_Findcbi(struct rx_sockaddr *saddr) /* ipv4 only */
     int match_value = 0;
 
     if (numMyNetAddrs == 0)
-	(void)rxi_GetcbiInfo();
+        (void)rxi_GetcbiInfo();
 
-    if (rx_try_sockaddr_to_ipv4(saddr, myAddr))
-        myAddr = ntohl(myAddr);
-    else
-        return EAFNOSUPPORT;
+    myAddr = ntohl(addr);
 
     if (IN_CLASSA(myAddr))
-	netMask = IN_CLASSA_NET;
+        netMask = IN_CLASSA_NET;
     else if (IN_CLASSB(myAddr))
-	netMask = IN_CLASSB_NET;
+        netMask = IN_CLASSB_NET;
     else if (IN_CLASSC(myAddr))
-	netMask = IN_CLASSC_NET;
+        netMask = IN_CLASSC_NET;
     else
-	netMask = 0;
+        netMask = 0;
 
     for (j = 0; j < afs_cb_interface.numberOfInterfaces; j++) {
-	thisAddr = ntohl(afs_cb_interface.addr_in[j]);
+        thisAddr = ntohl(afs_cb_interface.addr_in[j]);
         subnetMask = ntohl(afs_cb_interface.subnetmask[j]);
-	if ((myAddr & netMask) == (thisAddr & netMask)) {
-	    if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
-		if (myAddr == thisAddr) {
-		    match_value = 4;
-		    rvalue = j;
-		    break;
-		}
-		if (match_value < 3) {
-		    match_value = 3;
-		    rvalue = j;
-		}
-	    } else {
-		if (match_value < 2) {
-		    match_value = 2;
-		    rvalue = j;
-		}
-	    }
-	}
+        if ((myAddr & netMask) == (thisAddr & netMask)) {
+            if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
+                if (myAddr == thisAddr) {
+                    match_value = 4;
+                    rvalue = j;
+                    break;
+                }
+                if (match_value < 3) {
+                    match_value = 3;
+                    rvalue = j;
+                }
+            } else {
+                if (match_value < 2) {
+                    match_value = 2;
+                    rvalue = j;
+                }
+            }
+        }
     }
 
     return (rvalue);

@@ -96,8 +96,7 @@ struct host {
 struct h_AddrHashChain {
     struct host *hostPtr;
     struct h_AddrHashChain *next;
-    afs_uint32 addr; /* change or not? */
-    afs_uint16 port;
+    struct rx_sockaddr saddr;
 };
 
 struct h_UuidHashChain {

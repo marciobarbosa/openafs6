@@ -313,7 +313,7 @@ extern void rxi_InitPeerParams(struct rx_peer *pp);
 extern void shutdown_rxkernel(void);
 # ifdef AFS_USERSPACE_IP_ADDR
 extern int rxi_GetcbiInfo(void);
-extern afs_int32 rxi_Findcbi(struct rx_sockaddr *saddr);
+extern afs_int32 rxi_Findcbi(afs_uint32 addr);
 # else
 extern int rxi_GetIFInfo(void);
 # endif

@@ -357,7 +357,7 @@ CallPreamble(struct rx_call *acall, int activecall, struct AFSFid *Fid,
     afs_int32 viceid = -1;
     int retry_flag = 1;
     int code = 0;
-    char hoststr[16], hoststr2[16];
+    rx_addr_str_t hoststr, hoststr2;
     struct ubik_client *uclient;
     *ahostp = NULL;
 
@@ -425,32 +425,28 @@ CallPreamble(struct rx_call *acall, int activecall, struct AFSFid *Fid,
     h_Lock_r(thost);
     if (thost->hostFlags & HOSTDELETED) {
 	ViceLog(3,
-		("Discarded a packet for deleted host %s:%d\n",
-		 afs_inet_ntoa_r(thost->host, hoststr), ntohs(thost->port)));
+		("Discarded a packet for deleted host %s\n",
+		 rx_print_sockaddr(&thost->saddr, hoststr, sizeof(hoststr))));
 	code = VBUSY;		/* raced, so retry */
     } else if ((thost->hostFlags & VENUSDOWN)
 	       || (thost->hostFlags & HFE_LATER)) {
 	if (BreakDelayedCallBacks_r(thost)) {
 	    ViceLog(0,
-		    ("BreakDelayedCallbacks FAILED for host %s:%d which IS UP.  Connection from %s:%d.  Possible network or routing failure.\n",
-		     afs_inet_ntoa_r(thost->host, hoststr), ntohs(thost->port), afs_inet_ntoa_r(rxr_HostOf(*tconn), hoststr2),
-		     ntohs(rxr_PortOf(*tconn))));
+		    ("BreakDelayedCallbacks FAILED for host %s which IS UP.  Connection from %s.  Possible network or routing failure.\n",
+		     rx_print_sockaddr(&thost->saddr, hoststr, sizeof(hoststr)), rx_print_sockaddr(rxr_SockAddrOf(*tconn), hoststr2, sizeof(hoststr2))));
 	    if (MultiProbeAlternateAddress_r(thost)) {
 		ViceLog(0,
-			("MultiProbe failed to find new address for host %s:%d\n",
-			 afs_inet_ntoa_r(thost->host, hoststr),
-			 ntohs(thost->port)));
+			("MultiProbe failed to find new address for host %s\n",
+			 rx_print_sockaddr(&thost->saddr, hoststr, sizeof(hoststr))));
 		code = -1;
 	    } else {
 		ViceLog(0,
-			("MultiProbe found new address for host %s:%d\n",
-			 afs_inet_ntoa_r(thost->host, hoststr),
-			 ntohs(thost->port)));
+			("MultiProbe found new address for host %s\n",
+			 rx_print_sockaddr(&thost->saddr, hoststr, sizeof(hoststr))));
 		if (BreakDelayedCallBacks_r(thost)) {
 		    ViceLog(0,
-			    ("BreakDelayedCallbacks FAILED AGAIN for host %s:%d which IS UP.  Connection from %s:%d.  Possible network or routing failure.\n",
-			      afs_inet_ntoa_r(thost->host, hoststr), ntohs(thost->port), afs_inet_ntoa_r(rxr_HostOf(*tconn), hoststr2),
-			      ntohs(rxr_PortOf(*tconn))));
+			    ("BreakDelayedCallbacks FAILED AGAIN for host %s which IS UP.  Connection from %s.  Possible network or routing failure.\n",
+			      rx_print_sockaddr(&thost->saddr, hoststr, sizeof(hoststr)), rx_print_sockaddr(rxr_SockAddrOf(*tconn), hoststr2, sizeof(hoststr2))));
 		    code = -1;
 		}
 	    }
@@ -488,23 +484,20 @@ CallPostamble(struct rx_connection *aconn, afs_int32 ret,
     if (ahost) {
 	    if (ahost != thost) {
 		    /* host/client recycle */
-		    char hoststr[16], hoststr2[16];
-		    ViceLog(0, ("CallPostamble: ahost %s:%d (%p) != thost "
-				"%s:%d (%p)\n",
-				afs_inet_ntoa_r(ahost->host, hoststr),
-				ntohs(ahost->port),
+		    rx_addr_str_t hoststr, hoststr2;
+		    ViceLog(0, ("CallPostamble: ahost %s (%p) != thost "
+				"%s (%p)\n",
+				rx_print_sockaddr(&ahost->saddr, hoststr, sizeof(hoststr)),
 				ahost,
-				afs_inet_ntoa_r(thost->host, hoststr2),
-				ntohs(thost->port),
+				rx_print_sockaddr(&thost->saddr, hoststr2, sizeof(hoststr2)),
 				thost));
 	    }
 	    /* return the reference taken in CallPreamble */
 	    h_Release_r(ahost);
     } else {
-	    char hoststr[16];
-	    ViceLog(0, ("CallPostamble: null ahost for thost %s:%d (%p)\n",
-			afs_inet_ntoa_r(thost->host, hoststr),
-			ntohs(thost->port),
+	    rx_addr_str_t hoststr;
+	    ViceLog(0, ("CallPostamble: null ahost for thost %s (%p)\n",
+			rx_print_sockaddr(&thost->saddr, hoststr, sizeof(hoststr)),
 			thost));
     }
 
@@ -765,12 +758,11 @@ GetRights(struct client *client, struct acl_accessList *ACL,
     }
 
     if (!client->host->hcps.prlist_len || !client->host->hcps.prlist_val) {
-	char hoststr[16];
+	rx_addr_str_t hoststr;
 	ViceLog(5,
-		("CheckRights: len=%u, for host=%s:%d\n",
+		("CheckRights: len=%u, for host=%s\n",
 		 client->host->hcps.prlist_len,
-		 afs_inet_ntoa_r(client->host->host, hoststr),
-		 ntohs(client->host->port)));
+		 rx_print_sockaddr(&client->host->saddr, hoststr, sizeof(hoststr))));
     } else
 	acl_CheckRights(ACL, &client->host->hcps, &hrights);
     H_UNLOCK;
@@ -2265,13 +2257,14 @@ common_FetchData64(struct rx_call *acall, struct AFSFid *Fid,
     struct host *thost;
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct VCallByVol tcbv, *cbv = NULL;
     static int remainder = 0;	/* shared access protected by FS_LOCK */
     struct fsstats fsstats;
     afs_sfsize_t bytesToXfer;  /* # bytes to xfer */
     afs_sfsize_t bytesXferred; /* # bytes actually xferred */
     int readIdx;		/* Index of read stats array to bump */
+    rx_addr_str_t hoststr;
 
     fsstats_StartOp(&fsstats, FS_STATS_RPCIDX_FETCHDATA);
 
@@ -2286,11 +2279,11 @@ common_FetchData64(struct rx_call *acall, struct AFSFid *Fid,
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(5,
-	    ("SRXAFS_FetchData, Fid = %u.%u.%u, Host %s:%d, Id %d\n",
-	     Fid->Volume, Fid->Vnode, Fid->Unique, inet_ntoa(logHostAddr),
-	     ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	    ("SRXAFS_FetchData, Fid = %u.%u.%u, Host %s, Id %d\n",
+	     Fid->Volume, Fid->Vnode, Fid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)),
+	     t_client->ViceId));
 
     queue_NodeInit(&tcbv);
     tcbv.call = acall;
@@ -2422,8 +2415,9 @@ SRXAFS_FetchACL(struct rx_call * acall, struct AFSFid * Fid,
     struct rx_connection *tcon = rx_ConnectionOf(acall);
     struct host *thost;
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct fsstats fsstats;
+    rx_addr_str_t hoststr;
 
     fsstats_StartOp(&fsstats, FS_STATS_RPCIDX_FETCHACL);
 
@@ -2438,11 +2432,11 @@ SRXAFS_FetchACL(struct rx_call * acall, struct AFSFid * Fid,
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(5,
-	    ("SAFS_FetchACL, Fid = %u.%u.%u, Host %s:%d, Id %d\n", Fid->Volume,
-	     Fid->Vnode, Fid->Unique, inet_ntoa(logHostAddr),
-	     ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	    ("SAFS_FetchACL, Fid = %u.%u.%u, Host %s, Id %d\n", Fid->Volume,
+	     Fid->Vnode, Fid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)),
+	     t_client->ViceId));
 
     AccessList->AFSOpaque_len = 0;
     AccessList->AFSOpaque_val = malloc(AFSOPAQUEMAX);
@@ -2511,16 +2505,17 @@ SAFSS_FetchStatus(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to the client data */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_FetchStatus,  Fid = %u.%u.%u, Host %s:%d, Id %d\n",
-	     Fid->Volume, Fid->Vnode, Fid->Unique, inet_ntoa(logHostAddr),
-	     ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	    ("SAFS_FetchStatus,  Fid = %u.%u.%u, Host %s, Id %d\n",
+	     Fid->Volume, Fid->Vnode, Fid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)),
+	     t_client->ViceId));
     FS_LOCK;
     AFSCallStats.FetchStatus++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -2902,13 +2897,14 @@ common_StoreData64(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon;
     struct host *thost;
     struct fsstats fsstats;
     afs_sfsize_t bytesToXfer;
     afs_sfsize_t bytesXferred;
     static int remainder = 0;
+    rx_addr_str_t hoststr;
 
     ViceLog(1,
 	    ("StoreData: Fid = %u.%u.%u\n", Fid->Volume, Fid->Vnode,
@@ -2924,11 +2920,11 @@ common_StoreData64(struct rx_call *acall, struct AFSFid *Fid,
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(5,
-	    ("StoreData: Fid = %u.%u.%u, Host %s:%d, Id %d\n", Fid->Volume,
-	     Fid->Vnode, Fid->Unique, inet_ntoa(logHostAddr),
-	     ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	    ("StoreData: Fid = %u.%u.%u, Host %s, Id %d\n", Fid->Volume,
+	     Fid->Vnode, Fid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)),
+	     t_client->ViceId));
 
     /*
      * Get associated volume/vnode for the stored file; caller's rights
@@ -3062,8 +3058,9 @@ SRXAFS_StoreACL(struct rx_call * acall, struct AFSFid * Fid,
     struct rx_connection *tcon;
     struct host *thost;
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct fsstats fsstats;
+    rx_addr_str_t hoststr;
 
     fsstats_StartOp(&fsstats, FS_STATS_RPCIDX_STOREACL);
 
@@ -3072,11 +3069,11 @@ SRXAFS_StoreACL(struct rx_call * acall, struct AFSFid * Fid,
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_StoreACL, Fid = %u.%u.%u, ACL=%s, Host %s:%d, Id %d\n",
+	    ("SAFS_StoreACL, Fid = %u.%u.%u, ACL=%s, Host %s, Id %d\n",
 	     Fid->Volume, Fid->Vnode, Fid->Unique, AccessList->AFSOpaque_val,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.StoreACL++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -3155,16 +3152,17 @@ SAFSS_StoreStatus(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client = NULL;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_StoreStatus,  Fid	= %u.%u.%u, Host %s:%d, Id %d\n",
-	     Fid->Volume, Fid->Vnode, Fid->Unique, inet_ntoa(logHostAddr),
-	     ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	    ("SAFS_StoreStatus,  Fid	= %u.%u.%u, Host %s, Id %d\n",
+	     Fid->Volume, Fid->Vnode, Fid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)),
+	     t_client->ViceId));
     FS_LOCK;
     AFSCallStats.StoreStatus++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -3277,17 +3275,18 @@ SAFSS_RemoveFile(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     FidZero(&dir);
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_RemoveFile %s,  Did = %u.%u.%u, Host %s:%d, Id %d\n", Name,
+	    ("SAFS_RemoveFile %s,  Did = %u.%u.%u, Host %s, Id %d\n", Name,
 	     DirFid->Volume, DirFid->Vnode, DirFid->Unique,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.RemoveFile++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -3411,18 +3410,19 @@ SAFSS_CreateFile(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     FidZero(&dir);
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_CreateFile %s,  Did = %u.%u.%u, Host %s:%d, Id %d\n", Name,
+	    ("SAFS_CreateFile %s,  Did = %u.%u.%u, Host %s, Id %d\n", Name,
 	     DirFid->Volume, DirFid->Vnode, DirFid->Unique,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.CreateFile++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -3566,9 +3566,10 @@ SAFSS_Rename(struct rx_call *acall, struct AFSFid *OldDirFid, char *OldName,
     int updatefile = 0;		/* are we changing the renamed file? (we do this
 				 * if we need to update .. on a renamed dir) */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
     afs_ino_str_t stmp;
+    rx_addr_str_t hoststr;
 
     FidZero(&olddir);
     FidZero(&newdir);
@@ -3577,12 +3578,12 @@ SAFSS_Rename(struct rx_call *acall, struct AFSFid *OldDirFid, char *OldName,
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_Rename %s	to %s,	Fid = %u.%u.%u to %u.%u.%u, Host %s:%d, Id %d\n",
+	    ("SAFS_Rename %s	to %s,	Fid = %u.%u.%u to %u.%u.%u, Host %s, Id %d\n",
 	     OldName, NewName, OldDirFid->Volume, OldDirFid->Vnode,
 	     OldDirFid->Unique, NewDirFid->Volume, NewDirFid->Vnode,
-	     NewDirFid->Unique, inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     NewDirFid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.Rename++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -4057,19 +4058,20 @@ SAFSS_Symlink(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     FdHandle_t *fdP;
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     FidZero(&dir);
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_Symlink %s to %s,  Did = %u.%u.%u, Host %s:%d, Id %d\n", Name,
+	    ("SAFS_Symlink %s to %s,  Did = %u.%u.%u, Host %s, Id %d\n", Name,
 	     LinkContents, DirFid->Volume, DirFid->Vnode, DirFid->Unique,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.Symlink++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -4234,19 +4236,20 @@ SAFSS_Link(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     FidZero(&dir);
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_Link %s,	Did = %u.%u.%u,	Fid = %u.%u.%u, Host %s:%d, Id %d\n",
+	    ("SAFS_Link %s,	Did = %u.%u.%u,	Fid = %u.%u.%u, Host %s, Id %d\n",
 	     Name, DirFid->Volume, DirFid->Vnode, DirFid->Unique,
 	     ExistingFid->Volume, ExistingFid->Vnode, ExistingFid->Unique,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.Link++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -4416,19 +4419,20 @@ SAFSS_MakeDir(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     FidZero(&dir);
     FidZero(&parentdir);
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_MakeDir %s,  Did = %u.%u.%u, Host %s:%d, Id %d\n", Name,
+	    ("SAFS_MakeDir %s,  Did = %u.%u.%u, Host %s, Id %d\n", Name,
 	     DirFid->Volume, DirFid->Vnode, DirFid->Unique,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.MakeDir++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -4581,18 +4585,19 @@ SAFSS_RemoveDir(struct rx_call *acall, struct AFSFid *DirFid, char *Name,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     FidZero(&dir);
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_RemoveDir	%s,  Did = %u.%u.%u, Host %s:%d, Id %d\n", Name,
+	    ("SAFS_RemoveDir	%s,  Did = %u.%u.%u, Host %s, Id %d\n", Name,
 	     DirFid->Volume, DirFid->Vnode, DirFid->Unique,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.RemoveDir++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -4705,9 +4710,10 @@ SAFSS_SetLock(struct rx_call *acall, struct AFSFid *Fid, ViceLockType type,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     static char *locktype[4] = { "LockRead", "LockWrite", "LockExtend", "LockRelease" };
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     if (type != LockRead && type != LockWrite) {
 	errorCode = EINVAL;
@@ -4715,11 +4721,11 @@ SAFSS_SetLock(struct rx_call *acall, struct AFSFid *Fid, ViceLockType type,
     }
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_SetLock type = %s Fid = %u.%u.%u, Host %s:%d, Id %d\n",
+	    ("SAFS_SetLock type = %s Fid = %u.%u.%u, Host %s, Id %d\n",
 	     locktype[(int)type], Fid->Volume, Fid->Vnode, Fid->Unique,
-	     inet_ntoa(logHostAddr), ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	     rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)), t_client->ViceId));
     FS_LOCK;
     AFSCallStats.SetLock++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -4808,16 +4814,17 @@ SAFSS_ExtendLock(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_ExtendLock Fid = %u.%u.%u, Host %s:%d, Id %d\n", Fid->Volume,
-	     Fid->Vnode, Fid->Unique, inet_ntoa(logHostAddr),
-	     ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	    ("SAFS_ExtendLock Fid = %u.%u.%u, Host %s, Id %d\n", Fid->Volume,
+	     Fid->Vnode, Fid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)),
+	     t_client->ViceId));
     FS_LOCK;
     AFSCallStats.ExtendLock++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -4907,16 +4914,17 @@ SAFSS_ReleaseLock(struct rx_call *acall, struct AFSFid *Fid,
     struct client *client = 0;	/* pointer to client structure */
     afs_int32 rights, anyrights;	/* rights for this and any user */
     struct client *t_client;	/* tmp ptr to client data */
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     struct rx_connection *tcon = rx_ConnectionOf(acall);
+    rx_addr_str_t hoststr;
 
     /* Get ptr to client data for user Id for logging */
     t_client = (struct client *)rx_GetSpecific(tcon, rxcon_client_key);
-    logHostAddr.s_addr = rxr_HostOf(tcon);
+    logHostAddr = rxr_SockAddrOf(tcon);
     ViceLog(1,
-	    ("SAFS_ReleaseLock Fid = %u.%u.%u, Host %s:%d, Id %d\n", Fid->Volume,
-	     Fid->Vnode, Fid->Unique, inet_ntoa(logHostAddr),
-	     ntohs(rxr_PortOf(tcon)), t_client->ViceId));
+	    ("SAFS_ReleaseLock Fid = %u.%u.%u, Host %s, Id %d\n", Fid->Volume,
+	     Fid->Vnode, Fid->Unique, rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr)),
+	     t_client->ViceId));
     FS_LOCK;
     AFSCallStats.ReleaseLock++, AFSCallStats.TotalCalls++;
     FS_UNLOCK;
@@ -5705,6 +5713,7 @@ SRXAFS_FlushCPS(struct rx_call * acall, struct ViceIds * vids,
     afs_int32 nids, naddrs;
     afs_int32 *vd, *addr;
     Error errorCode = 0;		/* return code to caller */
+    struct rx_sockaddr saddr;
 
     ViceLog(1, ("SRXAFS_FlushCPS\n"));
     FS_LOCK;
@@ -5732,8 +5741,10 @@ SRXAFS_FlushCPS(struct rx_call * acall, struct ViceIds * vids,
 
     addr = addrs->IPAddrs_val;
     for (i = 0; i < naddrs; i++, addr++) {
-	if (*addr)
-	    h_flushhostcps(*addr, htons(7001));
+	if (*addr) {
+	    rx_ipv4_to_sockaddr(*addr, htons(7001), 0, &saddr);
+	    h_flushhostcps(&saddr);
+	}
     }
 
   Bad_FlushCPS:
@@ -6419,8 +6430,9 @@ StoreData_RXStyle(Volume * volptr, Vnode * targetptr, struct AFSFid * Fid,
     int linkCount = 0;		/* link count on inode */
     ssize_t nBytes;
     FdHandle_t *fdP;
-    struct in_addr logHostAddr;	/* host ip holder for inet_ntoa */
+    struct rx_sockaddr *logHostAddr;	/* host ip holder for inet_ntoa */
     afs_ino_str_t stmp;
+    rx_addr_str_t hoststr;
 
     /*
      * Initialize the byte count arguments.
@@ -6436,12 +6448,12 @@ StoreData_RXStyle(Volume * volptr, Vnode * targetptr, struct AFSFid * Fid,
 
     if (Pos == -1 || VN_GET_INO(targetptr) == 0) {
 	/* the inode should have been created in Alloc_NewVnode */
-	logHostAddr.s_addr = rxr_HostOf(rx_ConnectionOf(Call));
+	logHostAddr = rxr_SockAddrOf(rx_ConnectionOf(Call));
 	ViceLog(0,
-		("StoreData_RXStyle : Inode non-existent Fid = %u.%u.%u, inode = %llu, Pos %llu Host %s:%d\n",
+		("StoreData_RXStyle : Inode non-existent Fid = %u.%u.%u, inode = %llu, Pos %llu Host %s\n",
 		 Fid->Volume, Fid->Vnode, Fid->Unique,
 		 (afs_uintmax_t) VN_GET_INO(targetptr), (afs_uintmax_t) Pos,
-		 inet_ntoa(logHostAddr), ntohs(rxr_PortOf(rx_ConnectionOf(Call)))));
+		 rx_print_sockaddr(logHostAddr, hoststr, sizeof(hoststr))));
 	return ENOENT;		/* is this proper error code? */
     } else {
 	rx_KeepAliveOff(Call);

@@ -184,9 +184,9 @@ pthread_key_t viced_uclient_key;
 
 char FS_HostName[128] = "localhost";
 char *FS_configPath = NULL;
-afs_uint32 FS_HostAddr_NBO;
-afs_uint32 FS_HostAddr_HBO;
-afs_uint32 FS_HostAddrs[ADDRSPERSITE], FS_HostAddr_cnt = 0, FS_registered = 0;
+struct rx_sockaddr FS_HostAddr_NBO;
+struct rx_address FS_HostAddr_HBO;
+afs_uint32 FS_HostAddrs[ADDRSPERSITE], FS_HostAddr_cnt = 0, FS_registered = 0; /* should I change FS_HostAddrs? reads from a file... */
 /* All addresses in FS_HostAddrs are in NBO */
 afsUUID FS_HostUUID;
 
@@ -1835,7 +1835,7 @@ main(int argc, char *argv[])
     int curLimit;
     time_t t;
     struct tm tm;
-    afs_uint32 rx_bindhost;
+    afs_uint32 rx_bindhost; /* I have to change FS_HostAddrs first */
     VolumePackageOptions opts;
 
 #ifdef	AFS_AIX32_ENV
@@ -2210,13 +2210,14 @@ main(int argc, char *argv[])
     if (!he) {
 	ViceLog(0, ("Can't find address for FileServer '%s'\n", FS_HostName));
     } else {
-	char hoststr[16];
-	memcpy(&FS_HostAddr_NBO, he->h_addr, 4);
-	(void)afs_inet_ntoa_r(FS_HostAddr_NBO, hoststr);
-	FS_HostAddr_HBO = ntohl(FS_HostAddr_NBO);
+	rx_addr_str_t hoststr;
+        rx_ipv4_to_sockaddr(0, 0, 0, &FS_HostAddr_NBO);
+	memcpy(&FS_HostAddr_NBO.rxsa_in_addr, he->h_addr, 4);
+	(void)rx_print_sockaddr(&FS_HostAddr_NBO, hoststr, sizeof(hoststr));
+        rx_sockaddr_to_address(&FS_HostAddr_NBO, &FS_HostAddr_HBO);
 	ViceLog(0,
 		("FileServer %s has address %s (0x%x or 0x%x in host byte order)\n",
-		 FS_HostName, hoststr, FS_HostAddr_NBO, FS_HostAddr_HBO));
+		 FS_HostName, hoststr, FS_HostAddr_NBO.rxsa_in_addr, FS_HostAddr_HBO.rxa_s_addr));
     }
 
     t = tp.tv_sec;

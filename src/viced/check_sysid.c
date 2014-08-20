@@ -35,7 +35,7 @@ main(int argc, char **argv)
     struct versionStamp vs;
     afsUUID uuid;
     int nentries;
-    int addr;
+    int addr; /* reads from a file... */
 
     if ((argc != 2) || (strcmp(argv[1], "-h") == 0)) {
 	printf("Usage: check_sysid <sysid_file>\n");

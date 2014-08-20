@@ -13,6 +13,7 @@
 #define _AFS_VICED_HOST_H
 
 #include "fs_stats.h"		/*File Server stats package */
+#include <rx/rx_addr.h>
 
 /*
  * There are three locks in the host package.
@@ -40,8 +41,7 @@ struct Identity {
 };
 
 struct AddrPort  {
-    afs_uint32 addr;		/* in network byte order */
-    afs_uint16 port;		/* in network byte order */
+    struct rx_sockaddr saddr;		/* in network byte order */
     afs_int16  valid;
 };
 
@@ -56,10 +56,9 @@ struct host {
     struct host *next, *prev;	/* linked list of all hosts */
     struct rx_connection *callback_rxcon;	/* rx callback connection */
     afs_uint32 refCount; /* reference count */
-    afs_uint32 host;		/* IP address of host interface that is
+    struct rx_sockaddr saddr;	/* IP address, port and service of host interface that is
 				 * currently being used, in network
 				 * byte order */
-    afs_uint16 port;		/* port address of host */
     char Console;		/* XXXX This host is a console */
     unsigned short hostFlags;		/*  bit map */
     char InSameNetwork;		/*Is host's addr in the same network as
@@ -97,7 +96,7 @@ struct host {
 struct h_AddrHashChain {
     struct host *hostPtr;
     struct h_AddrHashChain *next;
-    afs_uint32 addr;
+    afs_uint32 addr; /* change or not? */
     afs_uint16 port;
 };
 
@@ -207,7 +206,7 @@ extern int PrintCallBackStats(void);
 extern void *ShutDown(void *);
 extern void ShutDownAndCore(int dopanic);
 
-extern int h_Lookup_r(afs_uint32 hostaddr, afs_uint16 hport,
+extern int h_Lookup_r(struct rx_sockaddr *saddr,
 		      struct host **hostp);
 extern struct host *h_LookupUuid_r(afsUUID * uuidp);
 extern void h_Enumerate(int (*proc) (struct host *, void *), void *param);
@@ -225,20 +224,19 @@ extern void h_PrintStats(void);
 extern void h_PrintClients(void);
 extern void h_GetWorkStats(int *, int *, int *, afs_int32);
 extern void h_GetWorkStats64(afs_uint64 *, afs_uint64 *, afs_uint64 *, afs_int32);
-extern void h_flushhostcps(afs_uint32 hostaddr,
-			   afs_uint16 hport);
+extern void h_flushhostcps(struct rx_sockaddr *saddr);
 extern void h_GetHostNetStats(afs_int32 * a_numHostsP, afs_int32 * a_sameNetOrSubnetP,
 		  afs_int32 * a_diffSubnetP, afs_int32 * a_diffNetworkP);
 extern int h_NBLock_r(struct host *host);
 extern void h_DumpHosts(void);
 extern void h_InitHostPackage(int hquota);
 extern void h_CheckHosts(void );
-extern void h_AddHostToAddrHashTable_r(afs_uint32 addr, afs_uint16 port, struct host * host);
+extern void h_AddHostToAddrHashTable_r(struct rx_sockaddr *saddr, struct host * host);
 extern void h_AddHostToUuidHashTable_r(afsUUID * uuid, struct host * host);
-extern int h_DeleteHostFromAddrHashTable_r(afs_uint32 addr, afs_uint16 port, struct host *host);
+extern int h_DeleteHostFromAddrHashTable_r(struct rx_sockaddr *saddr, struct host *host);
 extern int h_DeleteHostFromUuidHashTable_r(struct host *host);
-extern int addInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port);
-extern int removeInterfaceAddr_r(struct host *host, afs_uint32 addr, afs_uint16 port);
+extern int addInterfaceAddr_r(struct host *host, struct rx_sockaddr *saddr);
+extern int removeInterfaceAddr_r(struct host *host, struct rx_sockaddr *saddr);
 extern afs_int32 hpr_Initialize(struct ubik_client **);
 extern int hpr_End(struct ubik_client *);
 extern int hpr_IdToName(idlist *ids, namelist *names);
@@ -269,6 +267,9 @@ struct host *(hosttableptrs[h_MAXHOSTTABLES]);	/* Used by h_itoh */
 
 #define rxr_HostOf(aconn) \
     rx_HostOf(rx_PeerOf((struct rx_connection *)(aconn)))
+
+#define rxr_SockAddrOf(aconn) \
+    rx_SockAddrOf(rx_PeerOf((struct rx_connection *)(aconn)))
 
 #define HCPS_INPROGRESS			0x01	/*set when CPS is being updated */
 #define HCPS_WAITING			0x02	/*waiting for CPS to get updated */

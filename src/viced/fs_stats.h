@@ -329,8 +329,8 @@ extern struct afs_PerfStats afs_perfstats;
   * host byte order.
   */
 extern char FS_HostName[];
-extern afs_uint32 FS_HostAddr_NBO;
-extern afs_uint32 FS_HostAddr_HBO;
+extern struct rx_sockaddr FS_HostAddr_NBO;
+extern struct rx_address FS_HostAddr_HBO;
 
 /* Logging helper functions */
 struct fsstats {

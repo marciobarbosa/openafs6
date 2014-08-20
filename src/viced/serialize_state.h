@@ -93,7 +93,7 @@ struct host_state_entry_header {
 };
 
 /* 36 byte host entry structure */
-struct hostDiskEntry {
+struct hostDiskEntry { /* Can I change it? */
     afs_uint32 host;		/* IP address of host interface that is
 				 * currently being used, in network
 				 * byte order */

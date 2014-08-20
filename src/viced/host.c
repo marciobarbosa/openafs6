@@ -3111,7 +3111,7 @@ static int h_stateRestoreHost(struct fs_dump_state * state);
 static int h_stateRestoreIndex(struct host * h, void *rock);
 static int h_stateVerifyHost(struct host * h, void *rock);
 static int h_stateVerifyAddrHash(struct fs_dump_state * state, struct host * h,
-                                 afs_uint32 addr, afs_uint16 port, int valid);
+                                 struct rx_sockaddr *saddr, int valid);
 static int h_stateVerifyUuidHash(struct fs_dump_state * state, struct host * h);
 static void h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out);
 static void h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out);
@@ -3262,8 +3262,7 @@ h_stateVerifyHost(struct host * h, void* rock)
 
     if (h->interface) {
 	for (i = h->interface->numberOfInterfaces-1; i >= 0; i--) {
-	    if (h_stateVerifyAddrHash(state, h, h->interface->interface[i].addr,
-				      h->interface->interface[i].port,
+	    if (h_stateVerifyAddrHash(state, h, &h->interface->interface[i].saddr,
 				      h->interface->interface[i].valid)) {
 		state->bail = 1;
 	    }
@@ -3271,7 +3270,7 @@ h_stateVerifyHost(struct host * h, void* rock)
 	if (h_stateVerifyUuidHash(state, h)) {
 	    state->bail = 1;
 	}
-    } else if (h_stateVerifyAddrHash(state, h, h->host, h->port, 1)) {
+    } else if (h_stateVerifyAddrHash(state, h, &h->saddr, 1)) {
 	state->bail = 1;
     }
 
@@ -3312,12 +3311,12 @@ h_stateVerifyAddrHash(struct fs_dump_state * state, struct host * h,
     for (chain = hostAddrHashTable[index]; chain; chain = chain->next) {
 	host = chain->hostPtr;
 	if (host == NULL) {
-	    afs_inet_ntoa_r(saddr, tmp, sizeof(tmp));
+	    rx_print_sockaddr(saddr, tmp, sizeof(tmp));
 	    ViceLog(0, ("h_stateVerifyAddrHash: error: addr hash chain has NULL host ptr (lookup addr %s)\n", tmp));
 	    ret = 1;
 	    goto done;
 	}
-	if ((chain->addr == saddr.rxsa_in_addr) && (chain->port == rx_get_sockaddr_port(saddr))) {
+	if ((chain->addr == saddr->rxsa_in_addr) && (chain->port == rx_get_sockaddr_port(saddr))) {
 	    if (host != h) {
 		if (valid) {
 		    ViceLog(0, ("h_stateVerifyAddrHash: warning: addr hash entry "
@@ -3349,11 +3348,11 @@ h_stateVerifyAddrHash(struct fs_dump_state * state, struct host * h,
     if (!found && valid) {
 	rx_print_sockaddr(saddr, tmp, sizeof(tmp));
 	if (state->mode == FS_STATE_LOAD_MODE) {
-	    ViceLog(0, ("h_stateVerifyAddrHash: error: addr %s not found in hash\n", tmp, ));
+	    ViceLog(0, ("h_stateVerifyAddrHash: error: addr %s not found in hash\n", tmp));
 	    ret = 1;
 	    goto done;
 	} else {
-	    ViceLog(0, ("h_stateVerifyAddrHash: warning: addr %s not found in hash\n", tmp, ));
+	    ViceLog(0, ("h_stateVerifyAddrHash: warning: addr %s not found in hash\n", tmp));
 	    state->flags.warnings_generated = 1;
 	}
     }
@@ -3465,9 +3464,9 @@ h_stateSaveHost(struct host * host, void* rock)
     int iovcnt = 2;
 
     if (h_isBusy_r(host)) {
-	char hoststr[16];
-	ViceLog(1, ("Not saving host %s:%d to disk; host appears busy\n",
-	            afs_inet_ntoa_r(host->host, hoststr), (int)ntohs(host->port)));
+	rx_addr_str_t hoststr;
+	ViceLog(1, ("Not saving host %s to disk; host appears busy\n",
+	            rx_print_sockaddr(&host->saddr, hoststr, sizeof(hoststr))));
 	/* Make sure we don't try to save callbacks to disk for this host, or
 	 * we'll get confused on restore */
 	DeleteAllCallBacks_r(host, 1);
@@ -3625,15 +3624,13 @@ h_stateRestoreHost(struct fs_dump_state * state)
     h_diskEntryToHost_r(&hdsk, host);
     h_SetupCallbackConn_r(host);
 
-    h_AddHostToAddrHashTable_r(host->host, host->port, host);
+    h_AddHostToAddrHashTable_r(&host->saddr, host);
     if (ifp) {
 	int i;
 	for (i = ifp->numberOfInterfaces-1; i >= 0; i--) {
             if (ifp->interface[i].valid &&
-                !(ifp->interface[i].addr == host->host &&
-                  ifp->interface[i].port == host->port)) {
-                h_AddHostToAddrHashTable_r(ifp->interface[i].addr,
-                                           ifp->interface[i].port,
+                !(rx_compare_sockaddr(&ifp->interface[i].saddr, &host->saddr, RXA_AP))) {
+                h_AddHostToAddrHashTable_r(&ifp->interface[i].saddr,
                                            host);
             }
 	}
@@ -3660,8 +3657,8 @@ h_stateRestoreHost(struct fs_dump_state * state)
 static void
 h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
 {
-    out->host = in->host;
-    out->port = in->port;
+    out->host = in->saddr.rxsa_in_addr;
+    out->port = rx_get_sockaddr_port(&in->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
     out->hcpsfailed = in->hcpsfailed;
@@ -3681,8 +3678,7 @@ h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
 static void
 h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out)
 {
-    out->host = in->host;
-    out->port = in->port;
+    rx_ipv4_to_sockaddr(in->host, in->port, 0, &out->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
     out->hcpsfailed = in->hcpsfailed;

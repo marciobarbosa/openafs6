@@ -1285,8 +1285,8 @@ dump_he_interfaces(void)
     for (i = 0; i < he_cursor.hdr.interfaces; i++) {
 	snprintf(temp_str, sizeof(temp_str), "interface[%d]", i);
 	DPFSO1(temp_str);
-	DPFS2("addr", afs_inet_ntoa_r(ifp->interface[i].addr, hoststr));
-	DPFV2("port", "u", ifp->interface[i].port);
+	DPFS2("addr", afs_inet_ntoa_r(ifp->interface[i].saddr.rxsa_in_addr, hoststr));
+	DPFV2("port", "u", ifp->interface[i].saddr.rxsa_in_port);
 	DPFSC1;
     }
 

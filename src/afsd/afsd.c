@@ -1417,7 +1417,7 @@ ConfigCell(struct afsconf_cell *aci, void *arock, struct afsconf_dir *adir)
     int isHomeCell;
     int i, code;
     int cellFlags = 0;
-    afs_int32 hosts[MAXHOSTSPERCELL];
+    rx_in_addr_t hosts[MAXHOSTSPERCELL];
 
     /* figure out if this is the home cell */
     isHomeCell = (strcmp(aci->name, LclCellName) == 0);

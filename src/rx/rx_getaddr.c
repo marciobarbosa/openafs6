@@ -53,7 +53,13 @@ struct rx_sockaddr rxi_tempAddr;	/* default attempt */
 
 /* set the advisory noise */
 void
-rxi_setaddr(struct rx_sockaddr *x)
+rxi_setaddr(afs_uint32 x)
+{
+   // xxx
+}
+
+void
+rxi_setaddr2(struct rx_sockaddr *x)
 {
     rx_copy_sockaddr(x, &rxi_tempAddr);
 }
@@ -71,7 +77,12 @@ rxi_getaddr(void)
 
 /* to satisfy those who call setaddr */
 void
-rxi_setaddr(struct rx_sockaddr *x)
+rxi_setaddr(afs_uint32 x)
+{
+}
+
+void
+rxi_setaddr2(struct rx_sockaddr *x)
 {
 }
 

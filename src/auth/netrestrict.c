@@ -389,7 +389,7 @@ filterAddrs(struct rx_sockaddr addr1[], struct rx_sockaddr addr2[], struct rx_so
 	}
 
 	/* Always mask loopback address */
-	if (found && rx_is_loopback_address(&addr1[i]))
+	if (found && rx_is_loopback_sockaddr(&addr1[i]))
 	    found = 0;
 
 	if (found) {

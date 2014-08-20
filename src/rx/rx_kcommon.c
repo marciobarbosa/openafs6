@@ -1121,7 +1121,9 @@ rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct rx_sockaddr *saddr)
     afs_int32 rlen;
     afs_int32 tlen;
     afs_int32 savelen;		/* was using rlen but had aliasing problems */
+#ifdef RXDEBUG
     rx_addr_str_t hoststr;
+#endif
     rx_computelen(p, tlen);
     rx_SetDataSize(p, tlen);	/* this is the size of the user data area */
 
@@ -1153,7 +1155,7 @@ rxk_ReadPacket(osi_socket so, struct rx_packet *p, struct rx_sockaddr *saddr)
 	AFS_GUNLOCK();
     }
 #endif
-    code = osi_NetReceive(rx_socket, &from.addr.sa, p->wirevec, p->niovecs, &nbytes);
+    code = osi_NetReceive(rx_socket, &from, p->wirevec, p->niovecs, &nbytes);
 
 #ifdef RX_KERNEL_TRACE
     if (ICL_SETACTIVE(afs_iclSetp)) {

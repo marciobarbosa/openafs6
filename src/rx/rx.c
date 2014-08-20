@@ -6571,7 +6571,6 @@ rxi_NatKeepAliveEvent(struct rxevent *event, void *arg1,
     struct rx_connection *conn = arg1;
     struct rx_header theader;
     char tbuffer[1 + sizeof(struct rx_header)];
-    struct sockaddr_in taddr;
     char *tp;
     char a[1] = { 0 };
     struct iovec tmpiov[2];
@@ -6581,12 +6580,6 @@ rxi_NatKeepAliveEvent(struct rxevent *event, void *arg1,
 
 
     tp = &tbuffer[sizeof(struct rx_header)];
-    taddr.sin_family = AF_INET;
-    taddr.sin_port = rx_PortOf(rx_PeerOf(conn));
-    taddr.sin_addr.s_addr = rx_HostOf(rx_PeerOf(conn));
-#ifdef STRUCT_SOCKADDR_HAS_SA_LEN
-    taddr.sin_len = sizeof(struct sockaddr_in);
-#endif
     memset(&theader, 0, sizeof(theader));
     theader.epoch = htonl(999);
     theader.cid = 0;
@@ -6602,7 +6595,7 @@ rxi_NatKeepAliveEvent(struct rxevent *event, void *arg1,
     tmpiov[0].iov_base = tbuffer;
     tmpiov[0].iov_len = 1 + sizeof(struct rx_header);
 
-    osi_NetSend(socket, &taddr, tmpiov, 1, 1 + sizeof(struct rx_header), 1);
+    osi_NetSend(socket, rx_SockAddrOf(rx_PeerOf(conn)), tmpiov, 1, 1 + sizeof(struct rx_header), 1);
 
     MUTEX_ENTER(&conn->conn_data_lock);
     MUTEX_ENTER(&rx_refcnt_mutex);

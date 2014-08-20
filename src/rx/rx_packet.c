@@ -1425,7 +1425,9 @@ rxi_ReadPacket(osi_socket socket, struct rx_packet *p, struct rx_sockaddr *saddr
     rx_computelen(p, tlen);
     rx_SetDataSize(p, tlen);	/* this is the size of the user data area */
     rx_in_addr_t ipv4;
+#ifdef RXDEBUG
     rx_addr_str_t hoststr;
+#endif
 
     tlen += RX_HEADER_SIZE;	/* now this is the size of the entire packet */
     rlen = rx_maxJumboRecvSize;	/* this is what I am advertising.  Only check

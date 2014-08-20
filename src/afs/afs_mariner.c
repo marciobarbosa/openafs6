@@ -20,6 +20,7 @@
 #include "afs/sysincludes.h"	/*Standard vendor system headers */
 #include "afsincludes.h"	/*AFS-based standard headers */
 #include "afs/afs_stats.h"	/* statistics */
+#include <rx/rx_addr.h>
 
 /* Exported variables */
 struct rx_service *afs_server;
@@ -33,7 +34,7 @@ static int marinerPtr = 0;	/* pointer to next mariner slot to use */
 
 /* Exported variables */
 afs_int32 afs_mariner = 0;
-afs_int32 afs_marinerHost = 0;
+rx_in_addr_t afs_marinerHost = 0;
 
 int
 afs_AddMarinerName(char *aname, struct vcache *avc)
@@ -77,17 +78,12 @@ afs_MarinerLogFetch(struct vcache *avc, afs_int32 off,
 void
 afs_MarinerLog(char *astring, struct vcache *avc)
 {
-    struct sockaddr_in taddr;
+    struct rx_sockaddr taddr;
     char *tp, *tp1, *buf;
     struct iovec dvec;
 
     AFS_STATCNT(afs_MarinerLog);
-    taddr.sin_family = AF_INET;
-    taddr.sin_addr.s_addr = afs_marinerHost;
-    taddr.sin_port = htons(2106);
-#ifdef  STRUCT_SOCKADDR_HAS_SA_LEN
-    taddr.sin_len = sizeof(taddr);
-#endif
+    rx_ipv4_to_sockaddr(afs_marinerHost, htons(2106), 0, &taddr);
     tp = buf = osi_AllocSmallSpace(AFS_SMALLOCSIZ);
 
     strcpy(tp, astring);

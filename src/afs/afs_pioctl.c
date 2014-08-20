@@ -28,8 +28,10 @@
 #include "afs/afs_bypasscache.h"
 #include "rx/rx_globals.h"
 #include "token.h"
+#include <rx/rx_addr.h>
 
 extern int afs_rmtsys_enable;
+extern rx_in_addr_t afs_marinerHost;
 struct VenusFid afs_rootFid;
 afs_int32 afs_waitForever = 0;
 short afs_waitForeverCount = 0;

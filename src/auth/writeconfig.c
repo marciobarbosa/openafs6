@@ -40,8 +40,8 @@ VerifyEntries(struct afsconf_cell *aci)
 			   aci->hostName[i]);
 		    return AFSCONF_FAILURE;
 		}
-		memcpy(&aci->hostAddr[i].addr.sin.sin_addr, th->h_addr,
-		       sizeof(afs_int32)); /* do I need to set the other fields? (don't think so) */
+		rx_ipv4_to_sockaddr(0, 0, 0, &aci->hostAddr[i]);
+		memcpy(&aci->hostAddr[i].addr.sin.sin_addr, th->h_addr, sizeof(afs_int32));
 	    }
 	    /* otherwise we're deleting this entry */
 	} else {

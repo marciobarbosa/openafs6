@@ -348,7 +348,7 @@ rx_getAllAddr_internal2(struct rx_sockaddr buffer[], int maxSize, int loopbacks)
 		addrcount--;
 		continue;	/* skip aliased loopbacks as well. */
 	    } else {
-		memcpy(&buffer[count++].addr.sin, a, sizeof(struct sockaddr_in));
+		rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &buffer[count++]);
 	    }
 	    addrcount--;
 	    ifam = (struct ifa_msghdr *)((char *)ifam + ifam->ifam_msglen);
@@ -535,19 +535,17 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 	    }
 	    a = (struct sockaddr_in *) info.rti_info[RTAX_IFA];
 
-	    saddr = xxx_rx_CreateSockAddr(ntohl(a->sin_addr.s_addr), 0);
-
-	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr)) {
+	    if (!rx_IsLoopbackAddr(ntohl(a->sin_addr.s_addr))) {
 		if (count >= maxSize) {	/* no more space */
 		    dpf(("Too many interfaces..ignoring 0x%x\n",
 			   a->sin_addr.s_addr));
 		} else {
 		    struct ifreq ifr;
 
-		    memcpy(&addrBuffer[count].addr.sin, a, sizeof(struct sockaddr_in));
+		    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &addrBuffer[count]);
 		    a = (struct sockaddr_in *) info.rti_info[RTAX_NETMASK];
 		    if (a)
-			memcpy(&maskBuffer[count].addr.sin, a, sizeof(struct sockaddr_in));
+			rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &maskBuffer[count]);
 		    else
 			rx_ipv4_to_sockaddr(htonl(0xffffffff), 0, 0, &maskBuffer[count]);
 
@@ -635,8 +633,7 @@ rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
 	ifr = &ifs[i];
 #endif
 	a = (struct sockaddr_in *)&ifr->ifr_addr;
-	saddr.addrtype = a->sin_family;
-	memcpy(&saddr.addr.sin, a, sizeof(struct sockaddr_in));
+	rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &saddr);
 #ifdef AFS_AIX51_ENV
 	cpnext = cp + sizeof(ifr->ifr_name) + MAX(a->sin_len, sizeof(*a));
 #endif
@@ -715,8 +712,7 @@ rx_getAllAddr_internal2(struct rx_sockaddr buffer[], int maxSize, int loopbacks)
 	ifr = &ifs[i];
 #endif
 	a = (struct sockaddr_in *)&ifr->ifr_addr;
-	saddr.addrtype = a->sin_family;
-	memcpy(&saddr.addr.sin, a, sizeof(struct sockaddr_in));
+	rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &saddr);
 #ifdef AFS_AIX51_ENV
 	cpnext = cp + sizeof(ifr->ifr_name) + MAX(a->sin_len, sizeof(*a));
 #endif
@@ -738,7 +734,7 @@ rx_getAllAddr_internal2(struct rx_sockaddr buffer[], int maxSize, int loopbacks)
 		dpf(("Too many interfaces..ignoring 0x%x\n",
 		       a->sin_addr.s_addr));
 	    else
-		memcpy(&buffer[count++].addr.sin, a, sizeof(struct sockaddr_in));
+		rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &buffer[count++]);
 	}
     }
     close(s);
@@ -934,13 +930,13 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 		continue;
 	    }
 
-	    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &addrBuffer[count].addr.sin);
+	    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &addrBuffer[count]);
 
 	    if (ioctl(s, SIOCGIFNETMASK, (caddr_t) ifr) < 0) {
 		perror("SIOCGIFNETMASK");
 		rx_ipv4_to_sockaddr(htonl(0xffffffff), 0, 0, &maskBuffer[count]);
 	    } else {
-		memcpy(&maskBuffer[count].addr.sin, &ifr->ifr_addr, sizeof(struct sockaddr_in));
+		rx_ipv4_to_sockaddr(((struct sockaddr_in*)&ifr->ifr_addr)->sin_addr.s_addr, ((struct sockaddr_in*)&ifr->ifr_addr)->sin_port, 0, &maskBuffer[count]);
 	    }
 
 	    mtuBuffer[count] = htonl(1500);

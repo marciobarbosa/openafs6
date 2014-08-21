@@ -369,7 +369,7 @@ extern void osi_StopNetIfPoller(void);
 extern struct afs_ifinfo afsifinfo[ADDRSPERSITE];
 # endif
 extern void osi_StopListener(void);
-extern int rxi_FindIfMTU(struct rx_sockaddr *addr);
+extern int rxi_FindIfMTU(afs_uint32 addr); /* rx_in_addr_t */
 # if defined(UKERNEL)
 extern void rxi_ListenerProc(osi_socket usockp, int *tnop,
 			     struct rx_call **newcallp);

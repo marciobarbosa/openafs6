@@ -75,7 +75,7 @@ void (*sockfs_sockfree)
 #define UDP_MOD_NAME "udp"
 #endif
 
-static struct sockaddr_storage myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];
 static int myNetMTUs[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
 
@@ -92,7 +92,6 @@ rxi_GetIFInfo()
     int mtus[ADDRSPERSITE];
     afs_uint32 addrs[ADDRSPERSITE];
     afs_uint32 ifinaddr;
-    struct sockaddr_in saddr;
 
     memset(mtus, 0, sizeof(mtus));
     memset(addrs, 0, sizeof(addrs));
@@ -110,7 +109,7 @@ rxi_GetIFInfo()
 	    rxmtu = (afsifinfo[i].mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = afsifinfo[i].ipaddr;
-	    if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
+	    if (myNetAddrs[i].rxa_s_addr != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -121,9 +120,7 @@ rxi_GetIFInfo()
 	    maxmtu = rxi_AdjustMaxMTU(rxmtu, maxmtu);
 	    addrs[i] = ifinaddr;
 
-            saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
-
-	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && maxmtu > rx_maxReceiveSize) {
+	    if (!rx_IsLoopbackAddr(ifinaddr) && maxmtu > rx_maxReceiveSize) {
 		rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
 		rx_maxReceiveSize =
 		    MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
@@ -143,8 +140,7 @@ rxi_GetIFInfo()
 
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-            ((struct sockaddr_in *)&myNetAddrs[j])->sin_family = AF_INET;
-	    ((struct sockaddr_in *)&myNetAddrs[j])->sin_addr.s_addr = addrs[j];
+            rx_ipv4_to_address(addrs[j], &myNetAddrs[j]);
 	}
     }
 
@@ -170,7 +166,7 @@ rxi_GetIFInfo()
 	    rxmtu = (ipif->ipif_mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = ntohl(ipif->ipif_local_addr);
-	    if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr)
+	    if (myNetAddrs[i].rxa_s_addr != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -183,9 +179,7 @@ rxi_GetIFInfo()
 	    addrs[i] = ifinaddr;
 	    i++;
 
-            saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
-
-	    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && maxmtu > rx_maxReceiveSize) {
+	    if (!rx_IsLoopbackAddr(ifinaddr) && maxmtu > rx_maxReceiveSize) {
 		rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, maxmtu);
 		rx_maxReceiveSize =
 		    MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
@@ -203,8 +197,7 @@ rxi_GetIFInfo()
 
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-            ((struct sockaddr_in *)&myNetAddrs[j])->sin_family = AF_INET;
-	    ((struct sockaddr_in *)&myNetAddrs[j])->sin_addr.s_addr = addrs[j];
+            rx_ipv4_to_address(addrs[j], &myNetAddrs[j]);
 	}
     }
 
@@ -213,7 +206,7 @@ rxi_GetIFInfo()
 #endif
 
 int
-rxi_FindIfMTU(struct sockaddr *addr)
+rxi_FindIfMTU(afs_uint32 addr) /* rx_in_addr_t */
 {
     afs_uint32 myAddr, netMask;
     int match_value = 0;
@@ -226,24 +219,24 @@ rxi_FindIfMTU(struct sockaddr *addr)
 #endif
 
     if (numMyNetAddrs == 0)
-	rxi_GetIFInfo();
-    myAddr = ntohl(xxx_rx_IpSockAddr(addr));
+        rxi_GetIFInfo();
+    myAddr = ntohl(addr);
 
     if (IN_CLASSA(myAddr))
-	netMask = IN_CLASSA_NET;
+        netMask = IN_CLASSA_NET;
     else if (IN_CLASSB(myAddr))
-	netMask = IN_CLASSB_NET;
+        netMask = IN_CLASSB_NET;
     else if (IN_CLASSC(myAddr))
-	netMask = IN_CLASSC_NET;
+        netMask = IN_CLASSC_NET;
     else
-	netMask = 0;
+        netMask = 0;
 
 #ifdef AFS_SUN510_ENV
     (void) rw_enter(&afsifinfo_lock, RW_READER);
 
     for (i = 0; (afsifinfo[i].ipaddr != NULL) && (i < ADDRSPERSITE); i++) {
         afs_uint32 thisAddr, subnetMask;
-    	int thisMtu;
+        int thisMtu;
 
         /* Ignore addresses which are down.. */
         if ((afsifinfo[i].flags & IFF_UP) == 0)
@@ -254,8 +247,8 @@ rxi_FindIfMTU(struct sockaddr *addr)
         thisMtu = afsifinfo[i].mtu;
 
         if ((myAddr & netMask) == (thisAddr & netMask)) {
-	   if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
-	        if (myAddr == thisAddr) {
+           if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
+                if (myAddr == thisAddr) {
                     match_value = 4;
                     mtu = thisMtu;
                 }
@@ -279,38 +272,38 @@ rxi_FindIfMTU(struct sockaddr *addr)
 }
 #else
     for (ill = ill_g_head; ill; ill = ill->ill_next) {
-	/* Make sure this is an IPv4 ILL */
-	if (ill->ill_isv6)
-	    continue;
+        /* Make sure this is an IPv4 ILL */
+        if (ill->ill_isv6)
+            continue;
 
-	/* Iterate over all the addresses on this ILL */
-	for (ipif = ill->ill_ipif; ipif; ipif = ipif->ipif_next) {
-	    afs_uint32 thisAddr, subnetMask;
-	    int thisMtu;
+        /* Iterate over all the addresses on this ILL */
+        for (ipif = ill->ill_ipif; ipif; ipif = ipif->ipif_next) {
+            afs_uint32 thisAddr, subnetMask;
+            int thisMtu;
 
-	    thisAddr = ipif->ipif_local_addr;
-	    subnetMask = ipif->ipif_net_mask;
-	    thisMtu = ipif->ipif_mtu;
+            thisAddr = ipif->ipif_local_addr;
+            subnetMask = ipif->ipif_net_mask;
+            thisMtu = ipif->ipif_mtu;
 
-	    if ((myAddr & netMask) == (thisAddr & netMask)) {
-		if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
-		    if (myAddr == thisAddr) {
-			match_value = 4;
-			mtu = thisMtu;
-		    }
+            if ((myAddr & netMask) == (thisAddr & netMask)) {
+                if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
+                    if (myAddr == thisAddr) {
+                        match_value = 4;
+                        mtu = thisMtu;
+                    }
 
-		    if (match_value < 3) {
-			match_value = 3;
-			mtu = thisMtu;
-		    }
-		}
+                    if (match_value < 3) {
+                        match_value = 3;
+                        mtu = thisMtu;
+                    }
+                }
 
-		if (match_value < 2) {
-		    match_value = 2;
-		    mtu = thisMtu;
-		}
-	    }
-	}
+                if (match_value < 2) {
+                    match_value = 2;
+                    mtu = thisMtu;
+                }
+            }
+        }
     }
 
     return mtu;

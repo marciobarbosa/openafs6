@@ -291,7 +291,7 @@ rxk_init(void)
  * RX IP address routines.
  */
 
-static struct sockaddr_storage myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];
 static int myNetMTUs[ADDRSPERSITE];
 static int myNetFlags[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
@@ -364,9 +364,8 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     int i = *(int *)arg2;
     struct in_ifaddr *iap = (struct in_ifaddr *)h;
     struct ifnet *ifnp;
-    afs_uint32 ifinaddr;
+    rx_in_addr_t ifinaddr, ipv4_hbo;
     afs_uint32 rxmtu;
-    struct sockaddr_in saddr;
 
     if (i >= ADDRSPERSITE)
 	return 0;
@@ -374,16 +373,21 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     ifnp = iap->ia_ifp;
     rxmtu = (ifnp->if_mtu - RX_IPUDP_SIZE);
     ifinaddr = ntohl(iap->ia_addr.sin_addr.s_addr);
-    if (xxx_rx_IpSockAddr((struct sockaddr *)&myNetAddrs[i]) != ifinaddr) {
-    	((struct sockaddr_in *)&myNetAddrs[i])->sin_family = AF_INET;
-	((struct sockaddr_in *)&myNetAddrs[i])->sin_addr.s_addr = ifinaddr;
-	myNetMTUs[i] = rxmtu;
-	different++;
-	*(int *)arg1 = different;
+
+    if (rx_try_address_to_ipv4(&myNetAddrs[i], &ipv4_hbo)) {
+	if (ipv4_hbo != ifinaddr) {
+	    rx_ipv4_to_address(ifinaddr, &myNetAddrs[i]);
+	    myNetMTUs[i] = rxmtu;
+	    different++;
+	    *(int *)arg1 = different;
+	}
+    } else {
+    	/* ipv6 */
+    	return EAFNOSUPPORT;
     }
-    saddr = xxx_rx_CreateSockAddr(ifinaddr, 0);
+
     rxmtu = rxmtu * rxi_nRecvFrags + ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
-    if (!rx_IsLoopbackAddr((struct sockaddr *)&saddr) && (rxmtu > rx_maxReceiveSize)) {
+    if (!rx_IsLoopbackAddr(ifinaddr) && (rxmtu > rx_maxReceiveSize)) {
 	rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, rxmtu);
 	rx_maxReceiveSize = MIN(rx_maxReceiveSize, rx_maxReceiveSizeUser);
     }

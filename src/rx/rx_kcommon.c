@@ -371,11 +371,8 @@ rxi_InitPeerParams(struct rx_peer *pp)
 # ifdef AFS_USERSPACE_IP_ADDR
     afs_int32 i;
     afs_int32 mtu;
-    rx_in_addr_t ipv4;
 
-    rx_try_sockaddr_to_ipv4(&pp->saddr, &ipv4);
-
-    i = rxi_Findcbi(ipv4);
+    i = rxi_Findcbi(&pp->saddr.rxsa_in_addr);
     if (i == -1) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);
 	pp->ifMTU = MIN(RX_REMOTE_PACKET_SIZE, rx_MyMaxSendSize);
@@ -429,7 +426,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 #else /* AFS_SUN5_ENV */
     afs_int32 mtu;
 
-    mtu = rxi_FindIfMTU(&pp->saddr);
+    mtu = rxi_FindIfMTU(&pp->saddr.rxsa_in_addr);
 
     if (mtu <= 0) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);

@@ -923,8 +923,7 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 		continue;	/* ignore this address */
 	    }
 
-	    saddr.addrtype = a->sin_family;
-	    memcpy(&saddr.addr.sin, a, sizeof(struct sockaddr_in));
+	    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &saddr);
 
             if (rx_is_loopback_sockaddr(&saddr))
                 continue;   /* skip loopback address as well. */
@@ -935,7 +934,7 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 		continue;
 	    }
 
-	    memcpy(&addrBuffer[count].addr.sin, a, sizeof(struct sockaddr_in));
+	    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &addrBuffer[count].addr.sin);
 
 	    if (ioctl(s, SIOCGIFNETMASK, (caddr_t) ifr) < 0) {
 		perror("SIOCGIFNETMASK");

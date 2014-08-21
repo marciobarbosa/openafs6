@@ -332,7 +332,7 @@ rxi_MatchIfnet(struct hashbucket *h, caddr_t key, caddr_t arg1, caddr_t arg2)
 
 
 struct ifnet *
-rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
+rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
 {
     afs_uint32 ppaddr;
     int match_value = 0;
@@ -341,7 +341,7 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
     if (numMyNetAddrs == 0)
 	(void)rxi_GetIFInfo();
 
-    ppaddr = ntohl(xxx_rx_IpSockAddr(saddr));
+    ppaddr = ntohl(addr);
     ifad = (struct in_ifaddr *)&hashinfo_inaddr;
 
     (void)hash_enum(&hashinfo_inaddr, rxi_MatchIfnet, HTF_INET,
@@ -349,10 +349,8 @@ rxi_FindIfnet(struct sockaddr *saddr, struct sockaddr *smaskp)
 		    (caddr_t) & ifad);
 
     if (match_value) {
-	if (smaskp) {
-	    ((struct sockaddr_in *)smaskp)->sin_family = AF_INET;
-	    ((struct sockaddr_in *)smaskp)->sin_addr.s_addr = ifad->ia_subnetmask;
-	}
+	if (maskp)
+	    *maskp = ifad->ia_subnetmask;
 	return ifad->ia_ifp;
     } else
 	return NULL;

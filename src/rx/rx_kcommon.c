@@ -398,8 +398,12 @@ rxi_InitPeerParams(struct rx_peer *pp)
     if (numMyNetAddrs == 0)
 	(void)rxi_GetIFInfo();
 #  endif
-
-    ifn = rxi_FindIfnet(&pp->saddr, NULL);
+    rx_in_addr_t ipv4;
+    if (rx_try_sockaddr_to_ipv4(&pp->saddr, &ipv4)) {
+    	ifn = rxi_FindIfnet(ipv4, NULL);
+    } else {
+    	/* and now? this function does not return a code... */
+    }
     if (ifn) {
 	rx_rto_setPeerTimeoutSecs(pp, 2);
 	pp->ifMTU = MIN(RX_MAX_PACKET_SIZE, rx_MyMaxSendSize);
@@ -739,36 +743,18 @@ rxi_GetIFInfo(void) /* ipv4 only */
 #if defined(AFS_DARWIN_ENV) || defined(AFS_XBSD_ENV)
 /* Returns ifnet which best matches address */
 rx_ifnet_t
-rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp)
-{
-    struct sockaddr_storage sr;
-    rx_ifaddr_t ifad;
-
-    ifad = rx_ifaddr_withnet(saddr);
-
-    if (ifad && smaskp) {
-	rx_ifaddr_netmask(ifad, (struct sockaddr *)&sr, sizeof(sr));
-        rx_CopySockAddr(smaskp, (struct sockaddr *)&sr);
-    }
-    return (ifad ? rx_ifaddr_ifnet(ifad) : NULL);
-}
-
-rx_ifnet_t
-rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp) /* ipv4 only */
+rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
 {
     struct sockaddr_in s, sr;
     rx_ifaddr_t ifad;
-    rx_in_addr_t maskp;
 
     s.sin_family = AF_INET;
-    rx_try_sockaddr_to_ipv4(saddr, &s.sin_addr.s_addr);
+    s.sin_addr.s_addr = addr;
     ifad = rx_ifaddr_withnet((struct sockaddr *)&s);
 
-    rx_try_sockaddr_to_ipv4(smaskp, &maskp);
-
     if (ifad && maskp) {
-        rx_ifaddr_netmask(ifad, (struct sockaddr *)&sr, sizeof(sr));
-        rx_ipv4_to_sockaddr(sr.sin_addr.s_addr, 0, 0, smaskp);
+	rx_ifaddr_netmask(ifad, (struct sockaddr *)&sr, sizeof(sr));
+	*maskp = sr.sin_addr.s_addr;
     }
     return (ifad ? rx_ifaddr_ifnet(ifad) : NULL);
 }
@@ -777,20 +763,18 @@ rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp) /* ipv4 onl
 
 /* Returns ifnet which best matches address */
 rx_ifnet_t
-rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp) /* ipv4 only */
+rxi_FindIfnet(afs_uint32 addr, afs_uint32 * maskp)
 {
     int match_value = 0;
     extern struct in_ifaddr *in_ifaddr;
     struct in_ifaddr *ifa, *ifad = NULL;
-    rx_in_addr_t ipv4;
 
-    rx_try_sockaddr_to_ipv4(saddr, &ipv4);
-    ipv4 = ntohl(ipv4);
+    addr = ntohl(addr);
 
     for (ifa = in_ifaddr; ifa; ifa = ifa->ia_next) {
-	if ((ipv4 & ifa->ia_netmask) == ifa->ia_net) {
-	    if ((ipv4 & ifa->ia_subnetmask) == ifa->ia_subnet) {
-		if (IA_SIN(ifa)->sin_addr.s_addr == ipv4) {	/* ie, ME!!!  */
+	if ((addr & ifa->ia_netmask) == ifa->ia_net) {
+	    if ((addr & ifa->ia_subnetmask) == ifa->ia_subnet) {
+		if (IA_SIN(ifa)->sin_addr.s_addr == addr) {	/* ie, ME!!!  */
 		    match_value = 4;
 		    ifad = ifa;
 		    goto done;
@@ -810,8 +794,7 @@ rxi_FindIfnet(struct rx_sockaddr *saddr, struct rx_sockaddr *smaskp) /* ipv4 onl
 
   done:
     if (ifad && maskp)
-        rx_ipv4_to_sockaddr(ifad->ia_subnetmask, 0, 0, smaskp);
-
+	*maskp = ifad->ia_subnetmask;
     return (ifad ? ifad->ia_ifp : NULL);
 }
 #endif /* else DARWIN || XBSD */

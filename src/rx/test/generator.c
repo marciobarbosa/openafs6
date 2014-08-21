@@ -700,11 +700,10 @@ WriteCltTrailer(char *serverName, int first, int last, FILE * itl_h)
 
     fprintf(itl_h,
 	    "\tstruct rx_connection *conn;\n" "\tint error=0;\n\n"
-	    "\tint i = (int) arg;\n"
-	    "\tstruct sockaddr_in saddr = xxx_rx_CreateSockAddr(serverAddr, serverPort);\n\n");
+	    "\tint i = (int) arg;\n\n");
 
     fprintf(itl_h,
-	    "\tconn = rx_GetCachedConnection((struct sockaddr *)&saddr,4,secClass,secIndex);\n");
+	    "\tconn = rx_GetCachedConnection(serverAddr,serverPort,4,secClass,secIndex);\n");
 
     fprintf(itl_h, "\twhile(i--) {\n");
 

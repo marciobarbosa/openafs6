@@ -50,7 +50,7 @@ typedef char rx_addr_str_t[64];	/**< for rx_print_sockaddr, rx_print_address */
 struct rx_address {
     int addrtype;	      /**< type of address: AF_INET */
     union {
-	struct in_addr in;	/* host byte order */
+	struct in_addr in;	/* network byte order */
 #ifdef HAVE_IPV6
 	struct in6_addr in6;
 #endif

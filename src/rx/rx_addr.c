@@ -382,7 +382,7 @@ rx_address_to_sockaddr(struct rx_address *a, rx_port_t port,
 	sa->rxsa_in_len = sizeof(struct sockaddr_in);
 #endif
 	sa->rxsa_in_family = AF_INET;
-	sa->rxsa_in_addr = htonl(a->rxa_s_addr);
+	sa->rxsa_in_addr = a->rxa_s_addr;
 	sa->rxsa_in_port = port;	/* network byte order */
 	break;
 #ifdef HAVE_IPV6
@@ -407,7 +407,7 @@ rx_sockaddr_to_address(struct rx_sockaddr *sa, struct rx_address *a)
     switch (sa->addrtype) {
     case AF_INET:
 	a->addrtype = AF_INET;
-	a->rxa_s_addr = ntohl(sa->rxsa_in_addr);
+	a->rxa_s_addr = sa->rxsa_in_addr;
 	break;
 #ifdef HAVE_IPV6
     case AF_INET6:
@@ -479,7 +479,7 @@ int
 rx_ipv4_to_address(rx_in_addr_t ipv4, struct rx_address *a)
 {
     a->addrtype = AF_INET;
-    a->rxa_s_addr = ntohl(ipv4);
+    a->rxa_s_addr = ipv4;
     return 0;
 }
 
@@ -519,7 +519,7 @@ rx_print_address(struct rx_address *a, char *dst, size_t size)
     switch (a->addrtype) {
     case AF_INET: {
 	struct in_addr addr;
-	addr.s_addr = htonl(a->rxa_s_addr);
+	addr.s_addr = a->rxa_s_addr;
 	return rxi_inet_ntop_v4(&addr, dst, size);
     }
 #ifdef HAVE_IPV6
@@ -556,7 +556,7 @@ rx_is_loopback_address(struct rx_address *a)
 {
     switch (a->addrtype) {
     case AF_INET:
-	return rxi_is_loopback_ipv4(a->rxa_s_addr);
+	return rxi_is_loopback_ipv4(ntohl(a->rxa_s_addr));
 #ifdef HAVE_IPV6
     case AF_INET6:
 	return EAFNOSUPPORT;

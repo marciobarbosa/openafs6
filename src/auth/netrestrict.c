@@ -430,15 +430,19 @@ afsconf_ParseNetFiles(afs_uint32 addrbuf[], afs_uint32 maskbuf[],
 		     char reason[], const char *niFileName,
 		     const char *nrFileName)
 {
-    struct rx_sockaddr *addrbuf_ipv4, *maskbuf_ipv4;
+    struct rx_sockaddr *addrbuf_ipv4 = NULL, *maskbuf_ipv4 = NULL;
     int i, code;
 
     addrbuf_ipv4 = (struct rx_sockaddr *)calloc(max, sizeof(struct rx_sockaddr));
-    maskbuf_ipv4 = (struct rx_sockaddr *)calloc(max, sizeof(struct rx_sockaddr));
+
+    if (maskbuf)
+    	maskbuf_ipv4 = (struct rx_sockaddr *)calloc(max, sizeof(struct rx_sockaddr));
 
     for(i = 0; i < max; i++) {
     	rx_ipv4_to_sockaddr(addrbuf[i], 0, 0, &addrbuf_ipv4[i]);
-    	rx_ipv4_to_sockaddr(maskbuf[i], 0, 0, &maskbuf_ipv4[i]);
+
+    	if (maskbuf)
+    		rx_ipv4_to_sockaddr(maskbuf[i], 0, 0, &maskbuf_ipv4[i]);
     }
 
     code = afsconf_ParseNetFiles2(addrbuf_ipv4, maskbuf_ipv4, mtubuf, max, reason, niFileName, nrFileName);

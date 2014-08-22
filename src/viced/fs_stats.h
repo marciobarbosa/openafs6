@@ -325,12 +325,10 @@ extern struct fs_stats_FullPerfStats afs_FullPerfStats;
 extern struct afs_PerfStats afs_perfstats;
 
 /*
-  * FileServer's name and IP address, both network byte order and
-  * host byte order.
+  * FileServer's name and IP address.
   */
 extern char FS_HostName[];
-extern struct rx_sockaddr FS_HostAddr_NBO;
-extern struct rx_address FS_HostAddr_HBO;
+extern struct rx_address FS_HostAddr;
 
 /* Logging helper functions */
 struct fsstats {

@@ -652,8 +652,8 @@ h_Alloc_r(struct rx_connection *r_con)
 {
     struct servent *serverentry;
     struct host *host;
-    rx_in_addr_t newHostAddr;	/*New host IP addr */
-    rx_in_addr_t fsaddr;
+    rx_in_addr_t newHostAddr;	/* for ipv4 only classification */
+    rx_in_addr_t fsaddr;	/* for ipv4 only classification */
 
     host = GetHT();
     if (!host)

@@ -503,7 +503,7 @@ h_NBLock_r(struct host *host)
  *------------------------------------------------------------------------*/
 
 static char
-h_AddrInSameNetwork(struct rx_address *a_targetAddr, struct rx_address *a_candAddr)
+h_AddrInSameNetwork(afs_uint32 a_targetAddr, afs_uint32 a_candAddr)
 {				/*h_AddrInSameNetwork */
 
     afs_uint32 targetNet;
@@ -515,29 +515,29 @@ h_AddrInSameNetwork(struct rx_address *a_targetAddr, struct rx_address *a_candAd
      * affair if the target and candidate addresses are not of the
      * same class.
      */
-    if (IN_CLASSA(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSA(a_candAddr->rxa_s_addr))) {
+    if (IN_CLASSA(a_targetAddr)) {
+	if (!(IN_CLASSA(a_candAddr))) {
 	    return (0);
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSA_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSA_NET;
-    } else if (IN_CLASSB(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSB(a_candAddr->rxa_s_addr))) {
+	targetNet = a_targetAddr & IN_CLASSA_NET;
+	candNet = a_candAddr & IN_CLASSA_NET;
+    } else if (IN_CLASSB(a_targetAddr)) {
+	if (!(IN_CLASSB(a_candAddr))) {
 	    return (0);
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSB_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSB_NET;
+	targetNet = a_targetAddr & IN_CLASSB_NET;
+	candNet = a_candAddr & IN_CLASSB_NET;
     } /*Class B target */
-    else if (IN_CLASSC(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSC(a_candAddr->rxa_s_addr))) {
+    else if (IN_CLASSC(a_targetAddr)) {
+	if (!(IN_CLASSC(a_candAddr))) {
 	    return (0);
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSC_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSC_NET;
+	targetNet = a_targetAddr & IN_CLASSC_NET;
+	candNet = a_candAddr & IN_CLASSC_NET;
     } /*Class C target */
     else {
-	targetNet = a_targetAddr->rxa_s_addr;
-	candNet = a_candAddr->rxa_s_addr;
+	targetNet = a_targetAddr;
+	candNet = a_candAddr;
     }				/*Class D address */
 
     /*
@@ -550,7 +550,6 @@ h_AddrInSameNetwork(struct rx_address *a_targetAddr, struct rx_address *a_candAd
 	return (0);
 
 }				/*h_AddrInSameNetwork */
-
 
 /* Assumptions: called with held host */
 void
@@ -653,7 +652,8 @@ h_Alloc_r(struct rx_connection *r_con)
 {
     struct servent *serverentry;
     struct host *host;
-    struct rx_address newHostAddr;	/*New host IP addr */
+    rx_in_addr_t newHostAddr;	/*New host IP addr */
+    rx_in_addr_t fsaddr;
 
     host = GetHT();
     if (!host)
@@ -699,10 +699,14 @@ h_Alloc_r(struct rx_connection *r_con)
     /*
      * Compare the new host's IP address (in host byte order) with ours
      * (the File Server's), remembering if they are in the same network.
+     * This is IPv4 only.
      */
-    rx_sockaddr_to_address(&host->saddr, &newHostAddr);
-    host->InSameNetwork =
-	h_AddrInSameNetwork(&FS_HostAddr, &newHostAddr);
+    if (rx_try_address_to_ipv4(&FS_HostAddr, &fsaddr)
+	&& rx_try_sockaddr_to_ipv4(&host->saddr, &newHostAddr)) {
+	host->InSameNetwork = h_AddrInSameNetwork(ntohl(fsaddr), ntohl(newHostAddr));
+    } else {
+	host->InSameNetwork = 0;
+    }
     return host;
 
 }				/*h_Alloc_r */

@@ -503,7 +503,7 @@ h_NBLock_r(struct host *host)
  *------------------------------------------------------------------------*/
 
 static char
-h_AddrInSameNetwork(struct rx_address *a_targetAddr, struct rx_address *a_candAddr)
+h_AddrInSameNetwork(afs_uint32 a_targetAddr, afs_uint32 a_candAddr)
 {				/*h_AddrInSameNetwork */
 
     afs_uint32 targetNet;
@@ -515,29 +515,29 @@ h_AddrInSameNetwork(struct rx_address *a_targetAddr, struct rx_address *a_candAd
      * affair if the target and candidate addresses are not of the
      * same class.
      */
-    if (IN_CLASSA(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSA(a_candAddr->rxa_s_addr))) {
+    if (IN_CLASSA(a_targetAddr)) {
+	if (!(IN_CLASSA(a_candAddr))) {
 	    return (0);
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSA_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSA_NET;
-    } else if (IN_CLASSB(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSB(a_candAddr->rxa_s_addr))) {
+	targetNet = a_targetAddr & IN_CLASSA_NET;
+	candNet = a_candAddr & IN_CLASSA_NET;
+    } else if (IN_CLASSB(a_targetAddr)) {
+	if (!(IN_CLASSB(a_candAddr))) {
 	    return (0);
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSB_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSB_NET;
+	targetNet = a_targetAddr & IN_CLASSB_NET;
+	candNet = a_candAddr & IN_CLASSB_NET;
     } /*Class B target */
-    else if (IN_CLASSC(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSC(a_candAddr->rxa_s_addr))) {
+    else if (IN_CLASSC(a_targetAddr)) {
+	if (!(IN_CLASSC(a_candAddr))) {
 	    return (0);
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSC_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSC_NET;
+	targetNet = a_targetAddr & IN_CLASSC_NET;
+	candNet = a_candAddr & IN_CLASSC_NET;
     } /*Class C target */
     else {
-	targetNet = a_targetAddr->rxa_s_addr;
-	candNet = a_candAddr->rxa_s_addr;
+	targetNet = a_targetAddr;
+	candNet = a_candAddr;
     }				/*Class D address */
 
     /*
@@ -550,7 +550,6 @@ h_AddrInSameNetwork(struct rx_address *a_targetAddr, struct rx_address *a_candAd
 	return (0);
 
 }				/*h_AddrInSameNetwork */
-
 
 /* Assumptions: called with held host */
 void
@@ -653,7 +652,8 @@ h_Alloc_r(struct rx_connection *r_con)
 {
     struct servent *serverentry;
     struct host *host;
-    struct rx_address newHostAddr_HBO;	/*New host IP addr, in host byte order */
+    rx_in_addr_t newHostAddr;	/*New host IP addr */
+    rx_in_addr_t fsaddr;
 
     host = GetHT();
     if (!host)
@@ -699,10 +699,14 @@ h_Alloc_r(struct rx_connection *r_con)
     /*
      * Compare the new host's IP address (in host byte order) with ours
      * (the File Server's), remembering if they are in the same network.
+     * This is IPv4 only.
      */
-    rx_sockaddr_to_address(&host->saddr, &newHostAddr_HBO);
-    host->InSameNetwork =
-	h_AddrInSameNetwork(&FS_HostAddr_HBO, &newHostAddr_HBO);
+    if (rx_try_address_to_ipv4(&FS_HostAddr, &fsaddr)
+	&& rx_try_sockaddr_to_ipv4(&host->saddr, &newHostAddr)) {
+	host->InSameNetwork = h_AddrInSameNetwork(ntohl(fsaddr), ntohl(newHostAddr));
+    } else {
+	host->InSameNetwork = 0;
+    }
     return host;
 
 }				/*h_Alloc_r */
@@ -3764,7 +3768,7 @@ h_GetWorkStats64(afs_uint64 *nump, afs_uint64 *activep, afs_uint64 *delp,
 }
 
 /*------------------------------------------------------------------------
- * PRIVATE h_ClassifyAddress
+ * PRIVATE h_ClassifyAddressIPV4
  *
  * Description:
  *	Given a target IP address and a candidate IP address (both
@@ -3795,10 +3799,10 @@ h_GetWorkStats64(afs_uint64 *nump, afs_uint64 *activep, afs_uint64 *delp,
  *------------------------------------------------------------------------*/
 
 static void
-h_ClassifyAddress(struct rx_address *a_targetAddr, struct rx_address *a_candAddr,
+h_ClassifyAddressIPV4(afs_uint32 a_targetAddr, afs_uint32 a_candAddr,
 		  afs_int32 * a_sameNetOrSubnetP, afs_int32 * a_diffSubnetP,
 		  afs_int32 * a_diffNetworkP)
-{				/*h_ClassifyAddress */
+{				/*h_ClassifyAddressIPV4 */
 
     afs_uint32 targetNet;
     afs_uint32 targetSubnet;
@@ -3817,36 +3821,36 @@ h_ClassifyAddress(struct rx_address *a_targetAddr, struct rx_address *a_candAddr
      * affair if the target and candidate addresses are not of the
      * same class.
      */
-    if (IN_CLASSA(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSA(a_candAddr->rxa_s_addr))) {
+    if (IN_CLASSA(a_targetAddr)) {
+	if (!(IN_CLASSA(a_candAddr))) {
 	    (*a_diffNetworkP)++;
 	    return;
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSA_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSA_NET;
-	if (IN_SUBNETA(a_targetAddr->rxa_s_addr))
-	    targetSubnet = a_targetAddr->rxa_s_addr & IN_CLASSA_SUBNET;
-	if (IN_SUBNETA(a_candAddr->rxa_s_addr))
-	    candSubnet = a_candAddr->rxa_s_addr & IN_CLASSA_SUBNET;
-    } else if (IN_CLASSB(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSB(a_candAddr->rxa_s_addr))) {
+	targetNet = a_targetAddr & IN_CLASSA_NET;
+	candNet = a_candAddr & IN_CLASSA_NET;
+	if (IN_SUBNETA(a_targetAddr))
+	    targetSubnet = a_targetAddr & IN_CLASSA_SUBNET;
+	if (IN_SUBNETA(a_candAddr))
+	    candSubnet = a_candAddr & IN_CLASSA_SUBNET;
+    } else if (IN_CLASSB(a_targetAddr)) {
+	if (!(IN_CLASSB(a_candAddr))) {
 	    (*a_diffNetworkP)++;
 	    return;
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSB_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSB_NET;
-	if (IN_SUBNETB(a_targetAddr->rxa_s_addr))
-	    targetSubnet = a_targetAddr->rxa_s_addr & IN_CLASSB_SUBNET;
-	if (IN_SUBNETB(a_candAddr->rxa_s_addr))
-	    candSubnet = a_candAddr->rxa_s_addr & IN_CLASSB_SUBNET;
+	targetNet = a_targetAddr & IN_CLASSB_NET;
+	candNet = a_candAddr & IN_CLASSB_NET;
+	if (IN_SUBNETB(a_targetAddr))
+	    targetSubnet = a_targetAddr & IN_CLASSB_SUBNET;
+	if (IN_SUBNETB(a_candAddr))
+	    candSubnet = a_candAddr & IN_CLASSB_SUBNET;
     } /*Class B target */
-    else if (IN_CLASSC(a_targetAddr->rxa_s_addr)) {
-	if (!(IN_CLASSC(a_candAddr->rxa_s_addr))) {
+    else if (IN_CLASSC(a_targetAddr)) {
+	if (!(IN_CLASSC(a_candAddr))) {
 	    (*a_diffNetworkP)++;
 	    return;
 	}
-	targetNet = a_targetAddr->rxa_s_addr & IN_CLASSC_NET;
-	candNet = a_candAddr->rxa_s_addr & IN_CLASSC_NET;
+	targetNet = a_targetAddr & IN_CLASSC_NET;
+	candNet = a_candAddr & IN_CLASSC_NET;
 
 	/*
 	 * Note that class C addresses can't have subnets,
@@ -3854,8 +3858,8 @@ h_ClassifyAddress(struct rx_address *a_targetAddr, struct rx_address *a_candAddr
 	 */
     } /*Class C target */
     else {
-	targetNet = a_targetAddr->rxa_s_addr;
-	candNet = a_candAddr->rxa_s_addr;
+	targetNet = a_targetAddr;
+	candNet = a_candAddr;
     }				/*Class D address */
 
     /*
@@ -3871,8 +3875,7 @@ h_ClassifyAddress(struct rx_address *a_targetAddr, struct rx_address *a_candAddr
     } else
 	(*a_diffNetworkP)++;
 
-}				/*h_ClassifyAddress */
-
+}				/*h_ClassifyAddressIPV4 */
 
 /*------------------------------------------------------------------------
  * EXPORTED h_GetHostNetStats
@@ -3905,7 +3908,9 @@ h_GetHostNetStats(afs_int32 * a_numHostsP, afs_int32 * a_sameNetOrSubnetP,
 {				/*h_GetHostNetStats */
 
     struct host *hostP;	/*Ptr to current host entry */
-    struct rx_address currAddr_HBO;	/*Curr host addr, host byte order */
+    rx_in_addr_t currAddr;	/* network byte order */
+    rx_in_addr_t fsAddr;	/* network byte order */
+    int classify = 0;
     int count;
 
     /*
@@ -3916,6 +3921,10 @@ h_GetHostNetStats(afs_int32 * a_numHostsP, afs_int32 * a_sameNetOrSubnetP,
     *a_diffSubnetP = (afs_int32) 0;
     *a_diffNetworkP = (afs_int32) 0;
 
+    if (rx_try_address_to_ipv4(&FS_HostAddr, &fsAddr)) {
+	classify = 1;
+    }
+
     H_LOCK;
     for (count = 0, hostP = hostList; hostP && count < hostCount; hostP = hostP->next, count++) {
 	if (!(hostP->hostFlags & HOSTDELETED)) {
@@ -3925,10 +3934,11 @@ h_GetHostNetStats(afs_int32 * a_numHostsP, afs_int32 * a_sameNetOrSubnetP,
 	     * sure to first convert to host byte order.
 	     */
 	    (*a_numHostsP)++;
-            rx_sockaddr_to_address(&hostP->saddr, &currAddr_HBO);
-	    h_ClassifyAddress(&FS_HostAddr_HBO, &currAddr_HBO,
+	    if (classify && rx_try_sockaddr_to_ipv4(&hostP->saddr, &currAddr)) {
+		h_ClassifyAddressIPV4(ntohl(fsAddr), ntohl(currAddr),
 			      a_sameNetOrSubnetP, a_diffSubnetP,
 			      a_diffNetworkP);
+	    }
 	}			/*Only look at non-deleted hosts */
     }				/*For each host record hashed to this index */
     if (count != hostCount) {

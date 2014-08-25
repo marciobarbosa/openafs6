@@ -184,8 +184,7 @@ pthread_key_t viced_uclient_key;
 
 char FS_HostName[128] = "localhost";
 char *FS_configPath = NULL;
-struct rx_sockaddr FS_HostAddr_NBO;
-struct rx_address FS_HostAddr_HBO;
+struct rx_sockaddr FS_HostAddr;
 afs_uint32 FS_HostAddrs[ADDRSPERSITE], FS_HostAddr_cnt = 0, FS_registered = 0; /* should I change FS_HostAddrs? reads from a file... */
 /* All addresses in FS_HostAddrs are in NBO */
 afsUUID FS_HostUUID;
@@ -2211,13 +2210,12 @@ main(int argc, char *argv[])
 	ViceLog(0, ("Can't find address for FileServer '%s'\n", FS_HostName));
     } else {
 	rx_addr_str_t hoststr;
-        rx_ipv4_to_sockaddr(0, 0, 0, &FS_HostAddr_NBO);
-	memcpy(&FS_HostAddr_NBO.rxsa_in_addr, he->h_addr, 4);
-	(void)rx_print_sockaddr(&FS_HostAddr_NBO, hoststr, sizeof(hoststr));
-        rx_sockaddr_to_address(&FS_HostAddr_NBO, &FS_HostAddr_HBO);
+        rx_ipv4_to_sockaddr(0, 0, 0, &FS_HostAddr);
+	memcpy(&FS_HostAddr.rxsa_in_addr, he->h_addr, 4);
+	(void)rx_print_sockaddr(&FS_HostAddr, hoststr, sizeof(hoststr));
 	ViceLog(0,
 		("FileServer %s has address %s (0x%x or 0x%x in host byte order)\n",
-		 FS_HostName, hoststr, FS_HostAddr_NBO.rxsa_in_addr, FS_HostAddr_HBO.rxa_s_addr));
+		 FS_HostName, hoststr, FS_HostAddr.rxsa_in_addr, ntohl(FS_HostAddr.rxsa_in_addr)));
     }
 
     t = tp.tv_sec;

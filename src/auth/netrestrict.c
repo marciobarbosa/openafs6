@@ -30,7 +30,7 @@
 #define MAX_NETFILE_LINE       2048	/* length of a line in the netrestrict file */
 #define MAXIPADDRS             1024	/* from afsd.c */
 
-static int ParseNetInfoFile_int(struct rx_sockaddr *, struct rx_sockaddr *, afs_uint32 *,
+static int ParseNetInfoFile_int(struct rx_address *, struct rx_address *, afs_uint32 *,
                          int, char reason[], const char *,
                          int);
 /*
@@ -108,7 +108,7 @@ extract_Addr(char *line, int maxSize)
 */
 
 static int
-parseNetRestrictFile_int(struct rx_sockaddr outAddrs[], struct rx_sockaddr * mask,
+parseNetRestrictFile_int(struct rx_address outAddrs[], struct rx_address * mask,
 			 afs_uint32 * mtu, afs_uint32 maxAddrs,
 			 afs_uint32 * nAddrs, char reason[],
 			 const char *fileName, const char *fileName_ni)
@@ -119,7 +119,7 @@ parseNetRestrictFile_int(struct rx_sockaddr outAddrs[], struct rx_sockaddr * mas
     afs_uint32 i, neaddrs, nOutaddrs;
     rx_in_addr_t addr;
     afs_uint32 eMtu[MAXIPADDRS];
-    struct rx_sockaddr eAddrs[MAXIPADDRS], eMask[MAXIPADDRS];
+    struct rx_address eAddrs[MAXIPADDRS], eMask[MAXIPADDRS];
 
     opr_Assert(outAddrs);
     opr_Assert(reason);
@@ -131,7 +131,7 @@ parseNetRestrictFile_int(struct rx_sockaddr outAddrs[], struct rx_sockaddr * mas
     /* Initialize */
     *nAddrs = 0;
     for (i = 0; i < maxAddrs; i++)
-	memset(&outAddrs[i], 0, sizeof(struct rx_sockaddr));
+	memset(&outAddrs[i], 0, sizeof(struct rx_address));
     strcpy(reason, "");
 
     /* get all network interfaces from the kernel */
@@ -175,8 +175,8 @@ parseNetRestrictFile_int(struct rx_sockaddr outAddrs[], struct rx_sockaddr * mas
 
 	/* Check if we need to exclude this address */
 	for (i = 0; i < neaddrs; i++) {
-	    if (eAddrs[i].addr.sin.sin_addr.s_addr && (eAddrs[i].addr.sin.sin_addr.s_addr == addr)) {
-		rx_ipv4_to_sockaddr(0, 0, 0, &eAddrs[i]); /* Yes - exclude it by zeroing it for now */
+	    if (eAddrs[i].rxa_s_addr && (eAddrs[i].rxa_s_addr == addr)) {
+		rx_ipv4_to_address(0, &eAddrs[i]); /* Yes - exclude it by zeroing it for now */
 	    }
 	}
     }				/* while */
@@ -192,11 +192,11 @@ parseNetRestrictFile_int(struct rx_sockaddr outAddrs[], struct rx_sockaddr * mas
     /* Collect the addresses we have left to return */
     nOutaddrs = 0;
     for (i = 0; i < neaddrs; i++) {
-	if (!eAddrs[i].addr.sin.sin_addr.s_addr)
+	if (!eAddrs[i].rxa_s_addr)
 	    continue;
-	rx_copy_sockaddr(&eAddrs[i], &outAddrs[nOutaddrs]);
+	rx_copy_address(&eAddrs[i], &outAddrs[nOutaddrs]);
 	if (mask) {
-	    rx_copy_sockaddr(&eMask[i], &mask[nOutaddrs]);
+	    rx_copy_address(&eMask[i], &mask[nOutaddrs]);
 	    mtu[nOutaddrs] = eMtu[i];
 	}
 	if (++nOutaddrs >= maxAddrs)
@@ -211,7 +211,7 @@ parseNetRestrictFile_int(struct rx_sockaddr outAddrs[], struct rx_sockaddr * mas
 }
 
 int
-afsconf_ParseNetRestrictFile(struct rx_sockaddr outAddrs[], struct rx_sockaddr * mask,
+afsconf_ParseNetRestrictFile(struct rx_address outAddrs[], struct rx_address * mask,
 			     afs_uint32 * mtu, afs_uint32 maxAddrs,
 			     afs_uint32 * nAddrs, char reason[],
 			     const char *fileName)
@@ -228,12 +228,12 @@ afsconf_ParseNetRestrictFile(struct rx_sockaddr outAddrs[], struct rx_sockaddr *
  * interface addresses. Pulled out from afsd.c
  */
 static int
-ParseNetInfoFile_int(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_uint32 * mtu,
+ParseNetInfoFile_int(struct rx_address * final, struct rx_address * mask, afs_uint32 * mtu,
 		     int max, char reason[], const char *fileName,
 		     int fakeonly)
 {
 
-    struct rx_sockaddr existingAddr[MAXIPADDRS], existingMask[MAXIPADDRS];
+    struct rx_address existingAddr[MAXIPADDRS], existingMask[MAXIPADDRS];
     afs_uint32 existingMtu[MAXIPADDRS];
     char line[MAX_NETFILE_LINE];
     FILE *fp;
@@ -263,8 +263,8 @@ ParseNetInfoFile_int(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_
 		"Failed to open %s(%s)\nUsing all configured addresses\n",
 		fileName, strerror(errno));
 	for (i = 0; i < existNu; i++) {
-	    rx_copy_sockaddr(&existingAddr[i], &final[i]);
-	    rx_copy_sockaddr(&existingMask[i], &mask[i]);
+	    rx_copy_address(&existingAddr[i], &final[i]);
+	    rx_copy_address(&existingMask[i], &mask[i]);
 	    mtu[i] = existingMtu[i];
 	}
 	return existNu;
@@ -300,7 +300,7 @@ ParseNetInfoFile_int(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_
 
 	/* See if it is an address that really exists */
 	for (i = 0; i < existNu; i++) {
-	    if (existingAddr[i].addr.sin.sin_addr.s_addr == addr)
+	    if (existingAddr[i].rxa_s_addr == addr)
 		break;
 	}
 	if ((i >= existNu) && (!fake))
@@ -308,7 +308,7 @@ ParseNetInfoFile_int(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_
 
 	/* Check if it is a duplicate address we alread have */
 	for (l = 0; l < count; l++) {
-	    if (final[l].addr.sin.sin_addr.s_addr == addr) /* this function just works for ipv4 anyway */
+	    if (final[l].rxa_s_addr == addr) /* this function just works for ipv4 anyway */
 		break;
 	}
 	if (l < count) {
@@ -324,13 +324,13 @@ ParseNetInfoFile_int(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_
 	} else if (fake) {
 	    if (!fake)
 		fprintf(stderr, "Client (2) also has address %s\n", line);
-	    rx_ipv4_to_sockaddr(addr, 0, 0, &final[count]);
-	    rx_ipv4_to_sockaddr(0xffffffff, 0, 0, &mask[count]);
+	    rx_ipv4_to_address(addr, &final[count]);
+	    rx_ipv4_to_address(0xffffffff, &mask[count]);
 	    mtu[count] = htonl(1500);
 	    count++;
 	} else if (!fakeonly) {
-	    rx_copy_sockaddr(&existingAddr[i], &final[count]);
-	    rx_copy_sockaddr(&existingMask[i], &mask[count]);
+	    rx_copy_address(&existingAddr[i], &final[count]);
+	    rx_copy_address(&existingMask[i], &mask[count]);
 	    mtu[count] = existingMtu[i];
 	    count++;
 	}
@@ -341,8 +341,8 @@ ParseNetInfoFile_int(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_
 	sprintf(reason,
 		"Error in reading/parsing Interface file\nUsing all configured interface addresses \n");
 	for (i = 0; i < existNu; i++) {
-	    rx_copy_sockaddr(&existingAddr[i], &final[i]);
-	    rx_copy_sockaddr(&existingMask[i], &mask[i]);
+	    rx_copy_address(&existingAddr[i], &final[i]);
+	    rx_copy_address(&existingMask[i], &mask[i]);
 	    mtu[i] = existingMtu[i];
 	}
 	return existNu;
@@ -351,7 +351,7 @@ ParseNetInfoFile_int(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_
 }
 
 int
-afsconf_ParseNetInfoFile(struct rx_sockaddr * final, struct rx_sockaddr * mask, afs_uint32 * mtu,
+afsconf_ParseNetInfoFile(struct rx_address * final, struct rx_address * mask, afs_uint32 * mtu,
 			 int max, char reason[], const char *fileName)
 {
     return ParseNetInfoFile_int(final, mask, mtu, max, reason, fileName, 0);
@@ -363,12 +363,12 @@ afsconf_ParseNetInfoFile(struct rx_sockaddr * final, struct rx_sockaddr * mask, 
  * entries.
  */
 static int
-filterAddrs(struct rx_sockaddr addr1[], struct rx_sockaddr addr2[], struct rx_sockaddr mask1[],
-	    struct rx_sockaddr mask2[], afs_uint32 mtu1[], afs_uint32 mtu2[], int n1,
+filterAddrs(struct rx_address addr1[], struct rx_address addr2[], struct rx_address mask1[],
+	    struct rx_address mask2[], afs_uint32 mtu1[], afs_uint32 mtu2[], int n1,
 	    int n2)
 {
-    struct rx_sockaddr taddr[MAXIPADDRS];
-    struct rx_sockaddr tmask[MAXIPADDRS];
+    struct rx_address taddr[MAXIPADDRS];
+    struct rx_address tmask[MAXIPADDRS];
     afs_uint32 tmtu[MAXIPADDRS];
     int count = 0, i = 0, j = 0, found = 0;
 
@@ -382,36 +382,36 @@ filterAddrs(struct rx_sockaddr addr1[], struct rx_sockaddr addr2[], struct rx_so
     for (i = 0; i < n1; i++) {
 	found = 0;
 	for (j = 0; j < n2; j++) {	    
-	    if (rx_compare_sockaddr(&addr1[i], &addr2[j], RXA_ADDR)) {
+	    if (rx_compare_address(&addr1[i], &addr2[j])) {
 		found = 1;
 		break;
 	    }
 	}
 
 	/* Always mask loopback address */
-	if (found && rx_is_loopback_sockaddr(&addr1[i]))
+	if (found && rx_is_loopback_address(&addr1[i]))
 	    found = 0;
 
 	if (found) {
-	    rx_copy_sockaddr(&addr1[i], &taddr[count]);
-	    rx_copy_sockaddr(&mask1[i], &tmask[count]);
+	    rx_copy_address(&addr1[i], &taddr[count]);
+	    rx_copy_address(&mask1[i], &tmask[count]);
 	    tmtu[count] = mtu1[i];
 	    count++;
 	}
     }
     /* copy everything into addr1, mask1 and mtu1 */
     for (i = 0; i < count; i++) {
-	rx_copy_sockaddr(&taddr[i], &addr1[i]);
+	rx_copy_address(&taddr[i], &addr1[i]);
 	if (mask1) {
-	    rx_copy_sockaddr(&tmask[i], &mask1[i]);
+	    rx_copy_address(&tmask[i], &mask1[i]);
 	    mtu1[i] = tmtu[i];
 	}
     }
     /* and zero out the rest */
     for (i = count; i < n1; i++) {
-	rx_ipv4_to_sockaddr(0, 0, 0, &addr1[i]);
+	rx_ipv4_to_address(0, &addr1[i]);
 	if (mask1) {
-	    rx_ipv4_to_sockaddr(0, 0, 0, &mask1[i]);
+	    rx_ipv4_to_address(0, &mask1[i]);
 	    mtu1[i] = 0;
 	}
     }
@@ -430,19 +430,19 @@ afsconf_ParseNetFiles(afs_uint32 addrbuf[], afs_uint32 maskbuf[],
 		     char reason[], const char *niFileName,
 		     const char *nrFileName)
 {
-    struct rx_sockaddr *addrbuf_ipv4 = NULL, *maskbuf_ipv4 = NULL;
+    struct rx_address *addrbuf_ipv4 = NULL, *maskbuf_ipv4 = NULL;
     int i, code;
 
-    addrbuf_ipv4 = (struct rx_sockaddr *)calloc(max, sizeof(struct rx_sockaddr));
+    addrbuf_ipv4 = (struct rx_address *)calloc(max, sizeof(struct rx_address));
 
     if (maskbuf)
-	maskbuf_ipv4 = (struct rx_sockaddr *)calloc(max, sizeof(struct rx_sockaddr));
+	maskbuf_ipv4 = (struct rx_address *)calloc(max, sizeof(struct rx_address));
 
     for (i = 0; i < max; i++) {
-	rx_ipv4_to_sockaddr(addrbuf[i], 0, 0, &addrbuf_ipv4[i]);
+	rx_ipv4_to_address(addrbuf[i], &addrbuf_ipv4[i]);
 
 	if (maskbuf)
-	    rx_ipv4_to_sockaddr(maskbuf[i], 0, 0, &maskbuf_ipv4[i]);
+	    rx_ipv4_to_address(maskbuf[i], &maskbuf_ipv4[i]);
     }
 
     code = afsconf_ParseNetFiles2(addrbuf_ipv4, maskbuf_ipv4, mtubuf, max, reason, niFileName, nrFileName);
@@ -454,13 +454,13 @@ afsconf_ParseNetFiles(afs_uint32 addrbuf[], afs_uint32 maskbuf[],
 }
 
 int
-afsconf_ParseNetFiles2(struct rx_sockaddr addrbuf[], struct rx_sockaddr maskbuf[],
+afsconf_ParseNetFiles2(struct rx_address addrbuf[], struct rx_address maskbuf[],
 		      afs_uint32 mtubuf[], afs_uint32 max, char reason[],
 		      const char *niFileName, const char *nrFileName)
 {
-    struct rx_sockaddr addrbuf1[MAXIPADDRS], maskbuf1[MAXIPADDRS];
+    struct rx_address addrbuf1[MAXIPADDRS], maskbuf1[MAXIPADDRS];
     afs_uint32 mtubuf1[MAXIPADDRS];
-    struct rx_sockaddr addrbuf2[MAXIPADDRS], maskbuf2[MAXIPADDRS];
+    struct rx_address addrbuf2[MAXIPADDRS], maskbuf2[MAXIPADDRS];
     afs_uint32 mtubuf2[MAXIPADDRS];
     int nAddrs1 = 0;
     afs_uint32 nAddrs2 = 0;
@@ -478,9 +478,9 @@ afsconf_ParseNetFiles2(struct rx_sockaddr addrbuf[], struct rx_sockaddr maskbuf[
     } else if ((nAddrs1 > 0) && (code)) {
 	/* netinfo succeeded and netrestrict failed */
 	for (i = 0; ((i < nAddrs1) && (i < max)); i++) {
-	    rx_copy_sockaddr(&addrbuf1[i], &addrbuf[i]);
+	    rx_copy_address(&addrbuf1[i], &addrbuf[i]);
 	    if (maskbuf) {
-		rx_copy_sockaddr(&maskbuf1[i], &maskbuf[i]);
+		rx_copy_address(&maskbuf1[i], &maskbuf[i]);
 		mtubuf[i] = mtubuf1[i];
 	    }
 	}
@@ -488,9 +488,9 @@ afsconf_ParseNetFiles2(struct rx_sockaddr addrbuf[], struct rx_sockaddr maskbuf[
     } else if ((!code) && (nAddrs1 < 0)) {
 	/* netrestrict succeeded and netinfo failed */
 	for (i = 0; ((i < nAddrs2) && (i < max)); i++) {
-	    rx_copy_sockaddr(&addrbuf2[i], &addrbuf[i]);
+	    rx_copy_address(&addrbuf2[i], &addrbuf[i]);
 	    if (maskbuf) {
-		rx_copy_sockaddr(&maskbuf2[i], &maskbuf[i]);
+		rx_copy_address(&maskbuf2[i], &maskbuf[i]);
 		mtubuf[i] = mtubuf2[i];
 	    }
 	}
@@ -502,9 +502,9 @@ afsconf_ParseNetFiles2(struct rx_sockaddr addrbuf[], struct rx_sockaddr maskbuf[
 	    filterAddrs(addrbuf1, addrbuf2, maskbuf1, maskbuf2, mtubuf1,
 			mtubuf2, nAddrs1, nAddrs2);
 	for (i = 0; ((i < code) && (i < max)); i++) {
-	    rx_copy_sockaddr(&addrbuf1[i], &addrbuf[i]);
+	    rx_copy_address(&addrbuf1[i], &addrbuf[i]);
 	    if (maskbuf) {
-		rx_copy_sockaddr(&maskbuf1[i], &maskbuf[i]);
+		rx_copy_address(&maskbuf1[i], &maskbuf[i]);
 		mtubuf[i] = mtubuf1[i];
 	    }
 	}

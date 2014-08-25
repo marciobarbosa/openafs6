@@ -357,7 +357,7 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 }
 
 int
-rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBuffer[],
+rx_getAllAddrMaskMtu2(struct rx_address addrBuffer[], struct rx_address maskBuffer[],
                      afs_uint32 mtuBuffer[], int maxSize)
 {
     int count = 0, offset = 0;
@@ -368,8 +368,8 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
     for (count = 0;
          offset < rxi_numNetAddrs && maxSize > 0;
          count++, offset++, maxSize--) {
-        rx_address_to_sockaddr(&rxi_NetAddrs[offset], 0, 0, &addrBuffer[count]);
-        rx_address_to_sockaddr(&myNetMasks[offset], 0, 0, &maskBuffer[count]);
+        rx_copy_address(&rxi_NetAddrs[offset], &addrBuffer[count]);
+        rx_copy_address(&myNetMasks[offset], &maskBuffer[count]);
 	mtuBuffer[count]  = htonl(myNetMTUs[offset]);
     }
     return count;

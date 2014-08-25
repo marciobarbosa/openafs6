@@ -49,7 +49,7 @@
 #ifdef KERNEL
 /* only used for generating random noise */
 
-struct rx_sockaddr rxi_tempAddr;	/* default attempt */
+struct rx_address rxi_tempAddr;	/* default attempt */
 
 /* set the advisory noise */
 void
@@ -59,9 +59,9 @@ rxi_setaddr(afs_uint32 x)
 }
 
 void
-rxi_setaddr2(struct rx_sockaddr *x)
+rxi_setaddr2(struct rx_address *x)
 {
-    rx_copy_sockaddr(x, &rxi_tempAddr);
+    rx_copy_address(x, &rxi_tempAddr);
 }
 
 /* get approx to net addr */
@@ -99,16 +99,16 @@ rxi_setaddr2(struct rx_sockaddr *x)
 /* Return our internet address as a long in network byte order.  Returns zero
  * if it can't find one.
  */
-struct rx_sockaddr
+struct rx_address
 rxi_getaddr(void)
 {
-    struct rx_sockaddr buffer[1024];
+    struct rx_address buffer[1024];
     int count;
 
     count = rx_getAllAddr2(buffer, 1024);
 
     if (count <= 0)
-    	rx_ipv4_to_sockaddr(0, 0, 0, &buffer[0]);
+    	rx_ipv4_to_address(0, &buffer[0]);
 
     return buffer[0];	/* returns the first address */
 }
@@ -274,7 +274,7 @@ rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
 }
 
 int
-rx_getAllAddr_internal2(struct rx_sockaddr buffer[], int maxSize, int loopbacks) /* ipv4 only */
+rx_getAllAddr_internal2(struct rx_address buffer[], int maxSize, int loopbacks) /* ipv4 only */
 {
     size_t needed;
     int mib[6];
@@ -348,7 +348,7 @@ rx_getAllAddr_internal2(struct rx_sockaddr buffer[], int maxSize, int loopbacks)
 		addrcount--;
 		continue;	/* skip aliased loopbacks as well. */
 	    } else {
-		rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &buffer[count++]);
+		rx_ipv4_to_address(a->sin_addr.s_addr, &buffer[count++]);
 	    }
 	    addrcount--;
 	    ifam = (struct ifa_msghdr *)((char *)ifam + ifam->ifam_msglen);
@@ -463,7 +463,7 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 }
 
 int
-rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBuffer[],
+rx_getAllAddrMaskMtu2(struct rx_address addrBuffer[], struct rx_address maskBuffer[],
 		     afs_uint32 mtuBuffer[], int maxSize) /* ipv4 only */
 {
     int s;
@@ -542,12 +542,12 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 		} else {
 		    struct ifreq ifr;
 
-		    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &addrBuffer[count]);
+		    rx_ipv4_to_address(a->sin_addr.s_addr,  &addrBuffer[count]);
 		    a = (struct sockaddr_in *) info.rti_info[RTAX_NETMASK];
 		    if (a)
-			rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &maskBuffer[count]);
+			rx_ipv4_to_address(a->sin_addr.s_addr, &maskBuffer[count]);
 		    else
-			rx_ipv4_to_sockaddr(htonl(0xffffffff), 0, 0, &maskBuffer[count]);
+			rx_ipv4_to_address(htonl(0xffffffff), &maskBuffer[count]);
 
 		    memset(&ifr, 0, sizeof(ifr));
 		    ifr.ifr_addr.sa_family = AF_INET;
@@ -574,7 +574,7 @@ rx_getAllAddr(afs_uint32 buffer[], int maxSize)
 }
 
 int
-rx_getAllAddr2(struct rx_sockaddr buffer[], int maxSize)
+rx_getAllAddr2(struct rx_address buffer[], int maxSize)
 {
     return rx_getAllAddr_internal2(buffer, maxSize, 0);
 }
@@ -663,7 +663,7 @@ rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
 }
 
 static int
-rx_getAllAddr_internal2(struct rx_sockaddr buffer[], int maxSize, int loopbacks) /* ipv4 only */
+rx_getAllAddr_internal2(struct rx_address buffer[], int maxSize, int loopbacks) /* ipv4 only */
 {
     int s;
     int i, len, count = 0;
@@ -734,7 +734,7 @@ rx_getAllAddr_internal2(struct rx_sockaddr buffer[], int maxSize, int loopbacks)
 		dpf(("Too many interfaces..ignoring 0x%x\n",
 		       a->sin_addr.s_addr));
 	    else
-		rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &buffer[count++]);
+		rx_ipv4_to_address(a->sin_addr.s_addr, &buffer[count++]);
 	}
     }
     close(s);
@@ -748,7 +748,7 @@ rx_getAllAddr(afs_uint32 buffer[], int maxSize)
 }
 
 int
-rx_getAllAddr2(struct rx_sockaddr buffer[], int maxSize)
+rx_getAllAddr2(struct rx_address buffer[], int maxSize)
 {
     return rx_getAllAddr_internal2(buffer, maxSize, 0);
 }
@@ -861,11 +861,10 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
 }
 
 int
-rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBuffer[],
+rx_getAllAddrMaskMtu2(struct rx_address addrBuffer[], struct rx_address maskBuffer[],
                      afs_uint32 mtuBuffer[], int maxSize) /* ipv4 only */
 {
     int i, count = 0;
-    struct rx_sockaddr saddr;
 #if defined(AFS_USERSPACE_IP_ADDR)
     int s, len;
     struct ifconf ifc;
@@ -880,7 +879,7 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 #if !defined(AFS_USERSPACE_IP_ADDR)
     count = rx_getAllAddr_internal2(addrBuffer, 1024, 0);
     for (i = 0; i < count; i++) {
-	rx_ipv4_to_sockaddr(htonl(0xffffffff), 0, 0, &maskBuffer[i]);
+	rx_ipv4_to_address(htonl(0xffffffff), &maskBuffer[i]);
 	mtuBuffer[i] = htonl(1500);
     }
     return count;
@@ -919,9 +918,7 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 		continue;	/* ignore this address */
 	    }
 
-	    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &saddr);
-
-            if (rx_is_loopback_sockaddr(&saddr))
+            if (rx_IsLoopbackAddr(ntohl(a->sin_addr.s_addr)))
                 continue;   /* skip loopback address as well. */
 
 	    if (count >= maxSize) {	/* no more space */
@@ -930,13 +927,13 @@ rx_getAllAddrMaskMtu2(struct rx_sockaddr addrBuffer[], struct rx_sockaddr maskBu
 		continue;
 	    }
 
-	    rx_ipv4_to_sockaddr(a->sin_addr.s_addr, a->sin_port, 0, &addrBuffer[count]);
+	    rx_ipv4_to_address(a->sin_addr.s_addr, &addrBuffer[count]);
 
 	    if (ioctl(s, SIOCGIFNETMASK, (caddr_t) ifr) < 0) {
 		perror("SIOCGIFNETMASK");
-		rx_ipv4_to_sockaddr(htonl(0xffffffff), 0, 0, &maskBuffer[count]);
+		rx_ipv4_to_address(htonl(0xffffffff), &maskBuffer[count]);
 	    } else {
-		rx_ipv4_to_sockaddr(((struct sockaddr_in*)&ifr->ifr_addr)->sin_addr.s_addr, ((struct sockaddr_in*)&ifr->ifr_addr)->sin_port, 0, &maskBuffer[count]);
+		rx_ipv4_to_address(((struct sockaddr_in*)&ifr->ifr_addr)->sin_addr.s_addr, &maskBuffer[count]);
 	    }
 
 	    mtuBuffer[count] = htonl(1500);

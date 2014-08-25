@@ -11,6 +11,7 @@
 #define _RX_PROTOTYPES_H
 
 struct rx_sockaddr;
+struct rx_address;
 
 /* rx.c */
 #ifndef KERNEL
@@ -281,8 +282,8 @@ extern int rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[],
 			  	 afs_uint32 maskBuffer[],
 				 afs_uint32 mtuBuffer[],
 				 int maxSize);
-extern int rx_getAllAddrMaskMtu2(struct rx_sockaddr *addrBuffer,
-				 struct rx_sockaddr *maskBuffer,
+extern int rx_getAllAddrMaskMtu2(struct rx_address *addrBuffer,
+				 struct rx_address *maskBuffer,
 				 afs_uint32 mtuBuffer[],
 				 int maxSize);
 

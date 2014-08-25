@@ -623,7 +623,7 @@ ubeacon_Interact(void *dummy)
 static int
 verifyInterfaceAddress(rx_in_addr_t *ame, struct afsconf_cell *info,
 		       afs_uint32 aservers[]) {
-    struct rx_sockaddr myAddr[UBIK_MAX_INTERFACE_ADDR];
+    struct rx_address myAddr[UBIK_MAX_INTERFACE_ADDR];
     rx_in_addr_t *servList, tmpAddr;
     afs_uint32 myAddr2[UBIK_MAX_INTERFACE_ADDR];
     char hoststr[16];
@@ -667,7 +667,7 @@ verifyInterfaceAddress(rx_in_addr_t *ame, struct afsconf_cell *info,
 
     /* verify that the My-address passed in by ubik is correct */
     for (j = 0, found = 0; j < count; j++) {
-	if (*ame == myAddr[j].addr.sin.sin_addr.s_addr) {	/* both in net byte order */
+	if (*ame == myAddr[j].rxa_s_addr) {	/* both in net byte order */
 	    found = 1;
 	    break;
 	}
@@ -682,7 +682,7 @@ verifyInterfaceAddress(rx_in_addr_t *ame, struct afsconf_cell *info,
 	 * to avoid that big hole in their foot from the loaded gun. */
 	if (usednetfiles) {
 	    /* take the address we did get, then see if ame was masked */
-	    rx_try_sockaddr_to_ipv4(&myAddr[0], ame);
+	    rx_try_address_to_ipv4(&myAddr[0], ame);
 	    tcount = rx_getAllAddr(myAddr2, UBIK_MAX_INTERFACE_ADDR);
 	    if (tcount <= 0) {	/* no address found */
 		ubik_print("ubik: No network addresses found, aborting..\n");
@@ -711,7 +711,7 @@ verifyInterfaceAddress(rx_in_addr_t *ame, struct afsconf_cell *info,
 		tmpAddr = (afs_uint32) info->hostAddr[i].addr.sin.sin_addr.s_addr;
 	    else
 		tmpAddr = aservers[i];
-	    if (myAddr[j].addr.sin.sin_addr.s_addr == tmpAddr) {
+	    if (myAddr[j].rxa_s_addr == tmpAddr) {
 		*ame = tmpAddr;
 		if (!info)
 		    aservers[i] = 0;
@@ -748,8 +748,8 @@ verifyInterfaceAddress(rx_in_addr_t *ame, struct afsconf_cell *info,
      */
     ubik_host[0] = *ame;
     for (j = 0, i = 1; j < count; j++)
-	if (*ame != myAddr[j].addr.sin.sin_addr.s_addr)
-	    ubik_host[i++] = myAddr[j].addr.sin.sin_addr.s_addr;
+	if (*ame != myAddr[j].rxa_s_addr)
+	    ubik_host[i++] = myAddr[j].rxa_s_addr;
 
     return 0;			/* return success */
 }

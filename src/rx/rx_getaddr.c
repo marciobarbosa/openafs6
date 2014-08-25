@@ -65,10 +65,21 @@ rxi_setaddr2(struct rx_address *x)
 }
 
 /* get approx to net addr */
-struct rx_sockaddr
-rxi_getaddr(void)
+afs_uint32
+rxi_getaddr(void) /* rx_in_addr_t */
 {
-    return rxi_tempAddr;
+    afs_uint32 ipv4;
+
+    if (rx_try_address_to_ipv4(&rxi_tempAddr, &ipv4))
+    	return ipv4;
+    else
+    	return EAFNOSUPPORT;
+}
+
+void
+rxi_getaddr2(struct rx_address *addr)
+{
+    rx_copy_address(&rxi_tempAddr, addr);
 }
 
 #endif /* KERNEL */
@@ -82,7 +93,7 @@ rxi_setaddr(afs_uint32 x)
 }
 
 void
-rxi_setaddr2(struct rx_sockaddr *x)
+rxi_setaddr2(struct rx_address *x)
 {
 }
 
@@ -99,8 +110,21 @@ rxi_setaddr2(struct rx_sockaddr *x)
 /* Return our internet address as a long in network byte order.  Returns zero
  * if it can't find one.
  */
-struct rx_address
-rxi_getaddr(void)
+afs_uint32
+rxi_getaddr(void) /* rx_in_addr_t */
+{
+    afs_uint32 buffer[1024];
+    int count;
+
+    count = rx_getAllAddr(buffer, 1024);
+    if (count > 0)
+	return buffer[0];	/* returns the first address */
+    else
+	return count;
+}
+ 
+void
+rxi_getaddr2(struct rx_address *addr)
 {
     struct rx_address buffer[1024];
     int count;
@@ -110,7 +134,7 @@ rxi_getaddr(void)
     if (count <= 0)
     	rx_ipv4_to_address(0, &buffer[0]);
 
-    return buffer[0];	/* returns the first address */
+    rx_copy_address(&buffer[0], addr);	/* returns the first address */
 }
 
 #endif /* !KERNEL */

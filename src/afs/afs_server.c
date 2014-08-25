@@ -820,7 +820,11 @@ afs_random(void)
 {
     static afs_int32 state = 0;
     int i;
-    struct rx_sockaddr saddr = rxi_getaddr();
+    struct rx_address addr;
+    struct rx_sockaddr saddr;
+
+    rxi_getaddr2(&addr);
+    rx_address_to_sockaddr(&addr, 0, 0, &saddr);
 
     AFS_STATCNT(afs_random);
     if (!state) {

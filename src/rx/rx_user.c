@@ -276,16 +276,16 @@ osi_Free(void *x, afs_int32 size)
 #define	ADDRSPERSITE	16
 
 
-static struct rx_address rxi_NetAddrs[ADDRSPERSITE];	/* host order */
-static int myNetMTUs[ADDRSPERSITE];
-static struct rx_address myNetMasks[ADDRSPERSITE];
+static struct rx_address rxi_NetAddrs[ADDRSPERSITE];	/* net order */
+static int myNetMTUs[ADDRSPERSITE];                     /* host order */
+static struct rx_address myNetMasks[ADDRSPERSITE];      /* net order */
 static int myNetFlags[ADDRSPERSITE];
 static u_int rxi_numNetAddrs;
 static int Inited = 0;
 
 #if defined(AFS_NT40_ENV)
 int
-rxi_getaddr(void)
+rxi_getaddr(void) /* returned value in NBO */
 {
     rx_in_addr_t ipv4;
     int i;
@@ -296,7 +296,7 @@ rxi_getaddr(void)
     /* this is a bad bad hack */
     if (rxi_numNetAddrs > 1) {
         for (i = 0; i < rxi_numNetAddrs; i++) {
-            if (rx_try_address_to_ipv4(&rxi_NetAddrs[i], &ipv4) && !rx_IsLoopbackAddr(&rxi_NetAddrs[i]))
+            if (rx_try_address_to_ipv4(&rxi_NetAddrs[i], &ipv4) && !rx_is_loopback_address(&rxi_NetAddrs[i]))
                 break;
         }
         return rxi_NetAddrs[i];
@@ -349,7 +349,7 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
     for (count = 0;
          offset < rxi_numNetAddrs && maxSize > 0;
          count++, offset++, maxSize--) {
-        rx_try_address_to_ipv4(&rxi_NetAddrs[offset], &addrBuffer[count]); /* do not convert to NBO inside rx_try_address_to_ipv4() */
+        rx_try_address_to_ipv4(&rxi_NetAddrs[offset], &addrBuffer[count]);
         rx_try_address_to_ipv4(&myNetMasks[offset], &maskBuffer[count]);
         mtuBuffer[count]  = htonl(myNetMTUs[offset]);
     }
@@ -395,8 +395,8 @@ rx_GetIFInfo(void) /* ipv4 only */
     u_int maxsize;
     u_int rxsize;
     afs_uint32 i;
-    afs_uint32 rxi_NetAddrs_32[ADDRSPERSITE];
-    afs_uint32 myNetMasks_32[ADDRSPERSITE];
+    afs_uint32 rxi_NetAddrs_32[ADDRSPERSITE];   /* host order */
+    afs_uint32 myNetMasks_32[ADDRSPERSITE];     /* host order */
 
     LOCK_IF_INIT;
     if (Inited) {
@@ -418,8 +418,8 @@ rx_GetIFInfo(void) /* ipv4 only */
                            myNetMasks_32, myNetMTUs, myNetFlags);
 
     for (i = 0; i < rxi_numNetAddrs; i++) {
-        rx_ipv4_to_sockaddr(rxi_NetAddrs_32[i], 0, 0, &rxi_NetAddrs[i]);
-        rx_ipv4_to_sockaddr(myNetMasks_32[i], 0, 0, &myNetMasks[i]);
+        rx_ipv4_to_address(htonl(rxi_NetAddrs_32[i]), 0, 0, &rxi_NetAddrs[i]);
+        rx_ipv4_to_address(htonl(myNetMasks_32[i]), 0, 0, &myNetMasks[i]);
 
         rxsize = rxi_AdjustIfMTU(myNetMTUs[i] - RX_IPUDP_SIZE);
         maxsize =
@@ -456,6 +456,8 @@ fudge_netmask(struct rx_address *addr) /* ipv4 only */
 
     if (!rx_try_address_to_ipv4(addr, &ipv4))
         return EAFNOSUPPORT;
+    else
+        ipv4 = ntohl(ipv4);
 
     if (IN_CLASSA(ipv4))
 	msk = IN_CLASSA_NET;
@@ -567,7 +569,7 @@ rx_GetIFInfo(void) /* ipv4 only */
 	a = (struct sockaddr_in *)&ifr->ifr_addr;
 	if (a->sin_family != AF_INET)
 	    continue;
-        rx_ipv4_to_address(a->sin_addr.s_addr, &rxi_NetAddrs[rxi_numNetAddrs]); /* convert to HBO inside rx_ipv4_to_address() */
+        rx_ipv4_to_address(a->sin_addr.s_addr, &rxi_NetAddrs[rxi_numNetAddrs]);
 	if (rx_is_loopback_address(&rxi_NetAddrs[rxi_numNetAddrs])) {
 	    /* we don't really care about "localhost" */
 	    continue;
@@ -611,7 +613,7 @@ rx_GetIFInfo(void) /* ipv4 only */
 	if (rxi_syscallp) {
             afs_uint32 mask;
             memset(&myNetMasks[rxi_numNetAddrs], 0, sizeof(myNetMasks[rxi_numNetAddrs]));
-            rx_try_address_to_ipv4(&rxi_NetAddrs[rxi_numNetAddrs], &ipv4); /* convert to NBO inside rx_try_address_to_ipv4() */
+            rx_try_address_to_ipv4(&rxi_NetAddrs[rxi_numNetAddrs], &ipv4);
 
 	    if ((*rxi_syscallp) (20 /*AFSOP_GETMTU */ ,
 				 ipv4,
@@ -628,7 +630,7 @@ rx_GetIFInfo(void) /* ipv4 only */
 		 * perror(ifr->ifr_name); */
                 rx_ipv4_to_address(0, &myNetMasks[rxi_numNetAddrs]);
 	    } else
-                rx_ipv4_to_address(mask, &myNetMasks[rxi_numNetAddrs]); /* convert to NBO inside rx_ipv4_to_address() */
+                rx_ipv4_to_address(mask, &myNetMasks[rxi_numNetAddrs]);
 	    /* fprintf(stderr, "if %s mask=0x%x\n",
 	     * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	}
@@ -652,12 +654,12 @@ rx_GetIFInfo(void) /* ipv4 only */
         ipv4 = ntohl(ipv4);
 
 	if (ipv4 == 0) {
-            rx_ipv4_to_address(fudge_netmask(&rxi_NetAddrs[rxi_numNetAddrs]), &myNetMasks[rxi_numNetAddrs]);
+            rx_ipv4_to_address(htonl(fudge_netmask(&rxi_NetAddrs[rxi_numNetAddrs])), &myNetMasks[rxi_numNetAddrs]);
 #ifdef SIOCGIFNETMASK
 	    res = ioctl(s, SIOCGIFNETMASK, ifr);
 	    if (res == 0) {
 		a = (struct sockaddr_in *)&ifr->ifr_addr;
-                rx_ipv4_to_address(a->sin_addr.s_addr, &myNetMasks[rxi_numNetAddrs]); /* convert to HBO inside rx_ipv4_to_address() */
+                rx_ipv4_to_address(a->sin_addr.s_addr, &myNetMasks[rxi_numNetAddrs]);
 		/* fprintf(stderr, "if %s subnetmask=0x%x\n",
 		 * ifr->ifr_name, myNetMasks[rxi_numNetAddrs]); */
 	    } else {
@@ -745,7 +747,7 @@ rxi_InitPeerParams(struct rx_peer *pp) /* ipv4 only */
     for (ix = 0; ix < rxi_numNetAddrs; ++ix) {
         rx_try_address_to_ipv4(&rxi_NetAddrs[ix], &ipv4);
         rx_try_address_to_ipv4(&myNetMasks[ix], &mask);
-	if ((ipv4 & mask) == (ppaddr & mask)) {
+	if ((ntohl(ipv4) & ntohl(mask)) == (ppaddr & ntohl(mask))) {
 #ifdef IFF_POINTOPOINT
 	    if (myNetFlags[ix] & IFF_POINTOPOINT)
 		rx_rto_setPeerTimeoutSecs(pp, 4);

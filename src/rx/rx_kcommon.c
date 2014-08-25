@@ -43,7 +43,7 @@ int rxk_initDone = 0;
 
 #if !defined(AFS_SUN5_ENV) && !defined(AFS_SGI62_ENV)
 #define ADDRSPERSITE 16
-static struct rx_address myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];      /* net order */
 static int myNetMTUs[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
 #endif
@@ -538,7 +538,7 @@ rxi_GetcbiInfo(void) /* ipv4 only */
     if (different) {
         for (j = 0; j < i; j++) {
             myNetMTUs[j] = mtus[j];
-            rx_ipv4_to_address(addrs[j], &myNetAddrs[j]);
+            rx_ipv4_to_address(htonl(addrs[j]), &myNetAddrs[j]);
         }
     }
     return different;
@@ -731,7 +731,7 @@ rxi_GetIFInfo(void) /* ipv4 only */
 	int l;
 	for (l = 0; l < i; l++) {
 	    myNetMTUs[l] = mtus[l];
-            rx_ipv4_to_address(addrs[l], &myNetAddrs[l]); /* should we convert from NBO to HBO inside this function or not? */
+            rx_ipv4_to_address(htonl(addrs[l]), &myNetAddrs[l]);
 	}
     }
     return different;

@@ -75,7 +75,7 @@ void (*sockfs_sockfree)
 #define UDP_MOD_NAME "udp"
 #endif
 
-static struct rx_address myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];      /* net order */
 static int myNetMTUs[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
 
@@ -109,7 +109,7 @@ rxi_GetIFInfo()
 	    rxmtu = (afsifinfo[i].mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = afsifinfo[i].ipaddr;
-	    if (myNetAddrs[i].rxa_s_addr != ifinaddr)
+	    if (ntohl(myNetAddrs[i].rxa_s_addr) != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -140,7 +140,7 @@ rxi_GetIFInfo()
 
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-            rx_ipv4_to_address(addrs[j], &myNetAddrs[j]);
+            rx_ipv4_to_address(htonl(addrs[j]), &myNetAddrs[j]);
 	}
     }
 
@@ -166,7 +166,7 @@ rxi_GetIFInfo()
 	    rxmtu = (ipif->ipif_mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = ntohl(ipif->ipif_local_addr);
-	    if (myNetAddrs[i].rxa_s_addr != ifinaddr)
+	    if (ntohl(myNetAddrs[i].rxa_s_addr) != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -197,7 +197,7 @@ rxi_GetIFInfo()
 
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-            rx_ipv4_to_address(addrs[j], &myNetAddrs[j]);
+            rx_ipv4_to_address(htonl(addrs[j]), &myNetAddrs[j]);
 	}
     }
 

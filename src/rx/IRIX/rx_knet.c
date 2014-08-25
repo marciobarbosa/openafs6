@@ -291,7 +291,7 @@ rxk_init(void)
  * RX IP address routines.
  */
 
-static struct rx_address myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];	/* net order */
 static int myNetMTUs[ADDRSPERSITE];
 static int myNetFlags[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
@@ -364,7 +364,7 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     int i = *(int *)arg2;
     struct in_ifaddr *iap = (struct in_ifaddr *)h;
     struct ifnet *ifnp;
-    rx_in_addr_t ifinaddr, ipv4_hbo;
+    rx_in_addr_t ifinaddr, ipv4;
     afs_uint32 rxmtu;
 
     if (i >= ADDRSPERSITE)
@@ -374,9 +374,10 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     rxmtu = (ifnp->if_mtu - RX_IPUDP_SIZE);
     ifinaddr = ntohl(iap->ia_addr.sin_addr.s_addr);
 
-    if (rx_try_address_to_ipv4(&myNetAddrs[i], &ipv4_hbo)) {
-	if (ipv4_hbo != ifinaddr) {
-	    rx_ipv4_to_address(ifinaddr, &myNetAddrs[i]);
+    if (rx_try_address_to_ipv4(&myNetAddrs[i], &ipv4)) {
+    	ipv4 = ntohl(ipv4);
+	if (ipv4 != ifinaddr) {
+	    rx_ipv4_to_address(htonl(ifinaddr), &myNetAddrs[i]);
 	    myNetMTUs[i] = rxmtu;
 	    different++;
 	    *(int *)arg1 = different;

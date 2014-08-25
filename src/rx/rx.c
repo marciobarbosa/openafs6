@@ -1817,7 +1817,7 @@ rx_NewServiceHost2(struct rx_sockaddr *saddr,
 	 serviceName);
 	return 0;
     }
-    if (rx_get_sockaddr_port(saddr) == 0) {
+    if (rx_get_sockaddr_port(saddr) == 0 || rx_get_sockaddr_port(saddr) == rx_port) {
 	if (rx_port == 0) {
 	    (osi_Msg
 	     "rx_NewService: A non-zero port must be specified on this call if a non-zero port was not provided at Rx initialization (service %s).\n",

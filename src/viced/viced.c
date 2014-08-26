@@ -1716,6 +1716,7 @@ Do_VLRegisterRPC(void)
     afs_uint32 FS_HostAddrs_HBO[ADDRSPERSITE]; /* ipv4 only: host byte order */
     int i = 0;
     int j = 0;
+    rx_addr_str_t buf;
 
     for (i = 0; i < FS_HostAddr_cnt && j < ADDRSPERSITE; i++) {
 	rx_in_addr_t addr;
@@ -1763,21 +1764,17 @@ SetupVL(struct rx_sockaddr *addr)
 	 */
 	char reason[1024];
 	afs_int32 code = 0;
-/*
 	code = afsconf_ParseNetFiles2(FS_HostAddrs, NULL, NULL,
 				     ADDRSPERSITE, reason,
 				     AFSDIR_SERVER_NETINFO_FILEPATH,
 				     AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-*/
 	if (code < 0) {
 	    ViceLog(0, ("Can't register any valid addresses: %s\n", reason));
 	    exit(1);
 	}
 	FS_HostAddr_cnt = (afs_uint32) code;
     } else {
-/*
 	FS_HostAddr_cnt = rx_getAllAddr2(FS_HostAddrs, ADDRSPERSITE);
-*/
     }
 
     if (FS_HostAddr_cnt == 1 && rxBind == 1) {

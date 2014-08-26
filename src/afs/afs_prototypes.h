@@ -885,8 +885,8 @@ extern void afs_SortOneServer(struct server *asp);
 extern void afs_SortServers(struct server *aservers[], int count);
 extern void afs_ActivateServer(struct srvAddr *sap);
 #ifdef AFS_USERSPACE_IP_ADDR
-extern void afsi_SetServerIPRank(struct srvAddr *sa, afs_int32 addr,
-				afs_uint32 subnetmask);
+extern void afsi_SetServerIPRank(struct srvAddr *sa, rx_in_addr_t addr,
+				rx_in_addr_t subnetmask);
 #else
 #if (!defined(AFS_SUN5_ENV)) && defined(USEIFADDR)
 void afsi_SetServerIPRank(struct srvAddr *sa, struct in_ifaddr *ifa);

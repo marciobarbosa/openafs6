@@ -90,19 +90,21 @@ c_show(struct seq_file *m, void *p)
     struct afs_q *cq = p;
     struct cell *tc = QTOC(cq);
     int j;
+    rx_addr_str_t hoststr;
 
     seq_printf(m, ">%s #(%d/%d)\n", tc->cellName,
                tc->cellNum, tc->cellIndex);
 
     for (j = 0; j < AFS_MAXCELLHOSTS; j++) {
-	afs_uint32 addr;
+        rx_in_addr_t addr;
 
 	if (!tc->cellHosts[j]) break;
 
-	addr = tc->cellHosts[j]->addr->sa_ip;
+	addr = tc->cellHosts[j]->addr->sa_saddr.rxsa_in_addr;
 #if defined(NIPQUAD)
-	seq_printf(m, "%u.%u.%u.%u #%u.%u.%u.%u\n",
-	           NIPQUAD(addr), NIPQUAD(addr));
+        rx_print_sockaddr(&tc->cellHosts[j]->addr->sa_saddr, hoststr, sizeof(hoststr));
+	seq_printf(m, "%s #%s\n",
+	           hoststr, hoststr); /* Can I do it? */
 #else
 	seq_printf(m, "%pI4 #%pI4\n", &addr, &addr);
 #endif

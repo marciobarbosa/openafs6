@@ -418,8 +418,8 @@ rx_GetIFInfo(void) /* ipv4 only */
                            myNetMasks_32, myNetMTUs, myNetFlags);
 
     for (i = 0; i < rxi_numNetAddrs; i++) {
-        rx_ipv4_to_address(htonl(rxi_NetAddrs_32[i]), 0, 0, &rxi_NetAddrs[i]);
-        rx_ipv4_to_address(htonl(myNetMasks_32[i]), 0, 0, &myNetMasks[i]);
+        rx_ipv4_to_address(htonl(rxi_NetAddrs_32[i]), &rxi_NetAddrs[i]);
+        rx_ipv4_to_address(htonl(myNetMasks_32[i]), &myNetMasks[i]);
 
         rxsize = rxi_AdjustIfMTU(myNetMTUs[i] - RX_IPUDP_SIZE);
         maxsize =

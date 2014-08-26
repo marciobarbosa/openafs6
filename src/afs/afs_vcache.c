@@ -2343,10 +2343,9 @@ afs_UpdateStatus(struct vcache *avc, struct VenusFid *afid,
 void
 afs_BadFetchStatus(struct afs_conn *tc)
 {
-    int addr = ntohl(tc->parent->srvr->sa_ip);
-    afs_warn("afs: Invalid AFSFetchStatus from server %u.%u.%u.%u\n",
-             (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff,
-             (addr) & 0xff);
+    rx_addr_str_t hoststr;
+    afs_warn("afs: Invalid AFSFetchStatus from server %s\n",
+             rx_print_sockaddr(&tc->parent->srvr->sa_saddr, hoststr, sizeof(hoststr)));
     afs_warn("afs: This suggests the server may be sending bad data that "
              "can lead to availability issues or data corruption. The "
              "issue has been avoided for now, but it may not always be "

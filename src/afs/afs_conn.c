@@ -390,6 +390,7 @@ afs_ConnBySA(struct srvAddr *sap, unsigned short aport, afs_int32 acell,
     int isec; /*Security index */
     int service;
     int isrep = (replicated > 0)?CONN_REPLICATED:0;
+    struct rx_sockaddr saddr;
 
     *rxconn = NULL;
 
@@ -494,7 +495,11 @@ afs_ConnBySA(struct srvAddr *sap, unsigned short aport, afs_int32 acell,
 
 	if (glocked)
             AFS_GUNLOCK();
-	tc->id = rx_NewConnection(sap->sa_ip, aport, service, csec, isec);
+
+        rx_copy_sockaddr(&sap->sa_saddr, &saddr);
+        saddr.service = service;
+        rx_set_sockaddr_port(&saddr, aport);
+	tc->id = rx_NewConnection2(&saddr, csec, isec);
 	if (glocked)
             AFS_GLOCK();
 	if (service == 52) {

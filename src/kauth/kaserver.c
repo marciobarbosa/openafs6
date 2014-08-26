@@ -48,7 +48,7 @@ afs_int32 krb4_cross = 0;
 afs_int32 rxBind = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 struct afsconf_dir *KA_conf;	/* for getting cell info */
 
@@ -194,8 +194,6 @@ main(int argc, char *argv[])
     sigaction(SIGSEGV, &nsa, NULL);
 #endif
     osi_audit_init();
-
-    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
 
     if (argc == 0) {
       usage:
@@ -385,7 +383,9 @@ main(int argc, char *argv[])
 
     ubik_nBuffers = 80;
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
@@ -394,16 +394,15 @@ main(int argc, char *argv[])
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-	{
-            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
-        }
-        if (ccode == 1) {
-            rx_copy_sockaddr(&SHostAddrs[0], &host);
-            rx_set_sockaddr_port(&host, htons(AFSCONF_KAUTHPORT));
-	    rx_InitHost2(&host);
+	} else {
+	   ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
+	}
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_KAUTHPORT), KA_AUTHENTICATION_SERVICE, &host);
+    rx_InitHost2(&host);
 
     /* Disable jumbograms */
     rx_SetNoJumbo();

@@ -83,7 +83,7 @@ int rxBind = 0;
 int rxkadDisableDotCheck = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 int bozo_isrestricted = 0;
 int bozo_restdisable = 0;
@@ -776,7 +776,7 @@ main(int argc, char **argv, char **envp)
      * individually in each server.
      */
     tweak_config();
-    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
+
     /*
      * The following signal action for AIX is necessary so that in case of a
      * crash (i.e. core is generated) we can include the user's data section
@@ -1060,7 +1060,9 @@ main(int argc, char **argv, char **envp)
 	exit(code);
     }
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
 	if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
 	    AFSDIR_SERVER_NETINFO_FILEPATH) {
@@ -1072,16 +1074,14 @@ main(int argc, char **argv, char **envp)
         } else {
             ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
-        if (ccode == 1)
-    	    rx_copy_sockaddr(&SHostAddrs[0], &host);
-    }
-    for (i = 0; i < 10; i++) {
-	if (rxBind) {
-	    rx_set_sockaddr_port(&host, htons(AFSCONF_NANNYPORT));
-	    code = rx_InitHost2(&host);
-	} else {
-	    code = rx_Init(htons(AFSCONF_NANNYPORT));
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
+    }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_NANNYPORT), 1, &host);
+
+    for (i = 0; i < 10; i++) {
+	code = rx_InitHost2(&host);
 	if (code) {
 	    bozo_Log("can't initialize rx: code=%d\n", code);
 	    sleep(3);
@@ -1131,8 +1131,6 @@ main(int argc, char **argv, char **envp)
 	bozo_CreatePidFile("bosserver", NULL, getpid());
     }
 
-    host.service = 1; /* service id */
-    rx_set_sockaddr_port(&host, 0);
     tservice = rx_NewServiceHost2(&host, "bozo", securityClasses, numClasses,
 				 BOZO_ExecuteRequest);
     rx_SetMinProcs(tservice, 2);
@@ -1143,7 +1141,7 @@ main(int argc, char **argv, char **envp)
                                     (void *)RXS_CONFIG_FLAGS_DISABLE_DOTCHECK);
     }
 
-    host.service = RX_STATS_SERVICE_ID;
+    host.service = RX_STATS_SERVICE_ID; /* TODO: put the serviceID arg back in new-service! */
     tservice =
 	rx_NewServiceHost2(&host, "rpcstats",
 			  securityClasses, numClasses, RXSTATS_ExecuteRequest);

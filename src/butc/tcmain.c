@@ -106,7 +106,7 @@ afs_int32 lastLog;		/* Log last pass info */
 int rxBind = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 /* dummy routine for the audit work.  It should do nothing since audits */
 /* occur at the server level and bos is not a server. */
@@ -850,7 +850,6 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 #endif
     struct rx_sockaddr host;
 
-    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
     debugLevel = 0;
 
     /*initialize the error tables */
@@ -1034,7 +1033,9 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
     localauth = (as->parms[5].items ? 1 : 0);
     rxBind = (as->parms[8].items ? 1 : 0);
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
         afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
@@ -1043,15 +1044,14 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-	{
-            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
-        }
-        if (ccode == 1)
-    	    rx_copy_sockaddr(&SHostAddrs[0], &host);
+	} else {
+	    ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
+	}
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+	}
     }
-
-    rx_set_sockaddr_port(&host, htons(BC_TAPEPORT + portOffset));
+    rx_address_to_sockaddr(SHostAddrs, htons(BC_TAPEPORT + portOffset), 1, &host);
     code = rx_InitHost2(&host);
     if (code) {
 	TapeLog(0, 0, code, 0, "rx init failed on port %u\n",
@@ -1089,8 +1089,6 @@ WorkerBee(struct cmd_syndesc *as, void *arock)
 	exit(1);
     }
 
-    host.service = 1;
-    rx_set_sockaddr_port(&host, 0);
     service =
 	rx_NewServiceHost2(&host, "BUTC", securityObjects, 1, TC_ExecuteRequest);
     if (!service) {

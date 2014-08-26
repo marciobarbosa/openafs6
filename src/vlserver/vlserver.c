@@ -57,7 +57,7 @@ afs_int32 rxBind = 0;
 int rxkadDisableDotCheck = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 static void
 CheckSignal_Signal(int unused)
@@ -183,7 +183,6 @@ main(int argc, char **argv)
 
     char *restricted_query_parameter = NULL;
 
-    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
 
 #ifdef	AFS_AIX32_ENV
     /*
@@ -414,9 +413,10 @@ main(int argc, char **argv)
     if (noAuth)
 	afsconf_SetNoAuthFlag(tdir, 1);
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
-#ifndef AFS_NT40_ENV
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
@@ -424,17 +424,15 @@ main(int argc, char **argv)
 					  ADDRSPERSITE, reason,
 					  AFSDIR_SERVER_NETINFO_FILEPATH,
 					  AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-#endif
-	{
+        } else {
             ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
-        if (ccode == 1) {
-            rx_copy_sockaddr(&SHostAddrs[0], &host);
-            rx_set_sockaddr_port(&host, htons(AFSCONF_VLDBPORT));
-	    rx_InitHost2(&host);
+        if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_VLDBPORT), USER_SERVICE_ID, &host);
+    rx_InitHost2(&host);
 
     if (!rxJumbograms) {
 	rx_SetNoJumbo();
@@ -467,8 +465,6 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
 
-    host.service = USER_SERVICE_ID;
-    rx_set_sockaddr_port(&host, 0);
     tservice =
 	rx_NewServiceHost2(&host, "Vldb server",
 			  securityClasses, numClasses,

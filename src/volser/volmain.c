@@ -82,7 +82,7 @@ char *logFile = NULL;
 char *configDir = NULL;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 #define VS_EXIT(code)  {                                          \
                           osi_audit(VS_ExitEvent, code, AUD_END); \
@@ -402,8 +402,6 @@ main(int argc, char **argv)
     osi_audit_init();
     osi_audit(VS_StartEvent, 0, AUD_END);
 
-    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
-
     /* Initialize dirpaths */
     if (!(initAFSDirPath() & AFSDIR_SERVER_PATHS_OK)) {
 #ifdef AFS_NT40_ENV
@@ -466,7 +464,9 @@ main(int argc, char **argv)
     rx_nPackets = rxpackets;	/* set the max number of packets */
     if (udpBufSize)
 	rx_SetUdpBufSize(udpBufSize);	/* set the UDP buffer size for receive */
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
@@ -475,15 +475,14 @@ main(int argc, char **argv)
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-	{
+        } else {
             ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
-        if (ccode == 1)
-            rx_copy_sockaddr(&SHostAddrs[0], &host);
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+	}
     }
-
-    rx_set_sockaddr_port(&host, htons(AFSCONF_VOLUMEPORT));
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_VOLUMEPORT), VOLSERVICE_ID, &host);
     code = rx_InitHost2(&host);
     if (code) {
 	fprintf(stderr, "rx init failed on socket AFSCONF_VOLUMEPORT %u\n",
@@ -535,7 +534,6 @@ main(int argc, char **argv)
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
     if (securityClasses[0] == NULL)
 	Abort("rxnull_NewServerSecurityObject");
-    host.service = VOLSERVICE_ID;
     rx_set_sockaddr_port(&host, 0);
     service =
 	rx_NewServiceHost2(&host, "VOLSER", securityClasses,

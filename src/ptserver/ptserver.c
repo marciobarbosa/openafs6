@@ -153,7 +153,7 @@ int rxBind = 0;
 int rxkadDisableDotCheck = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 static struct afsconf_cell info;
 
@@ -271,7 +271,6 @@ main(int argc, char **argv)
 #endif
     osi_audit_init();
     osi_audit(PTS_StartEvent, 0, AUD_END);
-    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
 
     /* Initialize dirpaths */
     if (!(initAFSDirPath() & AFSDIR_SERVER_PATHS_OK)) {
@@ -496,7 +495,9 @@ main(int argc, char **argv)
      * required. */
     ubik_nBuffers = 120 + /*fudge */ 40;
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
 	if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
 	    AFSDIR_SERVER_NETINFO_FILEPATH) {
@@ -505,20 +506,20 @@ main(int argc, char **argv)
 					  ADDRSPERSITE, reason,
 					  AFSDIR_SERVER_NETINFO_FILEPATH,
 					  AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-	} else
-	{
+	} else {
 	    ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
 	}
-	if (ccode == 1) {
-            rx_copy_sockaddr(&SHostAddrs[0], &host);
-            rx_set_sockaddr_port(&host, htons(AFSCONF_PROTPORT));
-	    /* the following call is idempotent so if/when it gets called
-	     * again by the ubik init stuff, it doesn't really matter
-	     * -- klm
-	     */
-	    rx_InitHost2(&host);
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_PROTPORT), PRSRV, &host);
+
+    /* the following call is idempotent so if/when it gets called
+     * again by the ubik init stuff, it doesn't really matter
+     * -- klm
+     */
+    rx_InitHost2(&host);
 
     /* Disable jumbograms */
     rx_SetNoJumbo();

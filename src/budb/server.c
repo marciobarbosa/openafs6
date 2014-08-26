@@ -63,7 +63,7 @@ int lwps   = 3;
 #define MAXLWP 16
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-struct rx_sockaddr SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 /* check whether caller is authorized to manage RX statistics */
 int
@@ -395,7 +395,7 @@ main(int argc, char **argv)
     sigaction(SIGSEGV, &nsa, NULL);
     sigaction(SIGABRT, &nsa, NULL);
 #endif
-    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), 0, 0, &host);
+
     memset(&cellinfo_s, 0, sizeof(cellinfo_s));
     memset(clones, 0, sizeof(clones));
 
@@ -502,7 +502,9 @@ main(int argc, char **argv)
 
     rx_SetRxDeadTime(60);	/* 60 seconds inactive before timeout */
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
@@ -511,16 +513,15 @@ main(int argc, char **argv)
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-	{
-            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
+        } else {
+	    ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
-        if (ccode == 1) {
-            rx_copy_sockaddr(&SHostAddrs[0], &host);
-            rx_set_sockaddr_port(&host, htons(AFSCONF_BUDBPORT));
-	    rx_InitHost2(&host);
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_BUDBPORT), BUDB_SERVICE, &host);
+    rx_InitHost2(&host);
 
     /* Disable jumbograms */
     rx_SetNoJumbo();

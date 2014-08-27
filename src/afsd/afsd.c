@@ -1427,6 +1427,7 @@ ConfigCell(struct afsconf_cell *aci, void *arock, struct afsconf_dir *adir)
 	    cellFlags |= 8; /* don't display foreign cells until looked up */
     }
     /* build address list */
+    memset(hosts, 0, sizeof(hosts));
     for (i = 0; i < MAXHOSTSPERCELL; i++)
         rx_try_sockaddr_to_ipv4(&aci->hostAddr[i], &hosts[i]);
 

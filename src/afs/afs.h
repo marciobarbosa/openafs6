@@ -418,7 +418,7 @@ struct sa_conn_vector {
     int flags;
 
     /* next connection to return when all in cvec are fully utilized */
-    int select_index; 
+    int select_index;
     
     /* connections vector */
     struct afs_conn cvec[CVEC_LEN];
@@ -513,7 +513,7 @@ struct server {
  * also in venus.h
  */
 struct spref {
-    struct in_addr host;
+    struct rx_address addr;
     unsigned short rank;
 };
 

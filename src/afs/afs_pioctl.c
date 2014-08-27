@@ -3980,18 +3980,20 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
     afs_int32 touched[34];
     int isfs;
     rx_addr_str_t hoststr;
+    struct rx_address aux;
 
     touchedSize = 0;
     for (k = 0; k < num; sp++, k++) {
 	if (debugsetsp) {
-	    afs_warn("sp host=%x, rank=%d\n", sp->host.s_addr, sp->rank);
+	    afs_warn("sp host=%s, rank=%d\n", rx_print_address(&sp->addr, hoststr, sizeof(hoststr)), sp->rank);
 	}
 	matches = 0;
 	ObtainReadLock(&afs_xserver);
 
-	i = SHash(sp->host.s_addr);
+	i = SHash(sp->addr.rxa_s_addr);
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
-	    if (sa->sa_saddr.rxsa_in_addr == sp->host.s_addr) {
+            rx_sockaddr_to_address(&sa->sa_saddr, &aux);
+	    if (rx_compare_address(&aux, &sp->addr)) {
 		srvr = sa->server;
 		isfs = (srvr->cell && (rx_get_sockaddr_port(&sa->sa_saddr) == srvr->cell->fsport))
 		    || (rx_get_sockaddr_port(&sa->sa_saddr) == AFS_FSPORT);
@@ -4030,7 +4032,7 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
 	/* if we didn't find one, start to create one. */
 	/* Note that it doesn't have a cell yet...     */
 	if (!matches) {
-	    afs_uint32 temp = sp->host.s_addr;
+	    afs_uint32 temp = sp->addr.rxa_s_addr;
 	    srvr =
 		afs_GetServer(&temp, 1, 0, (vlonly ? AFS_VLPORT : AFS_FSPORT),
 			      WRITE_LOCK, (afsUUID *) 0, 0, NULL);
@@ -4203,7 +4205,7 @@ DECL_PIOCTL(PGetSPrefs)
 		return 0;
 	    }
 
-	    srvout->host.s_addr = sa->sa_saddr.rxsa_in_addr;
+            rx_sockaddr_to_address(&sa->sa_saddr, &srvout->addr);
 	    srvout->rank = sa->sa_iprank;
 	    spout->num_servers++;
 	    srvout++;
@@ -4722,7 +4724,7 @@ DECL_PIOCTL(PGetCPrefs)
      */
     for (i = spin->offset, j = 0; (i < afs_cb_interface.numberOfInterfaces)
 	 && (j < maxNumber); i++, j++, srvout++)
-	srvout->host.s_addr = afs_cb_interface.addr_in[i];
+        rx_ipv4_to_address(afs_cb_interface.addr_in[i], &srvout->addr);
 
     spout->num_servers = j;
     aout->ptr += sizeof(struct sprefinfo) + (j - 1) * sizeof(struct spref);
@@ -4781,7 +4783,7 @@ DECL_PIOCTL(PSetCPrefs)
     ObtainWriteLock(&afs_xinterface, 412);
     afs_cb_interface.numberOfInterfaces = sin->num_servers;
     for (i = 0; (unsigned short)i < sin->num_servers; i++)
-	afs_cb_interface.addr_in[i] = sin->servers[i].host.s_addr;
+	afs_cb_interface.addr_in[i] = sin->servers[i].addr.rxa_s_addr;
 
     ReleaseWriteLock(&afs_xinterface);
     return 0;

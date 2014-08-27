@@ -94,7 +94,7 @@ GetUpDownStats(struct server *srv)
     if (srv->cell)
 	fsport = srv->cell->fsport;
 
-    if (srv->addr->sa_saddr.rxsa_in_port == fsport)
+    if (rx_get_sockaddr_port(&srv->addr->sa_saddr) == fsport)
 	upDownP = afs_stats_cmperf.fs_UpDown;
     else
 	upDownP = afs_stats_cmperf.vl_UpDown;
@@ -240,7 +240,7 @@ afs_ServerDown(struct srvAddr *sa, int code, struct rx_connection *rxconn)
     if (aserver->flags & SRVR_ISDOWN || sa->sa_flags & SRVADDR_ISDOWN)
 	return 0;
     afs_MarkServerUpOrDown(sa, SRVR_ISDOWN);
-    if (sa->sa_saddr.rxsa_in_port == aserver->cell->vlport)
+    if (rx_get_sockaddr_port(&sa->sa_saddr) == aserver->cell->vlport)
 	print_internet_address("afs: Lost contact with volume location server ",
 	                      sa, "", 1, code, rxconn);
     else
@@ -698,7 +698,7 @@ afs_LoopServers(int adown, struct cell *acellp, int vlalso,
 	    continue;
 
 	/* check vlserver with special code */
-	if (sa->sa_saddr.rxsa_in_port == AFS_VLPORT) {
+	if (rx_get_sockaddr_port(&sa->sa_saddr) == AFS_VLPORT) {
 	    if (vlalso)
 		CheckVLServer(sa, treq);
 	    continue;
@@ -775,7 +775,7 @@ afs_FindServer(afs_int32 aserver, afs_uint16 aport, afsUUID * uuidp,
     } else {
 	i = SHash(aserver);
 	for (sa = afs_srvAddrs[i]; sa; sa = sa->next_bkt) {
-	    if ((sa->sa_saddr.rxsa_in_port == aserver) && (sa->sa_saddr.rxsa_in_port == aport)) {
+	    if ((sa->sa_saddr.rxsa_in_addr == aserver) && (sa->sa_saddr.rxsa_in_port == aport)) {
 		return sa->server;
 	    }
 	}

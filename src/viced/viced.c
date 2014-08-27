@@ -1716,7 +1716,6 @@ Do_VLRegisterRPC(void)
     afs_uint32 FS_HostAddrs_HBO[ADDRSPERSITE]; /* ipv4 only: host byte order */
     int i = 0;
     int j = 0;
-    rx_addr_str_t buf;
 
     for (i = 0; i < FS_HostAddr_cnt && j < ADDRSPERSITE; i++) {
 	rx_in_addr_t addr;

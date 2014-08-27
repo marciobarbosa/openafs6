@@ -172,7 +172,20 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 #endif
 
 static_inline int
-rxi_IsLoopbackIface(struct rx_sockaddr *saddr, unsigned long flags)
+rxi_IsLoopbackIface(struct sockaddr_in *a, unsigned long flags)
+{
+    afs_uint32 addr = ntohl(a->sin_addr.s_addr);
+    if (rx_IsLoopbackAddr(addr)) {
+	return 1;
+    }
+    if ((flags & IFF_LOOPBACK) && ((addr & 0xff000000) == 0x7f000000)) {
+	return 1;
+    }
+    return 0;
+}
+
+static_inline int
+rxi_IsLoopbackIface2(struct rx_sockaddr *saddr, unsigned long flags)
 {
     if (rx_is_loopback_sockaddr(saddr)) {
 	return 1;
@@ -669,7 +682,7 @@ rx_getAllAddr_internal(afs_uint32 buffer[], int maxSize, int loopbacks)
 	}
 	if (a->sin_addr.s_addr != 0) {
             if (!loopbacks) {
-                if (rxi_IsLoopbackIface(&saddr, ifr->ifr_flags))
+                if (rxi_IsLoopbackIface2(&saddr, ifr->ifr_flags))
 		    continue;	/* skip loopback address as well. */
             } else {
                 if (ifr->ifr_flags & IFF_LOOPBACK)
@@ -748,7 +761,7 @@ rx_getAllAddr_internal2(struct rx_address buffer[], int maxSize, int loopbacks) 
 	}
 	if (a->sin_addr.s_addr != 0) {
             if (!loopbacks) {
-                if (rxi_IsLoopbackIface(&saddr, ifr->ifr_flags))
+                if (rxi_IsLoopbackIface2(&saddr, ifr->ifr_flags))
 		    continue;	/* skip loopback address as well. */
             } else {
                 if (ifr->ifr_flags & IFF_LOOPBACK)

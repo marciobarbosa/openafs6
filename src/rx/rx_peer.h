@@ -10,6 +10,8 @@
 #ifndef OPENAFS_RX_PEER_H
 #define OPENAFS_RX_PEER_H
 
+#include "rx_addr.h"
+
 /* A peer refers to a peer process, specified by a (host,port) pair.  There may
  * be more than one peer on a given host. */
 
@@ -23,8 +25,7 @@ struct rx_peer {
 #ifdef RX_ENABLE_LOCKS
     afs_kmutex_t peer_lock;	/* Lock peer */
 #endif				/* RX_ENABLE_LOCKS */
-    afs_uint32 host;		/* Remote IP address, in net byte order */
-    u_short port;		/* Remote UDP port, in net byte order */
+    struct rx_sockaddr saddr;	/* Remote IP address and UDP port, in net byte order (IPv4 or IPv6) */
 
     /* interface mtu probably used for this host  -  includes RX Header */
     u_short ifMTU;		/* doesn't include IP header */

@@ -35,6 +35,7 @@
 #ifdef AFS_NT40_ENV
 #include "rx_xmit_nt.h"
 #endif
+#include "rx_addr.h"
 
 static void rxi_SetThreadNum(int threadID);
 
@@ -204,8 +205,7 @@ rxi_ReScheduleEvents(void)
 static void
 rxi_ListenerProc(osi_socket sock, int *tnop, struct rx_call **newcallp)
 {
-    unsigned int host;
-    u_short port;
+    struct rx_sockaddr saddr;
     struct rx_packet *p = (struct rx_packet *)0;
 
     MUTEX_ENTER(&listener_mutex);
@@ -230,9 +230,9 @@ rxi_ListenerProc(osi_socket sock, int *tnop, struct rx_call **newcallp)
 	    }
 	}
 
-	if (rxi_ReadPacket(sock, p, &host, &port)) {
+	if (rxi_ReadPacket(sock, p, &saddr)) {
 	    clock_NewTime();
-	    p = rxi_ReceivePacket(p, sock, host, port, tnop, newcallp);
+	    p = rxi_ReceivePacket(p, sock, &saddr, tnop, newcallp);
 	    if (newcallp && *newcallp) {
 		if (p)
 		    rxi_FreePacket(p);

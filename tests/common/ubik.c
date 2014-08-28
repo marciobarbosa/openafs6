@@ -47,10 +47,8 @@ afstest_GetUbikClient(struct afsconf_dir *dir, char *service,
 	return code;
 
     for (i = 0; i < info.numServers; i++) {
-	serverconns[i] = rx_NewConnection(info.hostAddr[i].sin_addr.s_addr,
-					  info.hostAddr[i].sin_port,
-					  serviceId,
-					  secClass, secIndex);
+        info.hostAddr[i].service = serviceId;
+	serverconns[i] = rx_NewConnection2(&info.hostAddr[i], secClass, secIndex);
     }
 
     serverconns[i] = NULL;

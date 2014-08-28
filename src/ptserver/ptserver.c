@@ -153,7 +153,7 @@ int rxBind = 0;
 int rxkadDisableDotCheck = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 static struct afsconf_cell info;
 
@@ -242,7 +242,7 @@ main(int argc, char **argv)
     afs_int32 numClasses;
     int lwps = 3;
     char clones[MAXHOSTSPERCELL];
-    afs_uint32 host = htonl(INADDR_ANY);
+    struct rx_sockaddr host;
     struct cmd_syndesc *opts;
     struct cmd_item *list;
 
@@ -495,28 +495,31 @@ main(int argc, char **argv)
      * required. */
     ubik_nBuffers = 120 + /*fudge */ 40;
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
 	if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
 	    AFSDIR_SERVER_NETINFO_FILEPATH) {
 	    char reason[1024];
-	    ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+	    ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
 					  ADDRSPERSITE, reason,
 					  AFSDIR_SERVER_NETINFO_FILEPATH,
 					  AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-	} else
-	{
-	    ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+	} else {
+	    ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
 	}
-	if (ccode == 1) {
-	    host = SHostAddrs[0];
-	    /* the following call is idempotent so if/when it gets called
-	     * again by the ubik init stuff, it doesn't really matter
-	     * -- klm
-	     */
-	    rx_InitHost(host, htons(AFSCONF_PROTPORT));
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_PROTPORT), PRSRV, &host);
+
+    /* the following call is idempotent so if/when it gets called
+     * again by the ubik init stuff, it doesn't really matter
+     * -- klm
+     */
+    rx_InitHost2(&host);
 
     /* Disable jumbograms */
     rx_SetNoJumbo();
@@ -542,8 +545,10 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(prdir, &securityClasses, &numClasses);
 
+    host.service = PRSRV;
+    rx_set_sockaddr_port(&host, 0);
     tservice =
-	rx_NewServiceHost(host, 0, PRSRV, "Protection Server", securityClasses,
+	rx_NewServiceHost2(&host, "Protection Server", securityClasses,
 		          numClasses, PR_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	fprintf(stderr, "ptserver: Could not create new rx service.\n");
@@ -556,8 +561,9 @@ main(int argc, char **argv)
                                     (void *)RXS_CONFIG_FLAGS_DISABLE_DOTCHECK);
     }
 
+    host.service = RX_STATS_SERVICE_ID;
     tservice =
-	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats",
+	rx_NewServiceHost2(&host, "rpcstats",
 			  securityClasses, numClasses, RXSTATS_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	fprintf(stderr, "ptserver: Could not create new rx service.\n");

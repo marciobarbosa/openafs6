@@ -954,13 +954,9 @@ MyBeforeProc(struct cmd_syndesc *as, void *arock)
 	    th = gethostbyname(cellinfo.hostName[i]);
 	    if (!th)
 		return UBADHOST;
-	    memcpy(&cellinfo.hostAddr[i].sin_addr, th->h_addr,
+	    rx_ipv4_to_sockaddr(0, 0, 0, &cellinfo.hostAddr[i]);
+	    memcpy(&cellinfo.hostAddr[i].addr.sin.sin_addr, th->h_addr,
 		   sizeof(afs_int32));
-	    cellinfo.hostAddr[i].sin_family = AF_INET;
-	    cellinfo.hostAddr[i].sin_port = 0;
-#ifdef STRUCT_SOCKADDR_HAS_SA_LEN
-	    cellinfo.hostAddr[i].sin_len = sizeof(struct sockaddr_in);
-#endif
 	}
 	cellinfo.numServers = i;
 	strcpy(cellinfo.name, lcell);
@@ -997,7 +993,7 @@ MyBeforeProc(struct cmd_syndesc *as, void *arock)
 	fprintf(f, ">%s\n", lcell);
 	for (i = 0; i < cellinfo.numServers; i++) {
 	    unsigned char *tp =
-		(unsigned char *)&cellinfo.hostAddr[i].sin_addr;
+		(unsigned char *)&cellinfo.hostAddr[i].addr.sin.sin_addr;
 	    fprintf(f, "%d.%d.%d.%d\t#%s\n", tp[0], tp[1], tp[2], tp[3],
 		    cellinfo.hostName[i]);
 	}

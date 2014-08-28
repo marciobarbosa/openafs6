@@ -259,7 +259,7 @@ afs_nfs2_dispatcher(int type, afs_int32 which, char *argp,
 {
     afs_int32 call = 0;
     afs_int32 code = 0;
-    afs_int32 client = 0;
+    rx_in_addr_t client = 0;
     struct sockaddr *sa;
     fhandle_t *fh = (fhandle_t *) argp;
     fhandle_t *fh2 = (fhandle_t *) 0;
@@ -1001,7 +1001,7 @@ afs_nfs3_dispatcher(int type, afs_int32 which, char *argp,
 {
     afs_int32 call = 0;
     afs_int32 code = 0;
-    afs_int32 client = 0;
+    rx_in_addr_t client = 0;
     struct sockaddr *sa;
     nfs_fh3 *fh = (nfs_fh3 *) argp;
     nfs_fh3 *fh2 = (nfs_fh3 *) 0;

@@ -34,7 +34,7 @@ afs_int32 afs_gcpags = AFS_GCPAGS;
 int afs_shuttingdown = 0;
 int afs_cold_shutdown = 0;
 int afs_resourceinit_flag = 0;
-afs_int32 afs_nfs_server_addr;
+rx_in_addr_t afs_nfs_server_addr;
 struct interfaceAddr afs_cb_interface;
 struct afs_osi_WaitHandle AFS_WaitHandler;
 static struct rx_securityClass *srv_secobj;
@@ -86,7 +86,7 @@ afs_Daemon(void)
 
 
 void
-afspag_Init(afs_int32 nfs_server_addr)
+afspag_Init(rx_in_addr_t nfs_server_addr)
 {
     struct clientcred ccred;
     struct rmtbulk idata, odata;

@@ -776,7 +776,7 @@ struct afs_stats_CMPerf {
     afs_int32 vcacheMisses;	/*# stat entries NOT found in local cache */
     afs_int32 cacheFlushes;	/*# files flushed from cache */
     afs_int32 cacheFilesReused;	/*# cache files reused */
-    afs_int32 ProtServerAddr;	/*Addr of Protection Server used */
+    afs_int32 ProtServerAddr;	/*Addr of Protection Server used */ /* rx_in_addr_t */
     afs_int32 vcacheXAllocs;	/* Additionally allocated vcaches */
     afs_int32 dcacheXAllocs;	/* Additionally allocated dcaches */
 

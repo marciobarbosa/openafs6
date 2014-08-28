@@ -88,7 +88,7 @@ extern int SRXAFSCB_InitCallBackState3(struct rx_call *a_call,
 extern int SRXAFSCB_ProbeUuid(struct rx_call *a_call, afsUUID * a_uuid);
 extern int SRXAFSCB_GetServerPrefs(struct rx_call *a_call, afs_int32 a_index,
 				   afs_int32 * a_srvr_addr,
-				   afs_int32 * a_srvr_rank);
+				   afs_int32 * a_srvr_rank); /* rx_in_addr_t */
 extern int SRXAFSCB_GetCellServDB(struct rx_call *a_call, afs_int32 a_index,
 				  char **a_name, serverList * a_hosts);
 extern int SRXAFSCB_GetLocalCell(struct rx_call *a_call, char **a_name);
@@ -127,7 +127,7 @@ extern void afs_CellInit(void);
 extern void shutdown_cell(void);
 extern int afs_cellname_init(afs_dcache_id_t *inode, int lookupcode);
 extern int afs_cellname_write(void);
-extern afs_int32 afs_NewCell(char *acellName, afs_int32 * acellHosts,
+extern afs_int32 afs_NewCell(char *acellName, rx_in_addr_t * acellHosts,
 			     int aflags, char *linkedcname, u_short fsport,
 			     u_short vlport, int timeout);
 extern afs_int32 afs_SetPrimaryCell(char *acellName);
@@ -803,8 +803,8 @@ extern int afs_unmount(struct vfs *afsp);
 #endif
 
 /* afs_pag_call.c */
-extern afs_int32 afs_nfs_server_addr;
-extern void afspag_Init(afs_int32 nfs_server_addr);
+extern rx_in_addr_t afs_nfs_server_addr;
+extern void afspag_Init(rx_in_addr_t nfs_server_addr);
 extern void afspag_Shutdown(void);
 
 /* afs_pag_cred.c */
@@ -859,9 +859,9 @@ extern afs_rwlock_t afs_icl_lock;
 extern struct srvAddr *afs_srvAddrs[NSERVERS];
 extern struct server *afs_servers[NSERVERS];
 extern int afs_totalServers;
-extern struct server *afs_FindServer(afs_int32 aserver, afs_uint16 aport,
+extern struct server *afs_FindServer(rx_in_addr_t aserver, afs_uint16 aport,
 				     afsUUID * uuidp, afs_int32 locktype);
-extern struct server *afs_GetServer(afs_uint32 * aserver, afs_int32 nservers,
+extern struct server *afs_GetServer(rx_in_addr_t * aserver, afs_int32 nservers,
 				    afs_int32 acell, u_short aport,
 				    afs_int32 locktype, afsUUID * uuidp,
 				    afs_int32 addr_uniquifier,

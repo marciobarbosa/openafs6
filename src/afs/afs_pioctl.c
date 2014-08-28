@@ -2492,8 +2492,8 @@ DECL_PIOCTL(PUnlog)
  */
 DECL_PIOCTL(PMariner)
 {
-    afs_int32 newHostAddr;
-    afs_int32 oldHostAddr;
+    rx_in_addr_t newHostAddr;
+    rx_in_addr_t oldHostAddr;
 
     AFS_STATCNT(PMariner);
     if (afs_mariner)
@@ -3053,7 +3053,7 @@ DECL_PIOCTL(PRemoveCallBack)
  */
 DECL_PIOCTL(PNewCell)
 {
-    afs_int32 cellHosts[AFS_MAXCELLHOSTS], magic = 0;
+    rx_in_addr_t cellHosts[AFS_MAXCELLHOSTS], magic = 0;
     char *newcell = NULL;
     char *linkedcell = NULL;
     afs_int32 code, ls;
@@ -4032,7 +4032,7 @@ afs_setsprefs(struct spref *sp, unsigned int num, unsigned int vlonly)
 	/* if we didn't find one, start to create one. */
 	/* Note that it doesn't have a cell yet...     */
 	if (!matches) {
-	    afs_uint32 temp = sp->addr.rxa_s_addr;
+	    rx_in_addr_t temp = sp->addr.rxa_s_addr;
 	    srvr =
 		afs_GetServer(&temp, 1, 0, (vlonly ? AFS_VLPORT : AFS_FSPORT),
 			      WRITE_LOCK, (afsUUID *) 0, 0, NULL);
@@ -4525,7 +4525,7 @@ HandleClientContext(struct afs_ioctl *ablob, int *com,
 		    afs_ucred_t **acred, afs_ucred_t *credp)
 {
     char *ain, *inData;
-    afs_uint32 hostaddr;
+    rx_in_addr_t hostaddr;
     afs_int32 uid, g0, g1, i, code, pag, exporter_type, isroot = 0;
     struct afs_exporter *exporter, *outexporter;
     afs_ucred_t *newcred;
@@ -5170,7 +5170,7 @@ DECL_PIOCTL(PSetCachingThreshold)
 DECL_PIOCTL(PCallBackAddr)
 {
 #ifndef UKERNEL
-    afs_uint32 addr, code;
+    rx_in_addr_t addr, code;
     int srvAddrCount;
     struct server *ts;
     struct srvAddr *sa;
@@ -5537,7 +5537,7 @@ out:
 
 DECL_PIOCTL(PNFSNukeCreds)
 {
-    afs_uint32 addr;
+    rx_in_addr_t addr;
     afs_int32 i;
     struct unixuser *tu;
 

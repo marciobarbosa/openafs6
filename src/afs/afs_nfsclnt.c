@@ -47,7 +47,7 @@ extern struct afs_exporter *afs_nfsexporter;
 /* Creates an nfsclientpag structure for the (uid, host) pair if one doesn't
  * exist. RefCount is incremented and it's time stamped. */
 static struct nfsclientpag *
-afs_GetNfsClientPag(afs_int32 uid, afs_uint32 host)
+afs_GetNfsClientPag(afs_int32 uid, rx_in_addr_t host)
 {
     struct nfsclientpag *np;
     afs_int32 i, now;
@@ -110,7 +110,7 @@ afs_PutNfsClientPag(np)
  * {pag, host} pair, if pag is nonzero. RefCount is incremented and it's
  * time stamped. */
 static struct nfsclientpag *
-afs_FindNfsClientPag(afs_int32 uid, afs_uint32 host, afs_int32 pag)
+afs_FindNfsClientPag(afs_int32 uid, rx_in_addr_t host, afs_int32 pag)
 {
     struct nfsclientpag *np;
     afs_int32 i;
@@ -176,7 +176,7 @@ afs_nfsclient_init(void)
 int
 afs_nfsclient_reqhandler(struct afs_exporter *exporter,
 			 afs_ucred_t **cred,
-			 afs_uint32 host, afs_int32 *pagparam,
+			 rx_in_addr_t host, afs_int32 *pagparam,
 			 struct afs_exporter **outexporter)
 {
     struct nfsclientpag *np, *tnp;
@@ -436,7 +436,7 @@ afs_nfsclient_hold(struct nfsclientpag *np)
 
 /* check if this exporter corresponds to the specified host */
 int
-afs_nfsclient_checkhost(struct nfsclientpag *np, afs_uint32 host)
+afs_nfsclient_checkhost(struct nfsclientpag *np, rx_in_addr_t host)
 {
     if (np->type != EXP_NFS)
 	return 0;

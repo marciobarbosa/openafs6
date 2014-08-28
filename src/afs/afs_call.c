@@ -48,13 +48,13 @@
 #endif
 
 struct afsop_cell {
-    afs_int32 hosts[AFS_MAXCELLHOSTS];
+    rx_in_addr_t hosts[AFS_MAXCELLHOSTS];
     char cellName[100];
 };
 
 char afs_zeros[AFS_ZEROS];
 char afs_rootVolumeName[64] = "";
-afs_uint32 rx_bindhost;
+rx_in_addr_t rx_bindhost;
 
 #ifdef AFS_SUN510_ENV
 ddi_taskq_t *afs_taskq;
@@ -1113,10 +1113,10 @@ afs_syscall_call(long parm, long parm2, long parm3,
 	int refresh = 0;
 
 	afs_int32 count = parm2;
-	afs_int32 *buffer =
-	    afs_osi_Alloc(sizeof(afs_int32) * AFS_MAX_INTERFACE_ADDR);
-	afs_int32 *maskbuffer =
-	    afs_osi_Alloc(sizeof(afs_int32) * AFS_MAX_INTERFACE_ADDR);
+	rx_in_addr_t *buffer =
+	    afs_osi_Alloc(sizeof(rx_in_addr_t) * AFS_MAX_INTERFACE_ADDR);
+	rx_in_addr_t *maskbuffer =
+	    afs_osi_Alloc(sizeof(rx_in_addr_t) * AFS_MAX_INTERFACE_ADDR);
 	afs_int32 *mtubuffer =
 	    afs_osi_Alloc(sizeof(afs_int32) * AFS_MAX_INTERFACE_ADDR);
 	int i;

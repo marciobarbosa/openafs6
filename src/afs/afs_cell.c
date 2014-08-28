@@ -78,7 +78,7 @@ int
 afs_AFSDBHandler(char *acellName, int acellNameLen, afs_int32 * kernelMsg)
 {
     afs_int32 timeout, code;
-    afs_int32 cellHosts[AFS_MAXCELLHOSTS];
+    rx_in_addr_t cellHosts[AFS_MAXCELLHOSTS];
 
     if (afsdb_handler_shutdown)
 	return -2;
@@ -922,7 +922,7 @@ afs_SetPrimaryCell(char *acellName)
  * \return
  */
 afs_int32
-afs_NewCell(char *acellName, afs_int32 * acellHosts, int aflags,
+afs_NewCell(char *acellName, rx_in_addr_t * acellHosts, int aflags,
 	    char *linkedcname, u_short fsport, u_short vlport, int timeout)
 {
     struct cell *tc, *tcl = 0;
@@ -1002,7 +1002,7 @@ afs_NewCell(char *acellName, afs_int32 * acellHosts, int aflags,
     for (i = 0; i < AFS_MAXCELLHOSTS; i++) {
 	/* Get server for each host and link this cell in.*/
 	struct server *ts;
-	afs_uint32 temp = acellHosts[i];
+	rx_in_addr_t temp = acellHosts[i];
 	if (!temp)
 	    break;
 	ts = afs_GetServer(&temp, 1, 0, tc->vlport, WRITE_LOCK, NULL, 0, NULL);

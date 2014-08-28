@@ -755,7 +755,7 @@ afs_LoopServers(int adown, struct cell *acellp, int vlalso,
 
 /* find a server structure given the host address */
 struct server *
-afs_FindServer(afs_int32 aserver, afs_uint16 aport, afsUUID * uuidp,
+afs_FindServer(rx_in_addr_t aserver, afs_uint16 aport, afsUUID * uuidp,
 	       afs_int32 locktype)
 {
     struct server *ts;
@@ -1001,8 +1001,8 @@ void
 afsi_SetServerIPRank(struct srvAddr *sa, rx_in_addr_t addr,
 		     rx_in_addr_t subnetmask) /* ipv4 only */
 {
-    afs_uint32 myAddr, myNet, mySubnet, netMask;
-    afs_uint32 serverAddr;
+    rx_in_addr_t myAddr, myNet, mySubnet, netMask;
+    rx_in_addr_t serverAddr;
 
     myAddr = ntohl(addr);	/* one of my IP addr in host order */
     serverAddr = ntohl(sa->sa_saddr.rxsa_in_addr);	/* server's IP addr in host order */
@@ -1086,8 +1086,8 @@ afsi_SetServerIPRank(struct srvAddr *sa, rx_ifaddr_t ifa)
     void *t;
 #endif
 
-    afs_uint32 subnetmask, myAddr, myNet, myDstaddr, mySubnet, netMask;
-    afs_uint32 serverAddr;
+    rx_in_addr_t subnetmask, myAddr, myNet, myDstaddr, mySubnet, netMask;
+    rx_in_addr_t serverAddr;
 
     if (rx_ifaddr_address_family(ifa) != AF_INET)
 	return;
@@ -1595,7 +1595,7 @@ afs_SearchServer(u_short aport, afsUUID * uuidp, afs_int32 locktype,
  *      A server structure matching the request.
  */
 struct server *
-afs_GetServer(afs_uint32 *aserverp, afs_int32 nservers, afs_int32 acell,
+afs_GetServer(rx_in_addr_t *aserverp, afs_int32 nservers, afs_int32 acell,
 	      u_short aport, afs_int32 locktype, afsUUID * uuidp,
 	      afs_int32 addr_uniquifier, struct volume *tv)
 {

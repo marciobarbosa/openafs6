@@ -1222,7 +1222,7 @@ SRXAFSCB_ProbeUuid(struct rx_call *a_call, afsUUID * a_uuid)
 
 int
 SRXAFSCB_GetServerPrefs(struct rx_call *a_call, afs_int32 a_index,
-			afs_int32 * a_srvr_addr, afs_int32 * a_srvr_rank)
+			afs_int32 * a_srvr_addr, afs_int32 * a_srvr_rank) /* rx_in_addr_t */
 {
     int i, j;
     struct srvAddr *sa;

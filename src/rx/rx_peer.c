@@ -17,15 +17,17 @@
 #include "rx_atomic.h"
 #include "rx_clock.h"
 #include "rx_peer.h"
+#ifndef KERNEL
+#include <afs/opr.h>
+#endif
 
 afs_uint32
 rx_HostOf(struct rx_peer *peer) {
     rx_in_addr_t ipv4;
 
-    if(!rx_try_sockaddr_to_ipv4(&peer->saddr, &ipv4))
-    	return EAFNOSUPPORT;
-    else
-    	return (afs_uint32)ipv4;
+    /* IPv6 is not supported yet. */
+    osi_Assert(rx_try_sockaddr_to_ipv4(&peer->saddr, &ipv4));
+    return ipv4;
 }
 
 u_short

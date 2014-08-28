@@ -40,6 +40,7 @@
 #include <rx/rx.h>
 #include <rx/xdr.h>
 #include <rx/rx_packet.h>
+#include <rx/rx_addr.h>
 
 #include "rxkad.h"
 #include "stats.h"
@@ -97,11 +98,13 @@ rxkad_AllocCID(struct rx_securityClass *aobj, struct rx_connection *aconn)
     struct rxkad_cprivate *tcp;
     struct rxkad_cidgen tgen;
     static afs_int32 counter = 0;	/* not used anymore */
+    struct rx_address saddr;
 
     LOCK_CUID;
     if (Cuid[0] == 0) {
 	afs_uint32 xor[2];
-	tgen.ipAddr = rxi_getaddr();	/* comes back in net order */
+	rxi_getaddr2(&saddr);
+	rx_try_address_to_ipv4(&saddr, (rx_in_addr_t*)&tgen.ipAddr);	/* comes back in net order */
 	clock_GetTime(&tgen.time);	/* changes time1 and time2 */
 	tgen.time.sec = htonl(tgen.time.sec);
 	tgen.time.usec = htonl(tgen.time.usec);

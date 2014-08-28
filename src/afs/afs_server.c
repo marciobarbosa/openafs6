@@ -68,6 +68,8 @@
 #include <inet/ip.h>
 #endif
 
+#include <rx/rx_addr.h>
+
 /* Exported variables */
 afs_rwlock_t afs_xserver;	/* allocation lock for servers */
 struct server *afs_servers[NSERVERS];	/* Hashed by server`s uuid & 1st ip */
@@ -818,6 +820,11 @@ afs_random(void)
 {
     static afs_int32 state = 0;
     int i;
+    struct rx_address addr;
+    struct rx_sockaddr saddr;
+
+    rxi_getaddr2(&addr);
+    rx_address_to_sockaddr(&addr, 0, 0, &saddr);
 
     AFS_STATCNT(afs_random);
     if (!state) {
@@ -827,7 +834,7 @@ afs_random(void)
 	 * 0xfffffff0 was changed to (~0 << 4) since it works no matter how many
 	 * bits are in a tv_usec
 	 */
-	state = (t.tv_usec & (~0 << 4)) + (rxi_getaddr() & 0xff);
+	state = (t.tv_usec & (~0 << 4)) + (rx_hash_sockaddr(&saddr, 0xff) & 0xff);
 	state += (t.tv_sec & 0xff);
 	for (i = 0; i < 30; i++) {
 	    ranstage(state);

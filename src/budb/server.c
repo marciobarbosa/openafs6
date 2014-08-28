@@ -63,7 +63,7 @@ int lwps   = 3;
 #define MAXLWP 16
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 /* check whether caller is authorized to manage RX statistics */
 int
@@ -109,8 +109,8 @@ convert_cell_to_ubik(struct afsconf_cell *cellinfo, afs_uint32 *myHost,
 
     for (i = 0; i < cellinfo->numServers; i++)
 	/* omit my host from serverList */
-	if (cellinfo->hostAddr[i].sin_addr.s_addr != *myHost)
-	    *serverList++ = cellinfo->hostAddr[i].sin_addr.s_addr;
+	if (cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr != *myHost)
+	    *serverList++ = cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr;
 
     *serverList = 0;		/* terminate list */
     return 0;
@@ -361,7 +361,7 @@ main(int argc, char **argv)
     struct afsconf_cell *cellinfo = NULL;
     time_t currentTime;
     afs_int32 code = 0;
-    afs_uint32 host = ntohl(INADDR_ANY);
+    struct rx_sockaddr host;
 
     char  clones[MAXHOSTSPERCELL];
 
@@ -502,24 +502,26 @@ main(int argc, char **argv)
 
     rx_SetRxDeadTime(60);	/* 60 seconds inactive before timeout */
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+        } else {
+	    ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
-        if (ccode == 1) {
-            host = SHostAddrs[0];
-	    rx_InitHost(host, htons(AFSCONF_BUDBPORT));
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_BUDBPORT), BUDB_SERVICE, &host);
+    rx_InitHost2(&host);
 
     /* Disable jumbograms */
     rx_SetNoJumbo();
@@ -546,8 +548,10 @@ main(int argc, char **argv)
 
     afsconf_BuildServerSecurityObjects(BU_conf, &securityClasses, &numClasses);
 
+    host.service = BUDB_SERVICE;
+    rx_set_sockaddr_port(&host, 0);
     tservice =
-	rx_NewServiceHost(host, 0, BUDB_SERVICE, "BackupDatabase",
+	rx_NewServiceHost2(&host, "BackupDatabase",
 			  securityClasses, numClasses, BUDB_ExecuteRequest);
 
     if (tservice == (struct rx_service *)0) {

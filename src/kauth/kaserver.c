@@ -48,7 +48,7 @@ afs_int32 krb4_cross = 0;
 afs_int32 rxBind = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 struct afsconf_dir *KA_conf;	/* for getting cell info */
 
@@ -127,9 +127,9 @@ convert_cell_to_ubik(struct afsconf_cell *cellinfo, afs_uint32 *myHost,
     memcpy(myHost, th->h_addr, sizeof(afs_uint32));
 
     for (i = 0; i < cellinfo->numServers; i++)
-	if (cellinfo->hostAddr[i].sin_addr.s_addr != *myHost) {
+	if (cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr != *myHost) {
 	    /* omit my host from serverList */
-	    *serverList++ = cellinfo->hostAddr[i].sin_addr.s_addr;
+	    *serverList++ = cellinfo->hostAddr[i].addr.sin.sin_addr.s_addr;
 	}
     *serverList = 0;		/* terminate list */
     return 0;
@@ -169,7 +169,7 @@ main(int argc, char *argv[])
     int level;			/* security level for Ubik */
     afs_int32 i;
     char clones[MAXHOSTSPERCELL];
-    afs_uint32 host = ntohl(INADDR_ANY);
+    struct rx_sockaddr host;
     char *auditFileName = NULL;
 
     struct rx_service *tservice;
@@ -340,7 +340,7 @@ main(int argc, char *argv[])
 	    afs_com_err(whoami, code, "Couldn't parse server list");
 	    exit(1);
 	}
-	cellinfo.hostAddr[0].sin_addr.s_addr = myHost;
+        rx_ipv4_to_sockaddr(myHost, 0, 0, &cellinfo.hostAddr[0]);
 	for (i = 1; i < MAXSERVERS; i++) {
 	    if (!serverList[i])
 		break;
@@ -349,7 +349,7 @@ main(int argc, char *argv[])
 			"Too many ubik servers specified on command line\n");
 		exit(1);
 	    }
-	    cellinfo.hostAddr[i].sin_addr.s_addr = serverList[i];
+            rx_ipv4_to_sockaddr(serverList[i], 0, 0, &cellinfo.hostAddr[i]);
 	}
 	cellinfo.numServers = i;
     } else {
@@ -383,24 +383,26 @@ main(int argc, char *argv[])
 
     ubik_nBuffers = 80;
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
-        }
-        if (ccode == 1) {
-            host = SHostAddrs[0];
-	    rx_InitHost(host, htons(AFSCONF_KAUTHPORT));
+	} else {
+	   ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
+	}
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_KAUTHPORT), KA_AUTHENTICATION_SERVICE, &host);
+    rx_InitHost2(&host);
 
     /* Disable jumbograms */
     rx_SetNoJumbo();
@@ -421,8 +423,10 @@ main(int argc, char *argv[])
 
     sca[RX_SECIDX_NULL] = rxnull_NewServerSecurityObject();
 
+    host.service = KA_AUTHENTICATION_SERVICE;
+    rx_set_sockaddr_port(&host, 0);
     tservice =
-	rx_NewServiceHost(host, 0, KA_AUTHENTICATION_SERVICE,
+	rx_NewServiceHost2(&host,
 			  "AuthenticationService", sca, 1, KAA_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create Authentication rx service\n"));
@@ -431,9 +435,9 @@ main(int argc, char *argv[])
     rx_SetMinProcs(tservice, 1);
     rx_SetMaxProcs(tservice, 1);
 
-
+    host.service = KA_TICKET_GRANTING_SERVICE;
     tservice =
-	rx_NewServiceHost(host, 0, KA_TICKET_GRANTING_SERVICE, "TicketGrantingService",
+	rx_NewServiceHost2(&host, "TicketGrantingService",
 		      sca, 1, KAT_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create Ticket Granting rx service\n"));
@@ -446,8 +450,9 @@ main(int argc, char *argv[])
     scm[RX_SECIDX_VAB] = 0;
     scm[RX_SECIDX_KAD] =
 	rxkad_NewServerSecurityObject(rxkad_crypt, 0, kvno_admin_key, 0);
+    host.service = KA_MAINTENANCE_SERVICE;
     tservice =
-	rx_NewServiceHost(host, 0, KA_MAINTENANCE_SERVICE, "Maintenance", scm, 3,
+	rx_NewServiceHost2(&host, "Maintenance", scm, 3,
 		      KAM_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create Maintenance rx service\n"));
@@ -457,8 +462,9 @@ main(int argc, char *argv[])
     rx_SetMaxProcs(tservice, 1);
     rx_SetStackSize(tservice, 10000);
 
+    host.service = RX_STATS_SERVICE_ID;
     tservice =
-	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats", scm, 3,
+	rx_NewServiceHost2(&host, "rpcstats", scm, 3,
 		      RXSTATS_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
 	ViceLog(0, ("Could not create rpc stats rx service\n"));

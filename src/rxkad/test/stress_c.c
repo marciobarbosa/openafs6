@@ -838,7 +838,7 @@ static struct {
 #define IO_REDIRECTCHALLENGE	2
 
 static int
-HandleIncoming(struct rx_packet *p, struct sockaddr_in *addr)
+HandleIncoming(struct rx_packet *p, struct rx_sockaddr *addr)
 {
     int client;			/* packet sent by client */
     u_char type;		/* packet type */
@@ -892,7 +892,7 @@ static struct {
 #define OO_MUNGCKSUM	3
 
 static int
-HandleOutgoing(struct rx_packet *p, struct sockaddr_in *addr)
+HandleOutgoing(struct rx_packet *p, struct sockaddr *addr)
 {
     int client;			/* packet sent by client */
     u_char type;		/* packet type */

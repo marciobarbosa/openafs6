@@ -15,8 +15,8 @@
    names for the given cell, ending in null */
 int getAFSServer(const char *service, const char *protocol, const char *cellname,
                  unsigned short afsdbPort,
-                 int *cellHostAddrs, char cellHostNames[][MAXHOSTCHARS],
-                 unsigned short ports[], unsigned short ipRanks[], int *numServers, int *ttl);
+                 struct rx_sockaddr *cellHostAddrs, char cellHostNames[][MAXHOSTCHARS],
+                 unsigned short ipRanks[], int *numServers, int *ttl);
 
 /* Same as above, but using cm_unichar_t.  Note that this functon will
    only be defined for DNSAPI_ENV. */

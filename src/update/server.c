@@ -51,7 +51,7 @@ static int Quit(char *);
 int rxBind = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 /* check whether caller is authorized to manage RX statistics */
 int
@@ -168,7 +168,7 @@ main(int argc, char *argv[])
     struct rx_securityClass **securityClasses;
     afs_int32 numClasses;
     struct rx_service *service;
-    afs_uint32 host = htonl(INADDR_ANY);
+    struct rx_sockaddr host;
 
     int a = 0;
     rxkad_level level;
@@ -259,26 +259,29 @@ main(int argc, char *argv[])
 	exit(1);
     }
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
                                           ADDRSPERSITE, reason,
                                           AFSDIR_SERVER_NETINFO_FILEPATH,
                                           AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
-        }
-        if (ccode == 1)
-            host = SHostAddrs[0];
+	} else {
+	    ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
+	}
+	if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_UPDATEPORT), UPDATE_SERVICEID, &host);
 
     /* Initialize Rx, telling it port number this server will use for its
      * single service */
-    if (rx_InitHost(host, htons(AFSCONF_UPDATEPORT)) < 0)
+    if (rx_InitHost2(&host) < 0)
 	Quit("rx_init");
 
     afsconf_BuildServerSecurityObjects(cdir, &securityClasses, &numClasses);
@@ -289,8 +292,9 @@ main(int argc, char *argv[])
     /* Instantiate a single UPDATE service.  The rxgen-generated procedure
      * which is called to decode requests is passed in here
      * (UPDATE_ExecuteRequest). */
+    rx_set_sockaddr_port(&host, 0);
     service =
-	rx_NewServiceHost(host, 0, UPDATE_SERVICEID, "UPDATE", securityClasses,
+	rx_NewServiceHost2(&host, "UPDATE", securityClasses,
 			  numClasses, UPDATE_ExecuteRequest);
     if (service == (struct rx_service *)0)
 	Quit("rx_NewService");

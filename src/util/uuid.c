@@ -412,20 +412,20 @@ uuid_get_address(uuid_address_p_t addr)
 
     code = gethostname(hostName1, 64);
     if (!code)
-	he = gethostbyname(hostName1);
+    he = gethostbyname(hostName1);
 
     if (he)
-	memcpy(&addr1, he->h_addr_list[0], 4);
+    memcpy(&addr1, he->h_addr_list[0], 4);
 #ifdef UKERNEL
     else
-	addr1=rxi_getaddr();
+    addr1=rxi_getaddr();
 #endif
 
     if (!addr1) {
 #ifdef AFS_NT40_ENV
-	return ENOENT;
+    return ENOENT;
 #else
-	return errno;
+    return errno;
 #endif
     }
 
@@ -435,8 +435,8 @@ uuid_get_address(uuid_address_p_t addr)
     addr->eaddr[5] = 0x77;
 #ifdef  UUID_DEBUG
     printf("uuid_get_address: %02x-%02x-%02x-%02x-%02x-%02x\n",
-	   addr->eaddr[0], addr->eaddr[1], addr->eaddr[2], addr->eaddr[3],
-	   addr->eaddr[4], addr->eaddr[5]);
+       addr->eaddr[0], addr->eaddr[1], addr->eaddr[2], addr->eaddr[3],
+       addr->eaddr[4], addr->eaddr[5]);
 #endif
     return 0;
 }

@@ -481,7 +481,6 @@ extern int afs_CheckBozonLockBlocking(struct afs_bozoLock *alock);
 
 /* afs_mariner.c */
 extern afs_int32 afs_mariner;
-extern afs_int32 afs_marinerHost;
 extern struct rx_service *afs_server;
 extern int afs_AddMarinerName(char *aname,
 			      struct vcache *avc);

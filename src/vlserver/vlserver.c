@@ -57,7 +57,7 @@ afs_int32 rxBind = 0;
 int rxkadDisableDotCheck = 0;
 
 #define ADDRSPERSITE 16         /* Same global is in rx/rx_user.c */
-afs_uint32 SHostAddrs[ADDRSPERSITE];
+struct rx_address SHostAddrs[ADDRSPERSITE];
 
 static void
 CheckSignal_Signal(int unused)
@@ -170,7 +170,7 @@ main(int argc, char **argv)
     char hostname[VL_MAXNAMELEN];
     int noAuth = 0;
     char clones[MAXHOSTSPERCELL];
-    afs_uint32 host = ntohl(INADDR_ANY);
+    struct rx_sockaddr host;
     struct cmd_syndesc *opts;
 
     char *vl_dbaseName;
@@ -182,6 +182,7 @@ main(int argc, char **argv)
     char *optstring = NULL;
 
     char *restricted_query_parameter = NULL;
+
 
 #ifdef	AFS_AIX32_ENV
     /*
@@ -412,26 +413,26 @@ main(int argc, char **argv)
     if (noAuth)
 	afsconf_SetNoAuthFlag(tdir, 1);
 
-    if (rxBind) {
+    if (!rxBind) {
+	rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
+    } else {
 	afs_int32 ccode;
-#ifndef AFS_NT40_ENV
         if (AFSDIR_SERVER_NETRESTRICT_FILEPATH ||
             AFSDIR_SERVER_NETINFO_FILEPATH) {
             char reason[1024];
-            ccode = afsconf_ParseNetFiles(SHostAddrs, NULL, NULL,
+            ccode = afsconf_ParseNetFiles2(SHostAddrs, NULL, NULL,
 					  ADDRSPERSITE, reason,
 					  AFSDIR_SERVER_NETINFO_FILEPATH,
 					  AFSDIR_SERVER_NETRESTRICT_FILEPATH);
-        } else
-#endif
-	{
-            ccode = rx_getAllAddr(SHostAddrs, ADDRSPERSITE);
+        } else {
+            ccode = rx_getAllAddr2(SHostAddrs, ADDRSPERSITE);
         }
-        if (ccode == 1) {
-            host = SHostAddrs[0];
-	    rx_InitHost(host, htons(AFSCONF_VLDBPORT));
+        if (ccode != 1) {
+	    rx_ipv4_to_address(htonl(INADDR_ANY), SHostAddrs);
 	}
     }
+    rx_address_to_sockaddr(SHostAddrs, htons(AFSCONF_VLDBPORT), USER_SERVICE_ID, &host);
+    rx_InitHost2(&host);
 
     if (!rxJumbograms) {
 	rx_SetNoJumbo();
@@ -465,7 +466,7 @@ main(int argc, char **argv)
     afsconf_BuildServerSecurityObjects(tdir, &securityClasses, &numClasses);
 
     tservice =
-	rx_NewServiceHost(host, 0, USER_SERVICE_ID, "Vldb server",
+	rx_NewServiceHost2(&host, "Vldb server",
 			  securityClasses, numClasses,
 			  VL_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {
@@ -482,8 +483,9 @@ main(int argc, char **argv)
                                     (void *)RXS_CONFIG_FLAGS_DISABLE_DOTCHECK);
     }
 
+    host.service = RX_STATS_SERVICE_ID;
     tservice =
-	rx_NewServiceHost(host, 0, RX_STATS_SERVICE_ID, "rpcstats",
+	rx_NewServiceHost2(&host, "rpcstats",
 			  securityClasses, numClasses,
 			  RXSTATS_ExecuteRequest);
     if (tservice == (struct rx_service *)0) {

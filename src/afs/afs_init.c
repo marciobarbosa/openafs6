@@ -25,9 +25,12 @@
 #if defined(AFS_LINUX26_ENV) && defined(STRUCT_TASK_STRUCT_HAS_CRED)
 #include <linux/cred.h>
 #endif
+#include <rx/rx_addr.h>
 
 #define FSINT_COMMON_XG
 #include "afs/afscbint.h"
+
+extern rx_in_addr_t afs_marinerHost;
 
 /* Exported variables */
 struct osi_dev cacheDev;	/*Cache device */

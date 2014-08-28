@@ -895,9 +895,7 @@ afsclient_CellOpen(const char *cellName, const void *tokenHandle,
 		sc[scIndex] = servers[i].sc;
 		for (j = 0; (j < info.numServers); j++) {
 		    serverconns[j] =
-			rx_GetCachedConnection(info.hostAddr[j].sin_addr.
-					       s_addr,
-					       info.hostAddr[j].sin_port,
+			rx_GetCachedConnection2(&info.hostAddr[j],
 					       servers[i].serviceId,
 					       sc[scIndex], scIndex);
 		}

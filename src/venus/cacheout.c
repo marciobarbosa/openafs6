@@ -307,11 +307,11 @@ MyBeforeProc(struct cmd_syndesc *as, void *arock)
 	}
     }
 
-    for (i = 0; i < info.numServers; ++i)
+    for (i = 0; i < info.numServers; ++i) {
+        info.hostAddr[i].service = USER_SERVICE_ID;
 	serverconns[i] =
-	    rx_NewConnection(info.hostAddr[i].sin_addr.s_addr,
-			     info.hostAddr[i].sin_port, USER_SERVICE_ID, scnull,
-			     0);
+	    rx_NewConnection2(&info.hostAddr[i], scnull, 0);
+    }
     for (; i < MAXSERVERS; ++i) {
 	serverconns[i] = (struct rx_connection *)0;
     }

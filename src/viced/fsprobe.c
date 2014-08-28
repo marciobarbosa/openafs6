@@ -17,12 +17,14 @@
 #include <rx/rx_globals.h>
 #include <ubik.h>
 
+#include <rx/rx_addr.h>
+
 struct ubik_client *cstruct;
 struct rx_connection *serverconns[MAXSERVERS];
 char *(args[50]);
 
 afs_int32
-pxclient_Initialize(int auth, afs_int32 serverAddr)
+pxclient_Initialize(int auth, struct rx_sockaddr *serverAddr)
 {
     afs_int32 code;
     rx_securityIndex scIndex;
@@ -36,8 +38,10 @@ pxclient_Initialize(int auth, afs_int32 serverAddr)
     scIndex = RX_SECIDX_NULL;
     rx_SetRxDeadTime(50);
     sc = rxnull_NewClientSecurityObject();
+    serverAddr->service = 1;
+    rx_set_sockaddr_port(serverAddr, htons(7000));
     serverconns[0] =
-	rx_NewConnection(serverAddr, htons(7000), 1, sc, scIndex);
+	rx_NewConnection2(serverAddr, sc, scIndex);
 
     code = ubik_ClientInit(serverconns, &cstruct);
 
@@ -61,6 +65,7 @@ main(int argc, char **argv)
     struct hostent *hp;
     struct timeval tv;
     int noAuth = 1;		/* Default is authenticated connections */
+    struct rx_sockaddr saddr;
 
     argc--, av++;
     if (argc < 1) {
@@ -83,7 +88,10 @@ main(int argc, char **argv)
 	    exit(1);
 	}
     }
-    if ((code = pxclient_Initialize(noAuth, host.sin_addr.s_addr)) != 0) {
+
+    rx_ipv4_to_sockaddr(host.sin_addr.s_addr, 0, 0, &saddr);
+
+    if ((code = pxclient_Initialize(noAuth, &saddr)) != 0) {
 	printf("Couldn't initialize fs library (code=%d).\n", code);
 	exit(1);
     }

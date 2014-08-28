@@ -184,10 +184,10 @@ pthread_key_t viced_uclient_key;
 
 char FS_HostName[128] = "localhost";
 char *FS_configPath = NULL;
-afs_uint32 FS_HostAddr_NBO;
-afs_uint32 FS_HostAddr_HBO;
-afs_uint32 FS_HostAddrs[ADDRSPERSITE], FS_HostAddr_cnt = 0, FS_registered = 0;
-/* All addresses in FS_HostAddrs are in NBO */
+struct rx_address FS_HostAddr;
+struct rx_address FS_HostAddrs[ADDRSPERSITE];
+afs_uint32 FS_HostAddr_cnt = 0;
+afs_uint32 FS_registered = 0;
 afsUUID FS_HostUUID;
 
 #ifdef AFS_DEMAND_ATTACH_FS
@@ -1544,11 +1544,11 @@ vl_Initialize(struct afsconf_dir *dir)
 		 info.numServers, MAXSERVERS));
 	exit(1);
     }
-    for (i = 0; i < info.numServers; i++)
+    for (i = 0; i < info.numServers; i++) {
+        info.hostAddr[i].service = USER_SERVICE_ID;
 	serverconns[i] =
-	    rx_NewConnection(info.hostAddr[i].sin_addr.s_addr,
-			     info.hostAddr[i].sin_port, USER_SERVICE_ID, sc,
-			     scIndex);
+	    rx_NewConnection2(&info.hostAddr[i], sc, scIndex);
+    }
     code = ubik_ClientInit(serverconns, &cstruct);
     if (code) {
 	ViceLog(0, ("vl_Initialize: ubik client init failed.\n"));
@@ -1713,13 +1713,19 @@ Do_VLRegisterRPC(void)
 {
     int code;
     bulkaddrs addrs;
-    afs_uint32 FS_HostAddrs_HBO[ADDRSPERSITE];
+    afs_uint32 FS_HostAddrs_HBO[ADDRSPERSITE]; /* ipv4 only: host byte order */
     int i = 0;
+    int j = 0;
 
-    for (i = 0; i < FS_HostAddr_cnt; i++)
-	FS_HostAddrs_HBO[i] = ntohl(FS_HostAddrs[i]);
-    addrs.bulkaddrs_len = FS_HostAddr_cnt;
-    addrs.bulkaddrs_val = (afs_uint32 *) FS_HostAddrs_HBO;
+    for (i = 0; i < FS_HostAddr_cnt && j < ADDRSPERSITE; i++) {
+	rx_in_addr_t addr;
+	if (rx_try_address_to_ipv4(&FS_HostAddrs[i], &addr)) {
+	    FS_HostAddrs_HBO[j++] = ntohl(addr);  /* vl-register-addrs expects host byte order */
+	}
+    }
+
+    addrs.bulkaddrs_len = j;
+    addrs.bulkaddrs_val = FS_HostAddrs_HBO;
     code = ubik_VL_RegisterAddrs(cstruct, 0, &FS_HostUUID, 0, &addrs);
     if (code) {
 	if (code == VL_MULTIPADDR) {
@@ -1746,11 +1752,9 @@ Do_VLRegisterRPC(void)
     return 0;
 }
 
-afs_int32
-SetupVL(void)
+void
+SetupVL(struct rx_sockaddr *addr)
 {
-    afs_int32 code;
-
     if (AFSDIR_SERVER_NETRESTRICT_FILEPATH || AFSDIR_SERVER_NETINFO_FILEPATH) {
 	/*
 	 * Find addresses we are supposed to register as per the netrestrict
@@ -1758,9 +1762,8 @@ SetupVL(void)
 	 * /usr/afs/local/NetRestict)
 	 */
 	char reason[1024];
-	afs_int32 code;
-
-	code = afsconf_ParseNetFiles(FS_HostAddrs, NULL, NULL,
+	afs_int32 code = 0;
+	code = afsconf_ParseNetFiles2(FS_HostAddrs, NULL, NULL,
 				     ADDRSPERSITE, reason,
 				     AFSDIR_SERVER_NETINFO_FILEPATH,
 				     AFSDIR_SERVER_NETRESTRICT_FILEPATH);
@@ -1769,16 +1772,15 @@ SetupVL(void)
 	    exit(1);
 	}
 	FS_HostAddr_cnt = (afs_uint32) code;
-    } else
-    {
-	FS_HostAddr_cnt = rx_getAllAddr(FS_HostAddrs, ADDRSPERSITE);
+    } else {
+	FS_HostAddr_cnt = rx_getAllAddr2(FS_HostAddrs, ADDRSPERSITE);
     }
 
-    if (FS_HostAddr_cnt == 1 && rxBind == 1)
-	code = FS_HostAddrs[0];
-    else
-	code = htonl(INADDR_ANY);
-    return code;
+    if (FS_HostAddr_cnt == 1 && rxBind == 1) {
+        rx_address_to_sockaddr(&FS_HostAddrs[0], htons(7000), 1, addr);
+    } else {
+	rx_ipv4_to_sockaddr(htonl(INADDR_ANY), htons(7000), 1, addr);
+    }
 }
 
 afs_int32
@@ -1835,7 +1837,7 @@ main(int argc, char *argv[])
     int curLimit;
     time_t t;
     struct tm tm;
-    afs_uint32 rx_bindhost;
+    struct rx_sockaddr rx_bindhost;
     VolumePackageOptions opts;
 
 #ifdef	AFS_AIX32_ENV
@@ -2005,9 +2007,10 @@ main(int argc, char *argv[])
 #endif
     if (udpBufSize)
 	rx_SetUdpBufSize(udpBufSize);	/* set the UDP buffer size for receive */
-    rx_bindhost = SetupVL();
 
-    if (rx_InitHost(rx_bindhost, (int)htons(7000)) < 0) {
+    SetupVL(&rx_bindhost);
+
+    if (rx_InitHost2(&rx_bindhost) < 0) {
 	ViceLog(0, ("Cannot initialize RX\n"));
 	exit(1);
     }
@@ -2026,9 +2029,8 @@ main(int argc, char *argv[])
     afsconf_SetSecurityFlags(confDir, AFSCONF_SECOPTS_ALWAYSENCRYPT);
     afsconf_BuildServerSecurityObjects(confDir, &securityClasses, &numClasses);
 
-    tservice = rx_NewServiceHost(rx_bindhost,  /* port */ 0, /* service id */
-				 1,	/*service name */
-				 "AFS",
+    tservice = rx_NewServiceHost2(&rx_bindhost,
+				 "AFS",	/*service name */
 				 securityClasses, numClasses,
 				 RXAFS_ExecuteRequest);
     if (!tservice) {
@@ -2206,17 +2208,15 @@ main(int argc, char *argv[])
     ViceLog(0, ("FileServer host name is '%s'\n", FS_HostName));
 
     ViceLog(0, ("Getting FileServer address...\n"));
-    he = gethostbyname(FS_HostName);
+    he = gethostbyname(FS_HostName); /* todo: use getaddrinfo */
     if (!he) {
 	ViceLog(0, ("Can't find address for FileServer '%s'\n", FS_HostName));
     } else {
-	char hoststr[16];
-	memcpy(&FS_HostAddr_NBO, he->h_addr, 4);
-	(void)afs_inet_ntoa_r(FS_HostAddr_NBO, hoststr);
-	FS_HostAddr_HBO = ntohl(FS_HostAddr_NBO);
+	rx_addr_str_t hoststr;
+	rx_ipv4_to_address(*(rx_in_addr_t*)he->h_addr, &FS_HostAddr); /* todo: use addrinfo to address/sockaddr */
 	ViceLog(0,
-		("FileServer %s has address %s (0x%x or 0x%x in host byte order)\n",
-		 FS_HostName, hoststr, FS_HostAddr_NBO, FS_HostAddr_HBO));
+		("FileServer %s has address %s\n",
+		 FS_HostName, rx_print_address(&FS_HostAddr, hoststr, sizeof(hoststr))));
     }
 
     t = tp.tv_sec;

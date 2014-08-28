@@ -31,17 +31,17 @@ VerifyEntries(struct afsconf_cell *aci)
     struct hostent *th;
 
     for (i = 0; i < aci->numServers; i++) {
-	if (aci->hostAddr[i].sin_addr.s_addr == 0) {
+	if (aci->hostAddr[i].addr.sin.sin_addr.s_addr == 0) {
 	    /* no address spec'd */
 	    if (*(aci->hostName[i]) != 0) {
-		th = gethostbyname(aci->hostName[i]);
+		th = gethostbyname(aci->hostName[i]); /* deprecated */
 		if (!th) {
 		    printf("Host %s not found in host database...\n",
 			   aci->hostName[i]);
 		    return AFSCONF_FAILURE;
 		}
-		memcpy(&aci->hostAddr[i].sin_addr, th->h_addr,
-		       sizeof(afs_int32));
+		rx_ipv4_to_sockaddr(0, 0, 0, &aci->hostAddr[i]);
+		memcpy(&aci->hostAddr[i].addr.sin.sin_addr, th->h_addr, sizeof(afs_int32));
 	    }
 	    /* otherwise we're deleting this entry */
 	} else {
@@ -49,8 +49,8 @@ VerifyEntries(struct afsconf_cell *aci)
 	    if (aci->hostName[i][0] != 0)
 		continue;	/* name known too */
 	    /* figure out name, if possible */
-	    th = gethostbyaddr((char *)(&aci->hostAddr[i].sin_addr), 4,
-			       AF_INET);
+	    th = gethostbyaddr((char *)(&aci->hostAddr[i].addr.sin.sin_addr), 4,
+			       AF_INET); /* deprecated */
 	    if (!th) {
 		strcpy(aci->hostName[i], "UNKNOWNHOST");
 	    } else {
@@ -128,7 +128,7 @@ afsconf_SetExtendedCellInfo(struct afsconf_dir *adir,
     }
     fprintf(tf, ">%s	#Cell name\n", acellInfo->name);
     for (i = 0; i < acellInfo->numServers; i++) {
-	code = acellInfo->hostAddr[i].sin_addr.s_addr;	/* net order */
+	code = acellInfo->hostAddr[i].addr.sin.sin_addr.s_addr;	/* net order */
 	if (code == 0)
 	    continue;		/* delete request */
 	code = ntohl(code);	/* convert to host order */

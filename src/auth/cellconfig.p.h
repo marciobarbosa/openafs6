@@ -39,6 +39,7 @@ Creation date:
 #endif
 #include <rx/rx_opaque.h>
 #include <opr/queue.h>
+#include <rx/rx_addr.h>
 
 #define	MAXCELLCHARS	64
 #define	MAXHOSTCHARS	64
@@ -56,7 +57,7 @@ struct afsconf_cell {
     char name[MAXCELLCHARS];	/*Cell name */
     short numServers;		/*Num active servers for the cell */
     short flags;		/* useful flags */
-    struct sockaddr_in hostAddr[MAXHOSTSPERCELL];	/*IP addresses for cell's servers */
+    struct rx_sockaddr hostAddr[MAXHOSTSPERCELL];	/*IP addresses for cell's servers */
     char hostName[MAXHOSTSPERCELL][MAXHOSTCHARS];	/*Names for cell's servers */
     char *linkedCell;		/* Linked cell name, if any */
     int timeout;		/* Data timeout, if non-zero */
@@ -275,12 +276,17 @@ extern int afsconf_IsLocalRealmMatch(struct afsconf_dir *dir, afs_int32 * local,
 
 /* netrestrict.c */
 
-extern int afsconf_ParseNetRestrictFile(afs_uint32 outAddrs[],
-					afs_uint32 * mask, afs_uint32 * mtu,
+extern int afsconf_ParseNetRestrictFile(struct rx_address outAddrs[],
+					struct rx_address * mask, afs_uint32 * mtu,
 					afs_uint32 maxAddrs, afs_uint32 * nAddrs,
 					char reason[], const char *fileName);
 
 extern int afsconf_ParseNetFiles(afs_uint32 addrbuf[], afs_uint32 maskbuf[],
+				 afs_uint32 mtubuf[], afs_uint32 max,
+				 char reason[], const char *niFileName,
+				 const char *nrFileName);
+
+extern int afsconf_ParseNetFiles2(struct rx_address addrbuf[], struct rx_address maskbuf[],
 				 afs_uint32 mtubuf[], afs_uint32 max,
 				 char reason[], const char *niFileName,
 				 const char *nrFileName);

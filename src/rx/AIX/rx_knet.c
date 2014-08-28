@@ -339,7 +339,7 @@ shutdown_rxkernel(void)
  */
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvec, afs_int32 asize, int istack)
 {
     struct mbuf *tm, *um;
@@ -461,9 +461,9 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 	    m_freem(top);	/* free mbuf chain */
 	return 1;
     }
-    memcpy(mtod(um, caddr_t), addr, sizeof(*addr));
-    um->m_len = sizeof(*addr);
-    um->m_pkthdr.len = sizeof(*addr);
+    memcpy(mtod(um, caddr_t), &saddr->addr.sa, saddr->addrlen);
+    um->m_len = saddr->addrlen;
+    um->m_pkthdr.len = saddr->addrlen;
     um->m_flags |= M_PKTHDR;
 
     SOCKET_LOCK(asocket);

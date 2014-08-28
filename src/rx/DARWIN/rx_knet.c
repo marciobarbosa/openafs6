@@ -103,8 +103,6 @@ rx_upcall(socket_t so, void *arg, __unused int waitflag)
 	error = 0;
 
     if (!error) {
-	int host, port;
-
 	nbytes -= resid;
 
 	if (sa->sa_family == AF_INET)
@@ -126,9 +124,6 @@ rx_upcall(socket_t so, void *arg, __unused int waitflag)
 	} else {
 	    /* Extract packet header. */
 	    rxi_DecodePacketHeader(p);
-
-	    host = from.sin_addr.s_addr;
-	    port = from.sin_port;
 	    if (p->header.type > 0 && p->header.type < RX_N_PACKET_TYPES) {
 		if (rx_stats_active) {
 		    rx_atomic_inc(&rx_stats.packetsRead[p->header.type - 1]);
@@ -140,7 +135,7 @@ rx_upcall(socket_t so, void *arg, __unused int waitflag)
 	    rxi_TrimDataBufs(p, 1);
 #endif
 	    /* receive pcket */
-	    p = rxi_ReceivePacket(p, so, host, port, 0, 0);
+	    p = rxi_ReceivePacket(p, so, (struct sockaddr *)&from, 0, 0);
 	}
     }
     /* free packet? */
@@ -163,7 +158,7 @@ osi_StopNetIfPoller(void)
 }
 #elif defined(RXK_LISTENER_ENV)
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	       int nvecs, int *alength)
 {
 #ifdef AFS_DARWIN80_ENV
@@ -244,9 +239,20 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     *alength -= resid;
     if (sa) {
 	if (sa->sa_family == AF_INET) {
-	    if (addr)
-		*addr = *(struct sockaddr_in *)sa;
-	} else
+	    if (saddr) {
+                saddr->service = 0;
+                saddr->socktype = SOCK_DGRAM;
+                saddr->addrlen = sizeof(struct sockaddr_in);
+                memcpy(&saddr->addr.sin, (struct sockaddr_in *)sa, sizeof(struct sockaddr_in));
+            }
+	} else if (sa->sa_family == AF_INET6) {
+            if (saddr) {
+                saddr->service = 0;
+                saddr->socktype = SOCK_DGRAM;
+                saddr->addrlen = sizeof(struct sockaddr_in6);
+                memcpy(&saddr->addr.sin6, (struct sockaddr_in6 *)sa, sizeof(struct sockaddr_in6));
+            }
+        } else
 	    printf("Unknown socket family %d in NetReceive\n", sa->sa_family);
 #ifndef AFS_DARWIN80_ENV
 	FREE(sa, M_SONAME);
@@ -279,7 +285,7 @@ osi_StopListener(void)
 #endif
 
 int
-osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 alength, int istack)
 {
 #ifdef AFS_DARWIN80_ENV
@@ -302,8 +308,6 @@ osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     for (i = 0; i < nvecs; i++)
 	iov[i] = dvec[i];
 
-    addr->sin_len = sizeof(struct sockaddr_in);
-
     if ((afs_termState == AFSOP_STOP_RXK_LISTENER) ||
 	(afs_termState == AFSOP_STOP_COMPLETE))
 	return -1;
@@ -316,8 +320,8 @@ osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
 #endif
 #ifdef AFS_DARWIN80_ENV
     memset(&msg, 0, sizeof(struct msghdr));
-    msg.msg_name = addr;
-    msg.msg_namelen = ((struct sockaddr *)addr)->sa_len;
+    msg.msg_name = &saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_iov = &iov[0];
     msg.msg_iovlen = nvecs;
     code = sock_send(asocket, &msg, 0, &slen);
@@ -329,7 +333,7 @@ osi_NetSend(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     u.uio_segflg = UIO_SYSSPACE;
     u.uio_rw = UIO_WRITE;
     u.uio_procp = NULL;
-    code = sosend(asocket, (struct sockaddr *)addr, &u, NULL, NULL, 0);
+    code = sosend(asocket, &saddr->addr.sa, &u, NULL, NULL, 0);
 #endif
 
 #if defined(KERNEL_FUNNEL)

@@ -28,10 +28,9 @@
  * open and bind RX socket
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     struct socket *sockp;
-    struct sockaddr_in myaddr;
     int code;
     KERNEL_SPACE_DECL;
     int pmtu = IP_PMTUDISC_DONT;
@@ -40,19 +39,16 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
      * how to detect it. 
      */
 #ifdef LINUX_KERNEL_SOCK_CREATE_V
-    code = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockp, 0);
+    code = sock_create(saddr->rxsa_family, SOCK_DGRAM, IPPROTO_UDP, &sockp, 0);
 #else
-    code = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockp);
+    code = sock_create(saddr->rxsa_family, SOCK_DGRAM, IPPROTO_UDP, &sockp);
 #endif
     if (code < 0)
 	return NULL;
 
     /* Bind socket */
-    myaddr.sin_family = AF_INET;
-    myaddr.sin_addr.s_addr = ahost;
-    myaddr.sin_port = aport;
     code =
-	sockp->ops->bind(sockp, (struct sockaddr *)&myaddr, sizeof(myaddr));
+	sockp->ops->bind(sockp, &saddr->addr.sa, sizeof(struct sockaddr_storage));
 
     if (code < 0) {
 #if defined(AFS_LINUX24_ENV)
@@ -73,7 +69,11 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(htonl(INADDR_ANY), aport);
+    struct rx_sockaddr saddr;
+
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), aport, 0, &saddr);
+
+    return rxk_NewSocketHost(&saddr);
 }
 
 /* free socket allocated by osi_NetSocket */
@@ -91,7 +91,7 @@ rxk_FreeSocket(struct socket *asocket)
  * non-zero = failure
  */
 int
-osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
+osi_NetSend(osi_socket sop, struct rx_sockaddr *saddr, struct iovec *iovec,
 	    int iovcnt, afs_int32 size, int istack)
 {
     KERNEL_SPACE_DECL;
@@ -100,8 +100,8 @@ osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
 
     msg.msg_iovlen = iovcnt;
     msg.msg_iov = iovec;
-    msg.msg_name = to;
-    msg.msg_namelen = sizeof(*to);
+    msg.msg_name = &saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_control = NULL;
     msg.msg_controllen = 0;
     msg.msg_flags = 0;
@@ -135,7 +135,7 @@ osi_NetSend(osi_socket sop, struct sockaddr_in *to, struct iovec *iovec,
 int rxk_lastSocketError;
 int rxk_nSocketErrors;
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *from, struct iovec *iov,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *iov,
 	       int iovcnt, int *lengthp)
 {
     KERNEL_SPACE_DECL;
@@ -148,7 +148,12 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *from, struct iovec *iov,
 	osi_Panic("Too many (%d) iovecs passed to osi_NetReceive\n", iovcnt);
     }
     memcpy(tmpvec, iov, iovcnt * sizeof(struct iovec));
-    msg.msg_name = from;
+
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
+
+    msg.msg_name = &saddr->addr.sin;
     msg.msg_iov = tmpvec;
     msg.msg_iovlen = iovcnt;
     msg.msg_control = NULL;

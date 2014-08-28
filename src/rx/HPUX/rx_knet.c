@@ -249,7 +249,7 @@ osi_NetSend(struct socket *asocket, struct sockaddr_in *addr,
 /* pattern from IRIX */
 #if defined(RXK_LISTENER_ENV)
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	       int nvecs, int *alength)
 {
     int code;
@@ -270,12 +270,16 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     tuio.uio_seg = UIOSEG_KERNEL;
     tuio.uio_resid = *alength;
 
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
+
     code = soreceive(so, &bp, &tuio, &flags, &sp, (MBLKPP) NULL);
     if (!code) {
 	*alength = *alength - tuio.uio_resid;
 	if (bp) {
-	    memcpy((char *)addr, (char *)bp->b_rptr,
-		   sizeof(struct sockaddr_in));
+	    memcpy((char *)saddr->addr.ss, (char *)bp->b_rptr,
+		   sizeof(struct sockaddr_storage));
 	} else {
 	    code = -1;
 	}

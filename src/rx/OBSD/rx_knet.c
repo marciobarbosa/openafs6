@@ -14,7 +14,7 @@
 #include "../rx/rx_kcommon.h"
 
 int
-osi_NetReceive(osi_socket asocket, struct sockaddr_in *addr,
+osi_NetReceive(osi_socket asocket, struct rx_sockaddr *saddr,
 	       struct iovec *dvec, int nvecs, int *alength)
 {
     struct uio u;
@@ -58,8 +58,8 @@ osi_NetReceive(osi_socket asocket, struct sockaddr_in *addr,
     }
 
     *alength -= u.uio_resid;
-    if (addr && nam) {
-	memcpy(addr, mtod(nam, caddr_t), nam->m_len);
+    if (saddr && nam) {
+	memcpy(&saddr->addr.sa, mtod(nam, caddr_t), nam->m_len); /* does it work? */
 	m_freem(nam);
     }
 
@@ -83,7 +83,7 @@ osi_StopListener(void)
  */
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 alength, int istack)
 {
     int i, code;
@@ -110,8 +110,8 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
     nam = m_get(M_DONTWAIT, MT_SONAME);
     if (!nam)
 	return ENOBUFS;
-    nam->m_len = addr->sin_len = sizeof(struct sockaddr_in);
-    memcpy(mtod(nam, caddr_t), addr, addr->sin_len);
+    nam->m_len = saddr->addrlen;
+    memcpy(mtod(nam, caddr_t), &saddr->addr.sa, saddr->addrlen);
 
     if (haveGlock)
 	AFS_GUNLOCK();

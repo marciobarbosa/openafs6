@@ -15,6 +15,8 @@
 #include "rx_atomic.h"
 #include "rx_internal.h"
 
+#include <rx/rx_addr.h>
+
 #define SECONDS_TO_SLEEP	0
 #define NANO_SECONDS_TO_SLEEP	100000000	/* 100 milliseconds */
 #define LOOPS_PER_WAITCHECK	10	/* once per second */
@@ -64,8 +66,7 @@ void
 rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 {
     struct rx_packet *tp;
-    afs_uint32 host;
-    u_short port;
+    struct rx_sockaddr saddr;
     int rc;
 
     /*
@@ -79,9 +80,9 @@ rxi_ListenerProc(osi_socket usockp, int *tnop, struct rx_call **newcallp)
 
 	tp = rxi_AllocPacket(RX_PACKET_CLASS_RECEIVE);
 	usr_assert(tp != NULL);
-	rc = rxi_ReadPacket(usockp, tp, &host, &port);
+	rc = rxi_ReadPacket(usockp, tp, &saddr);
 	if (rc != 0) {
-	    tp = rxi_ReceivePacket(tp, usockp, host, port, tnop, newcallp);
+	    tp = rxi_ReceivePacket(tp, usockp, &saddr, tnop, newcallp);
 	    if (newcallp && *newcallp) {
 		if (tp) {
 		    rxi_FreePacket(tp);
@@ -174,7 +175,7 @@ rx_ServerProc(void *unused)
  * we start the receiver threads.
  */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     struct usr_socket *usockp;
 
@@ -189,7 +190,11 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(htonl(INADDR_ANY), aport);
+    struct rx_sockaddr saddr;
+
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), aport, 0, &saddr);
+
+    return rxk_NewSocketHost(&saddr);
 }
 
 /*
@@ -288,7 +293,7 @@ osi_StopListener(void)
 }
 
 int
-osi_NetSend(osi_socket sockp, struct sockaddr_in *addr, struct iovec *iov,
+osi_NetSend(osi_socket sockp, struct rx_sockaddr *saddr, struct iovec *iov,
 	    int nio, afs_int32 size, int stack)
 {
     int rc;
@@ -307,8 +312,8 @@ osi_NetSend(osi_socket sockp, struct sockaddr_in *addr, struct iovec *iov,
     }
 
     memset(&msg, 0, sizeof(msg));
-    msg.msg_name = (void *)addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_name = (void *)&saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_iov = &tmpiov[0];
     msg.msg_iovlen = nio;
 

@@ -45,7 +45,7 @@ int rxk_nSocketErrors = 0;
 int rxk_nSignalsCleared = 0;
 
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	       int nvecs, int *alength)
 {
     struct uio tuio;
@@ -66,6 +66,10 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     tuio.uio_resid = *alength;
     tuio.uio_pio = 0;
     tuio.uio_pbuf = 0;
+
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
 
     if (nvecs > RX_MAXWVECS + 2) {
 	osi_Panic("Too many (%d) iovecs passed to osi_NetReceive\n", nvecs);
@@ -104,8 +108,8 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     } else {
 	*alength = *alength - tuio.uio_resid;
 	if (maddr) {
-	    memcpy((char *)addr, (char *)mtod(maddr, struct sockaddr_in *),
-		   sizeof(struct sockaddr_in));
+	    memcpy((char *)&saddr->addr.ss, (char *)mtod(maddr, struct sockaddr_storage *),
+		   sizeof(struct sockaddr_storage));
 	    m_freem(maddr);
 	} else {
 	    return -1;
@@ -286,7 +290,7 @@ rxk_init(void)
  * RX IP address routines.
  */
 
-static afs_uint32 myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];	/* net order */
 static int myNetMTUs[ADDRSPERSITE];
 static int myNetFlags[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
@@ -359,7 +363,7 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     int i = *(int *)arg2;
     struct in_ifaddr *iap = (struct in_ifaddr *)h;
     struct ifnet *ifnp;
-    afs_uint32 ifinaddr;
+    rx_in_addr_t ifinaddr, ipv4;
     afs_uint32 rxmtu;
 
     if (i >= ADDRSPERSITE)
@@ -368,12 +372,20 @@ rxi_EnumGetIfInfo(struct hashbucket *h, caddr_t key, caddr_t arg1,
     ifnp = iap->ia_ifp;
     rxmtu = (ifnp->if_mtu - RX_IPUDP_SIZE);
     ifinaddr = ntohl(iap->ia_addr.sin_addr.s_addr);
-    if (myNetAddrs[i] != ifinaddr) {
-	myNetAddrs[i] = ifinaddr;
-	myNetMTUs[i] = rxmtu;
-	different++;
-	*(int *)arg1 = different;
+
+    if (rx_try_address_to_ipv4(&myNetAddrs[i], &ipv4)) {
+    	ipv4 = ntohl(ipv4);
+	if (ipv4 != ifinaddr) {
+	    rx_ipv4_to_address(htonl(ifinaddr), &myNetAddrs[i]);
+	    myNetMTUs[i] = rxmtu;
+	    different++;
+	    *(int *)arg1 = different;
+	}
+    } else {
+    	/* ipv6 */
+    	return EAFNOSUPPORT;
     }
+
     rxmtu = rxmtu * rxi_nRecvFrags + ((rxi_nRecvFrags - 1) * UDP_HDR_SIZE);
     if (!rx_IsLoopbackAddr(ifinaddr) && (rxmtu > rx_maxReceiveSize)) {
 	rx_maxReceiveSize = MIN(RX_MAX_PACKET_SIZE, rxmtu);

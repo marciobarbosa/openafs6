@@ -75,7 +75,7 @@ void (*sockfs_sockfree)
 #define UDP_MOD_NAME "udp"
 #endif
 
-static afs_uint32 myNetAddrs[ADDRSPERSITE];
+static struct rx_address myNetAddrs[ADDRSPERSITE];      /* net order */
 static int myNetMTUs[ADDRSPERSITE];
 static int numMyNetAddrs = 0;
 
@@ -109,7 +109,7 @@ rxi_GetIFInfo()
 	    rxmtu = (afsifinfo[i].mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = afsifinfo[i].ipaddr;
-	    if (myNetAddrs[i] != ifinaddr)
+	    if (ntohl(myNetAddrs[i].rxa_s_addr) != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -140,7 +140,7 @@ rxi_GetIFInfo()
 
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-	    myNetAddrs[j] = addrs[j];
+            rx_ipv4_to_address(htonl(addrs[j]), &myNetAddrs[j]);
 	}
     }
 
@@ -166,7 +166,7 @@ rxi_GetIFInfo()
 	    rxmtu = (ipif->ipif_mtu - RX_IPUDP_SIZE);
 
 	    ifinaddr = ntohl(ipif->ipif_local_addr);
-	    if (myNetAddrs[i] != ifinaddr)
+	    if (ntohl(myNetAddrs[i].rxa_s_addr) != ifinaddr)
 		different++;
 
 	    /* Copy interface MTU and address; adjust maxmtu */
@@ -197,7 +197,7 @@ rxi_GetIFInfo()
 
 	for (j = 0; j < i; j++) {
 	    myNetMTUs[j] = mtus[j];
-	    myNetAddrs[j] = addrs[j];
+            rx_ipv4_to_address(htonl(addrs[j]), &myNetAddrs[j]);
 	}
     }
 
@@ -206,7 +206,7 @@ rxi_GetIFInfo()
 #endif
 
 int
-rxi_FindIfMTU(afs_uint32 addr)
+rxi_FindIfMTU(afs_uint32 addr) /* rx_in_addr_t */
 {
     afs_uint32 myAddr, netMask;
     int match_value = 0;
@@ -219,24 +219,24 @@ rxi_FindIfMTU(afs_uint32 addr)
 #endif
 
     if (numMyNetAddrs == 0)
-	rxi_GetIFInfo();
+        rxi_GetIFInfo();
     myAddr = ntohl(addr);
 
     if (IN_CLASSA(myAddr))
-	netMask = IN_CLASSA_NET;
+        netMask = IN_CLASSA_NET;
     else if (IN_CLASSB(myAddr))
-	netMask = IN_CLASSB_NET;
+        netMask = IN_CLASSB_NET;
     else if (IN_CLASSC(myAddr))
-	netMask = IN_CLASSC_NET;
+        netMask = IN_CLASSC_NET;
     else
-	netMask = 0;
+        netMask = 0;
 
 #ifdef AFS_SUN510_ENV
     (void) rw_enter(&afsifinfo_lock, RW_READER);
 
     for (i = 0; (afsifinfo[i].ipaddr != NULL) && (i < ADDRSPERSITE); i++) {
         afs_uint32 thisAddr, subnetMask;
-    	int thisMtu;
+        int thisMtu;
 
         /* Ignore addresses which are down.. */
         if ((afsifinfo[i].flags & IFF_UP) == 0)
@@ -247,8 +247,8 @@ rxi_FindIfMTU(afs_uint32 addr)
         thisMtu = afsifinfo[i].mtu;
 
         if ((myAddr & netMask) == (thisAddr & netMask)) {
-	   if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
-	        if (myAddr == thisAddr) {
+           if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
+                if (myAddr == thisAddr) {
                     match_value = 4;
                     mtu = thisMtu;
                 }
@@ -272,38 +272,38 @@ rxi_FindIfMTU(afs_uint32 addr)
 }
 #else
     for (ill = ill_g_head; ill; ill = ill->ill_next) {
-	/* Make sure this is an IPv4 ILL */
-	if (ill->ill_isv6)
-	    continue;
+        /* Make sure this is an IPv4 ILL */
+        if (ill->ill_isv6)
+            continue;
 
-	/* Iterate over all the addresses on this ILL */
-	for (ipif = ill->ill_ipif; ipif; ipif = ipif->ipif_next) {
-	    afs_uint32 thisAddr, subnetMask;
-	    int thisMtu;
+        /* Iterate over all the addresses on this ILL */
+        for (ipif = ill->ill_ipif; ipif; ipif = ipif->ipif_next) {
+            afs_uint32 thisAddr, subnetMask;
+            int thisMtu;
 
-	    thisAddr = ipif->ipif_local_addr;
-	    subnetMask = ipif->ipif_net_mask;
-	    thisMtu = ipif->ipif_mtu;
+            thisAddr = ipif->ipif_local_addr;
+            subnetMask = ipif->ipif_net_mask;
+            thisMtu = ipif->ipif_mtu;
 
-	    if ((myAddr & netMask) == (thisAddr & netMask)) {
-		if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
-		    if (myAddr == thisAddr) {
-			match_value = 4;
-			mtu = thisMtu;
-		    }
+            if ((myAddr & netMask) == (thisAddr & netMask)) {
+                if ((myAddr & subnetMask) == (thisAddr & subnetMask)) {
+                    if (myAddr == thisAddr) {
+                        match_value = 4;
+                        mtu = thisMtu;
+                    }
 
-		    if (match_value < 3) {
-			match_value = 3;
-			mtu = thisMtu;
-		    }
-		}
+                    if (match_value < 3) {
+                        match_value = 3;
+                        mtu = thisMtu;
+                    }
+                }
 
-		if (match_value < 2) {
-		    match_value = 2;
-		    mtu = thisMtu;
-		}
-	    }
-	}
+                if (match_value < 2) {
+                    match_value = 2;
+                    mtu = thisMtu;
+                }
+            }
+        }
     }
 
     return mtu;
@@ -318,11 +318,10 @@ struct sockaddr_in rx_sockaddr;
 
 /* Allocate a new socket at specified port in network byte order. */
 osi_socket *
-rxk_NewSocketHost(afs_uint32 ahost, short aport)
+rxk_NewSocketHost(struct rx_sockaddr *saddr)
 {
     vnode_t *accessvp;
     struct sonode *so;
-    struct sockaddr_in addr;
     int error;
     int len;
 #ifdef SOLOOKUP_TAKES_SOCKPARAMS
@@ -387,19 +386,19 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 #endif
 
 #ifdef SOLOOKUP_TAKES_SOCKPARAMS
-    error = sockfs_solookup(AF_INET, SOCK_DGRAM, 0, &sp);
+    error = sockfs_solookup(saddr->rxsa_family, SOCK_DGRAM, 0, &sp);
     if (error != 0) {
 	return NULL;
     }
 
-    so = sockfs_socreate(sp, AF_INET, SOCK_DGRAM, 0, SOV_STREAM, &error);
+    so = sockfs_socreate(sp, saddr->rxsa_family, SOCK_DGRAM, 0, SOV_STREAM, &error);
 #else
-    accessvp = sockfs_solookup(AF_INET, SOCK_DGRAM, 0, "/dev/udp", &error);
+    accessvp = sockfs_solookup(saddr->rxsa_family, SOCK_DGRAM, 0, "/dev/udp", &error);
     if (accessvp == NULL) {
 	return NULL;
     }
 
-    so = sockfs_socreate(accessvp, AF_INET, SOCK_DGRAM, 0, SOV_STREAM, NULL,
+    so = sockfs_socreate(accessvp, saddr->rxsa_family, SOCK_DGRAM, 0, SOV_STREAM, NULL,
 			 &error);
 #endif /* SOLOOKUP_TAKES_SOCKPARAMS */
 
@@ -407,11 +406,7 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 	return NULL;
     }
 
-    addr.sin_family = AF_INET;
-    addr.sin_port = aport;
-    addr.sin_addr.s_addr = ahost; /* I wonder what the odds are on
-				     needing to unbyteswap this */
-    error = sockfs_sobind(so, (struct sockaddr *)&addr, sizeof(addr), 0, 0);
+    error = sockfs_sobind(so, &saddr->addr.sa, sizeof(struct sockaddr_storage), 0, 0);
     if (error != 0) {
 	return NULL;
     }
@@ -434,7 +429,11 @@ rxk_NewSocketHost(afs_uint32 ahost, short aport)
 osi_socket *
 rxk_NewSocket(short aport)
 {
-    return rxk_NewSocketHost(htonl(INADDR_ANY), aport);
+    struct rx_sockaddr saddr;
+
+    rx_ipv4_to_sockaddr(htonl(INADDR_ANY), aport, 0, &saddr);
+
+    return rxk_NewSocketHost(&saddr);
 }
 
 int
@@ -474,7 +473,7 @@ osi_FreeSocket(osi_socket asocket)
 }
 
 int
-osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetSend(osi_socket asocket, struct rx_sockaddr *saddr, struct iovec *dvec,
 	    int nvecs, afs_int32 asize, int istack)
 {
     struct sonode *so = (struct sonode *)asocket;
@@ -488,8 +487,8 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 	osi_Panic("osi_NetSend: %d: Too many iovecs.\n", nvecs);
     }
 
-    msg.msg_name = (struct sockaddr *)addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_name = &saddr->addr.sa;
+    msg.msg_namelen = saddr->addrlen;
     msg.msg_iov = dvec;
     msg.msg_iovlen = nvecs;
     msg.msg_control = NULL;
@@ -514,7 +513,7 @@ osi_NetSend(osi_socket asocket, struct sockaddr_in *addr, struct iovec *dvec,
 }
 
 int
-osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
+osi_NetReceive(osi_socket so, struct rx_sockaddr *saddr, struct iovec *dvec,
 	       int nvecs, int *alength)
 {
     struct sonode *asocket = (struct sonode *)so;
@@ -529,7 +528,7 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     }
 
     msg.msg_name = NULL;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_namelen = sizeof(struct sockaddr_storage);
     msg.msg_iov = NULL;
     msg.msg_iovlen = 0;
     msg.msg_control = NULL;
@@ -548,12 +547,16 @@ osi_NetReceive(osi_socket so, struct sockaddr_in *addr, struct iovec *dvec,
     uio.uio_limit = 0;
     uio.uio_resid = *alength;
 
+    saddr->service = 0;
+    saddr->socktype = SOCK_DGRAM;
+    saddr->addrlen = sizeof(struct sockaddr_in);
+
     error = sockfs_sorecvmsg(asocket, &msg, &uio);
     if (error == 0) {
 	if (msg.msg_name == NULL) {
 	    error = -1;
 	} else {
-	    memcpy(addr, msg.msg_name, msg.msg_namelen);
+	    memcpy(&saddr->addr.ss, msg.msg_name, msg.msg_namelen);
 	    kmem_free(msg.msg_name, msg.msg_namelen);
 	    *alength = *alength - uio.uio_resid;
 	}

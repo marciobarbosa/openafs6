@@ -153,25 +153,26 @@ multiHomedExtent(struct vl_ctx *ctx, int srvidx, struct extentaddr **exp)
 
 #define AFS_RXINFO_LEN 128
 static char *
-rxkadInfo(char *str, struct rx_connection *conn, struct in_addr hostAddr)
+rxkadInfo(char *str, struct rx_connection *conn, struct rx_sockaddr *hostAddr)
 {
     int code;
     char tname[64] = "";
     char tinst[64] = "";
     char tcell[64] = "";
     afs_uint32 exp;
+    rx_addr_str_t hoststr;
 
     code = rxkad_GetServerInfo(conn, NULL, &exp, tname, tinst, tcell,
 			       NULL);
     if (!code)
 	snprintf(str, AFS_RXINFO_LEN,
-		 "%s rxkad:%s%s%s%s%s", inet_ntoa(hostAddr), tname,
+		 "%s rxkad:%s%s%s%s%s", rx_print_sockaddr(hostAddr, hoststr, sizeof(hoststr)), tname,
 		(tinst[0] == '\0') ? "" : ".",
 		(tinst[0] == '\0') ? "" : tinst,
 		(tcell[0] == '\0') ? "" : "@",
 		(tcell[0] == '\0') ? "" : tcell);
     else
-	snprintf(str, AFS_RXINFO_LEN, "%s noauth", inet_ntoa(hostAddr));
+	snprintf(str, AFS_RXINFO_LEN, "%s noauth", rx_print_sockaddr(hostAddr, hoststr, sizeof(hoststr)));
     return (str);
 }
 
@@ -179,12 +180,13 @@ static char *
 rxinfo(char *str, struct rx_call *rxcall)
 {
     struct rx_connection *conn;
-    struct in_addr hostAddr;
+    struct rx_sockaddr *hostAddr;
     rx_securityIndex authClass;
+    rx_addr_str_t hoststr;
 
     conn = rx_ConnectionOf(rxcall);
     authClass = rx_SecurityClassOf(conn);
-    hostAddr.s_addr = rx_HostOf(rx_PeerOf(conn));
+    hostAddr = rx_SockAddrOf(rx_PeerOf(conn));
 
     switch(authClass) {
     case RX_SECIDX_KAD:
@@ -193,7 +195,7 @@ rxinfo(char *str, struct rx_call *rxcall)
 	;
     }
 
-    snprintf(str, AFS_RXINFO_LEN, "%s noauth", inet_ntoa(hostAddr));
+    snprintf(str, AFS_RXINFO_LEN, "%s noauth", rx_print_sockaddr(hostAddr, hoststr, sizeof(hoststr)));
     return str;
 }
 

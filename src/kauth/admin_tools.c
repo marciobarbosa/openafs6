@@ -535,11 +535,12 @@ ka_islocked(char *name, char *instance, afs_uint32 * when)
 int
 Unlock(struct cmd_syndesc *as, void *arock)
 {
+    struct rx_sockaddr server;
     afs_int32 code, rcode = 0;
     afs_int32 count;
-    afs_int32 server;
     char name[MAXKTCNAMELEN];
     char instance[MAXKTCNAMELEN];
+    rx_addr_str_t hoststr;
 
     code = ka_ParseLoginName(as->parms[0].items->data, name, instance, 0);
     if (code) {
@@ -553,16 +554,14 @@ Unlock(struct cmd_syndesc *as, void *arock)
 	code = ubik_CallIter(KAM_Unlock, conn, 0, &count, (long) name, (long) instance,
 			     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	if (code && (code != UNOSERVERS)) {
-	    server = 0;
+	    memset(&server, 0, sizeof(struct rx_sockaddr));
 	    if (conn && conn->conns[count - 1]
 		&& rx_PeerOf(conn->conns[count - 1])) {
-		server = rx_HostOf(rx_PeerOf(conn->conns[count - 1]));
+		rx_copy_sockaddr(rx_SockAddrOf(rx_PeerOf(conn->conns[count - 1])), &server);
 	    }
 	    afs_com_err(whoami, code,
-		    "so %s.%s may still be locked (on server %d.%d.%d.%d)",
-		    name, instance, ((server >> 24) & 0xFF),
-		    ((server >> 16) & 0xFF), ((server >> 8) & 0xFF),
-		    (server & 0xFF));
+		    "so %s.%s may still be locked (on server %s)",
+		    name, instance, rx_print_sockaddr(&server, hoststr, sizeof(hoststr)));
 
 	    if (!rcode) {
 		rcode = code;

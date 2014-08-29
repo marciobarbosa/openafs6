@@ -739,7 +739,7 @@ SRXAFSCB_InitCallBackState(struct rx_call *a_call)
 	afs_oddCBs++;		/*Including any missed via create race */
 	afs_evenCBs++;		/*Including any missed via create race */
 
-	ts = afs_FindServer(rx_HostOf(peer), rx_PortOf(peer), (afsUUID *) 0,
+	ts = afs_FindServer(rx_SockAddrOf(peer)->rxsa_s_addr, rx_SockAddrOf(peer)->rxsa_in_port, (afsUUID *) 0,
 			    0);
 	if (ts) {
 	    for (i = 0; i < VCSIZE; i++)

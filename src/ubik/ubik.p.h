@@ -62,7 +62,7 @@ struct ubik_client {
     short initializationState;	/*!< ubik client init state */
     short states[MAXSERVERS];	/*!< state bits */
     struct rx_connection *conns[MAXSERVERS];
-    afs_int32 syncSite;
+    afs_int32 syncSite; /* rx_in_addr_t */
 #ifdef AFS_PTHREAD_ENV
     pthread_mutex_t cm;
 #endif
@@ -500,7 +500,7 @@ extern afs_int32 ContactQuorum_DISK_SetVersion(struct ubik_trans *atrans,
 extern void panic(char *format, ...)
     AFS_ATTRIBUTE_FORMAT(__printf__, 1, 2);
 
-extern afs_uint32 ubikGetPrimaryInterfaceAddr(afs_uint32 addr);
+extern afs_uint32 ubikGetPrimaryInterfaceAddr(afs_uint32 addr); /* rx_in_addr_t */
 
 extern int ubik_CheckAuth(struct rx_call *);
 

@@ -206,16 +206,16 @@ handleit(struct cmd_syndesc *as, void *arock)
 	int nconns = 0;
 	int status = 0;
 	int i;
-	char hoststr[16];
-	afs_uint32 addr;
+	rx_addr_str_t hoststr;
+	struct rx_sockaddr *saddr;
 
 	for (i = 0; cstruct->conns[i]; i++, nconns++) {
 	    rx_SetConnDeadTime(cstruct->conns[i], 6);
-	    addr = rx_HostOf(rx_PeerOf(cstruct->conns[i]));
+	    saddr = rx_SockAddrOf(rx_PeerOf(cstruct->conns[i]));
 	    if (!nconns) {
 		printf("probing");
 	    }
-	    printf(" %s", afs_inet_ntoa_r(addr, hoststr));
+	    printf(" %s", rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 	}
 	if (nconns == 0) {
 	    printf("no connections\n");
@@ -224,13 +224,13 @@ handleit(struct cmd_syndesc *as, void *arock)
 	printf("\n");
 	multi_Rx(cstruct->conns, nconns) {
 	    multi_VL_ProbeServer();
-	    addr = rx_HostOf(rx_PeerOf(cstruct->conns[multi_i]));
+	    saddr = rx_SockAddrOf(rx_PeerOf(cstruct->conns[multi_i]));
 	    if (!multi_error) {
-		printf(" ok: %s\n", afs_inet_ntoa_r(addr, hoststr));
+		printf(" ok: %s\n", rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 	    } else {
 		status = 255;
 		printf(" not ok (%d): %s\n", multi_error,
-		       afs_inet_ntoa_r(addr, hoststr));
+		       rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 	    }
 	}
 	multi_End;

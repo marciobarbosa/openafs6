@@ -13,6 +13,7 @@
 #include <roken.h>
 
 #include <rx/rx.h>
+#include <rx/rx_addr.h>
 
 /* services available on incoming message port */
 int
@@ -21,9 +22,10 @@ SBC_Print(struct rx_call *acall, afs_int32 acode, afs_int32 aflags,
 {
     struct rx_connection *tconn;
     struct rx_peer *tpeer;
+    rx_addr_str_t hoststr;
 
     tconn = rx_ConnectionOf(acall);
     tpeer = rx_PeerOf(tconn);
-    printf("From %08x: %s <%d>\n", rx_HostOf(tpeer), amessage, acode);
+    printf("From %s: %s <%d>\n", rx_print_sockaddr(rx_SockAddrOf(tpeer), hoststr, sizeof(hoststr)), amessage, acode);
     return 0;
 }

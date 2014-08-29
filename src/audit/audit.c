@@ -26,6 +26,7 @@
 #include "afs/afsint.h"
 #include <rx/rx.h>
 #include <rx/rxkad.h>
+#include <rx/rx_addr.h>
 #include "audit.h"
 #include "audit-api.h"
 #include "lock.h"
@@ -154,7 +155,7 @@ audmakebuf(char *audEvent, va_list vaList)
 #endif
 
 static void
-printbuf(int rec, char *audEvent, char *afsName, afs_int32 hostId,
+printbuf(int rec, char *audEvent, char *afsName, struct rx_sockaddr *hostId,
 	 afs_int32 errCode, va_list vaList)
 {
     int vaEntry;
@@ -168,6 +169,7 @@ printbuf(int rec, char *audEvent, char *afsName, afs_int32 hostId,
     time_t currenttime;
     char tbuffer[26];
     struct tm tm;
+    rx_addr_str_t hoststr;
 
     /* Don't print the timestamp or thread id if we recursed */
     if (rec == 0) {
@@ -183,8 +185,7 @@ printbuf(int rec, char *audEvent, char *afsName, afs_int32 hostId,
     audit_ops->append_msg("EVENT %s CODE %d ", audEvent, errCode);
 
     if (afsName) {
-	hostAddr.s_addr = hostId;
-	audit_ops->append_msg("NAME %s HOST %s ", afsName, inet_ntoa(hostAddr));
+	audit_ops->append_msg("NAME %s HOST %s ", afsName, rx_print_sockaddr(hostId, hoststr, sizeof(hoststr)));
     }
 
     vaEntry = va_arg(vaList, int);
@@ -299,7 +300,7 @@ static int
 osi_audit_internal(char *audEvent,	/* Event name (15 chars or less) */
 		   afs_int32 errCode,	/* The error code */
 		   char *afsName,
-		   afs_int32 hostId,
+		   struct rx_sockaddr *hostId,
 		   va_list vaList)
 {
 #ifdef AFS_AIX32_ENV
@@ -401,7 +402,7 @@ osi_auditU(struct rx_call *call, char *audEvent, int errCode, ...)
     afs_int32 secClass;
     afs_int32 code;
     char afsName[MAXKTCNAMELEN + MAXKTCNAMELEN + MAXKTCREALMLEN + 3];
-    afs_int32 hostId;
+    struct rx_sockaddr hostId;
     va_list vaList;
 
     if (osi_audit_all < 0)
@@ -410,7 +411,7 @@ osi_auditU(struct rx_call *call, char *audEvent, int errCode, ...)
 	return 0;
 
     strcpy(afsName, "--Unknown--");
-    hostId = 0;
+    memset(&hostId, 0, sizeof(struct rx_sockaddr));
 
     if (call) {
 	conn = rx_ConnectionOf(call);	/* call -> conn) */
@@ -454,7 +455,7 @@ osi_auditU(struct rx_call *call, char *audEvent, int errCode, ...)
 	    }
 	    peer = rx_PeerOf(conn);	/* conn -> peer */
 	    if (peer)
-		hostId = rx_HostOf(peer);	/* peer -> host */
+		rx_copy_sockaddr(rx_SockAddrOf(peer), &hostId);	/* peer -> host */
 	    else
 		osi_audit("AFS_Aud_NoHost", (-1), AUD_STR, audEvent, AUD_END);
 	} else {		/* null conn */
@@ -464,7 +465,7 @@ osi_auditU(struct rx_call *call, char *audEvent, int errCode, ...)
 	osi_audit("AFS_Aud_NoCall", (-1), AUD_STR, audEvent, AUD_END);
     }
     va_start(vaList, errCode);
-    osi_audit_internal(audEvent, errCode, afsName, hostId, vaList);
+    osi_audit_internal(audEvent, errCode, afsName, &hostId, vaList);
     va_end(vaList);
     return 0;
 }

@@ -203,6 +203,7 @@ Main(struct cmd_syndesc *as, void *arock)
 	    struct ubik_client *ubikConn;
 	    struct kaentryinfo tentry;
 	    int c;
+	    rx_addr_str_t hoststr;
 
 	    code =
 		ka_GetAdminToken(name, instance, cell, &key, 3600, &token,
@@ -234,8 +235,8 @@ Main(struct cmd_syndesc *as, void *arock)
 		    if (rxConn == 0)
 			break;
 		    peer = rx_PeerOf(rxConn);
-		    printf("conn to %s:%d secObj:%x\n",
-			   inet_ntoa(rx_HostOf(peer)), ntohs(rx_PortOf(peer)),
+		    printf("conn to %s secObj:%x\n",
+			   rx_print_sockaddr(rx_SockAddrOf(peer), hoststr, sizeof(hoststr)),
 			   rxConn->securityObject);
 		}
 
@@ -254,7 +255,7 @@ Main(struct cmd_syndesc *as, void *arock)
 		if (rxConn == 0)
 		    break;
 		if (rxConn->serial > 0) {
-		    long host = rx_HostOf(rx_PeerOf(rxConn));
+		    long host = rx_SockAddrOf(rx_PeerOf(rxConn))->rxsa_s_addr;
 		    for (d = 0; d < MAXSERVERS; d++) {
 			if (serversHost[d] == 0)
 			    serversHost[d] = host;

@@ -1886,7 +1886,7 @@ ucs_ProcTail_setup(definition * defp, int split_flag)
     f_print(fout, "\t\t\t\t*/\n");
     f_print(fout, "\t\t\t\tfor (i = 0; i < MAXSERVERS && aclient->conns[i]; i++) {\n");
     f_print(fout, "\t\t\t\t\trxp = rx_PeerOf(aclient->conns[i]);\n");
-    f_print(fout, "\t\t\t\t\tthisHost = rx_HostOf(rxp);\n");
+    f_print(fout, "\t\t\t\t\tthisHost = rx_SockAddrOf(rxp)->rxsa_s_addr;\n");
     f_print(fout, "\t\t\t\t\tif (!thisHost)\n");
     f_print(fout, "\t\t\t\t\t\tbreak;\n");
     f_print(fout, "\t\t\t\t\tif (thisHost == newHost) {\n");
@@ -1946,7 +1946,7 @@ ucs_ProcTail_setup(definition * defp, int split_flag)
 #endif
     f_print(fout, "\t\tif (!rcode) {           /* Remember the sync site - cmd successful */\n");
     f_print(fout, "\t\t\trxp = rx_PeerOf(aclient->conns[_ucount]);\n");
-    f_print(fout, "\t\t\taclient->syncSite = rx_HostOf(rxp);\n");
+    f_print(fout, "\t\t\taclient->syncSite = rx_SockAddrOf(rxp)->rxsa_s_addr;\n");
     f_print(fout, "\t\t}\n");
     f_print(fout, "\t}\n");
     f_print(fout, "\tUNLOCK_UBIK_CLIENT(aclient);\n");
@@ -2325,6 +2325,7 @@ generate_multi_macros(definition * defp)
     if (!Multi_Init) {
 	Multi_Init = 1;
 	f_print(fout, "\n#include <rx/rx_multi.h>");
+	f_print(fout, "\n#include <rx/rx_addr.h>");
     }
     f_print(fout, "\n#define multi_%s%s(", PackagePrefix[PackageIndex],
 	    defp->pc.proc_name);

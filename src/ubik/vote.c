@@ -20,6 +20,7 @@
 #endif
 #include <lock.h>
 #include <rx/rx.h>
+#include <rx/rx_addr.h>
 #include <afs/afsutil.h>
 
 #define UBIK_INTERNALS
@@ -186,19 +187,18 @@ SVOTE_Beacon(struct rx_call * rxcall, afs_int32 astate,
     struct rx_peer *rxp;
     struct ubik_server *ts;
     int isClone = 0;
-    char hoststr[16];
+    rx_addr_str_t hoststr;
 
     if (rxcall) {		/* caller's host */
 	aconn = rx_ConnectionOf(rxcall);
 	rxp = rx_PeerOf(aconn);
-	otherHost = rx_HostOf(rxp);
 
 	/* get the primary interface address for this host.  */
 	/* This is the identifier that ubik uses. */
-	otherHost = ubikGetPrimaryInterfaceAddr(otherHost);
+	otherHost = ubikGetPrimaryInterfaceAddr(rx_SockAddrOf(rxp)->rxsa_s_addr);
 	if (!otherHost) {
 	    ubik_dprint("Received beacon from unknown host %s\n",
-			afs_inet_ntoa_r(rx_HostOf(rxp), hoststr));
+			rx_print_sockaddr(rx_SockAddrOf(rxp), hoststr, sizeof(hoststr)));
 	    return 0;		/* I don't know about you: vote no */
 	}
 	for (ts = ubik_servers; ts; ts = ts->next) {

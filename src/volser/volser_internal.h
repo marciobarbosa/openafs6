@@ -73,10 +73,10 @@ extern int UV_RestoreVolume2(afs_uint32 toserver, afs_int32 topart,
 			     void *rock);
 extern int UV_LockRelease(afs_uint32 volid);
 extern int UV_AddSite(afs_uint32 server, afs_int32 part, afs_uint32 volid,
-		      afs_int32 valid);
+		      afs_int32 valid); /* rxsa_in_addr */
 extern int UV_AddSite2(afs_uint32 server, afs_int32 part, afs_uint32 volid,
 		       afs_uint32 rovolid, afs_int32 valid);
-extern int UV_RemoveSite(afs_uint32 server, afs_int32 part, afs_uint32 volid);
+extern int UV_RemoveSite(afs_uint32 server, afs_int32 part, afs_uint32 volid); /* rxsa_in_addr */
 extern int UV_ChangeLocation(afs_uint32 server, afs_int32 part,
 			     afs_uint32 volid);
 extern int UV_ListPartitions(afs_uint32 aserver, struct partList *ptrPartList,

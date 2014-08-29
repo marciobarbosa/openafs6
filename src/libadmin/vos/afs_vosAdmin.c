@@ -323,7 +323,8 @@ vos_BackupVolumeCreateMultiple(const void *cellHandle,
     afs_int32 rw_volid, rw_server, rw_partition;
     int previdx;
     int equal = 0;
-    char backbuf[1024];
+    char backbuf[1024]; /* Is it still enough for IPv6 + port? */
+    rx_addr_str_t hoststr;
 
     memset(&attr, 0, sizeof(attr));
     memset(&arrayEntries, 0, sizeof(arrayEntries));
@@ -350,7 +351,7 @@ vos_BackupVolumeCreateMultiple(const void *cellHandle,
 	if (!IsValidServerHandle(f_server, &tst)) {
 	    goto fail_vos_BackupVolumeCreateMultiple;
 	}
-	attr.server = ntohl(rx_HostOf(rx_PeerOf(f_server->serv)));
+	attr.server = ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr);
 	attr.Mask |= VLLIST_SERVER;
     }
 
@@ -443,14 +444,14 @@ vos_BackupVolumeCreateMultiple(const void *cellHandle,
 
 	if (serverHandle != NULL) {
 	    if (!VLDB_IsSameAddrs
-		(c_handle, ntohl(rx_HostOf(rx_PeerOf(f_server->serv))),
+		(c_handle, ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr),
 		 rw_server, &equal, &tst)) {
 		if (callBack != NULL) {
 		    const char *messageText;
 		    if (util_AdminErrorCodeTranslate
 			(ADMVOSVLDBBADSERVER, 0, &messageText, &tst)) {
-			sprintf(backbuf, "%s %x %d", messageText,
-				ntohl(rx_HostOf(rx_PeerOf(f_server->serv))),
+			sprintf(backbuf, "%s %s %d", messageText,
+				rx_print_sockaddr(rx_SockAddrOf(rx_PeerOf(f_server->serv)), hoststr, sizeof(hoststr)),
 				tst);
 			(**callBack) (VOS_ERROR_MESSAGE, backbuf);
 		    }
@@ -2142,7 +2143,7 @@ vos_VLDBGetBegin(const void *cellHandle, const void *serverHandle,
 	if (!IsValidServerHandle(f_server, &tst)) {
 	    goto fail_vos_VLDBGetBegin;
 	}
-	attr.server = ntohl(rx_HostOf(rx_PeerOf(f_server->serv)));
+	attr.server = ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr);
 	attr.Mask |= VLLIST_SERVER;
     }
 
@@ -2355,7 +2356,7 @@ vos_VLDBEntryRemove(const void *cellHandle, const void *serverHandle,
 	if (!IsValidServerHandle(f_server, &tst)) {
 	    goto fail_vos_VLDBEntryRemove;
 	}
-	attr.server = ntohl(rx_HostOf(rx_PeerOf(f_server->serv)));
+	attr.server = ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr);
 	attr.Mask |= VLLIST_SERVER;
     }
 
@@ -2454,7 +2455,7 @@ vos_VLDBUnlock(const void *cellHandle, const void *serverHandle,
 	if (!IsValidServerHandle(f_server, &tst)) {
 	    goto fail_vos_VLDBUnlock;
 	}
-	attr.server = ntohl(rx_HostOf(rx_PeerOf(f_server->serv)));
+	attr.server = ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr);
 	attr.Mask |= VLLIST_SERVER;
     }
 
@@ -2662,7 +2663,7 @@ vos_VLDBReadOnlySiteCreate(const void *cellHandle, const void *serverHandle,
     }
 
     if (!UV_AddSite
-	(c_handle, ntohl(rx_HostOf(rx_PeerOf(f_server->serv))), partition,
+	(c_handle, ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr), partition,
 	 volumeId, &tst)) {
 	goto fail_vos_VLDBReadOnlySiteCreate;
     }
@@ -2733,7 +2734,7 @@ vos_VLDBReadOnlySiteDelete(const void *cellHandle, const void *serverHandle,
     }
 
     if (!UV_RemoveSite
-	(c_handle, ntohl(rx_HostOf(rx_PeerOf(f_server->serv))), partition,
+	(c_handle, ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr), partition,
 	 volumeId, &tst)) {
 	goto fail_vos_VLDBReadOnlySiteDelete;
     }
@@ -3141,7 +3142,7 @@ vos_VolumeDump(const void *cellHandle, const void *serverHandle,
 		tst = ADMVOSPARTITIONTOOLARGE;
 		goto fail_vos_VolumeDump;
 	    }
-	    server = ntohl(rx_HostOf(rx_PeerOf(f_server->serv)));
+	    server = ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr);
 	    part = *partition;
 	}
     } else {
@@ -3260,7 +3261,7 @@ vos_VolumeRestore(const void *cellHandle, const void *serverHandle,
 	volid = 0;
     }
 
-    server = ntohl(rx_HostOf(rx_PeerOf(f_server->serv)));
+    server = ntohl(rx_SockAddrOf(rx_PeerOf(f_server->serv))->rxsa_s_addr);
 
     if (partition > VOLMAXPARTS) {
 	tst = ADMVOSPARTITIONTOOLARGE;
@@ -3997,8 +3998,8 @@ vos_VolumeMove(const void *cellHandle, vos_MessageCallBack_t callBack,
     file_server_p from_server = (file_server_p) fromServer;
     file_server_p to_server = (file_server_p) toServer;
     afs_int32 from_server_addr =
-	ntohl(rx_HostOf(rx_PeerOf(from_server->serv)));
-    afs_int32 to_server_addr = ntohl(rx_HostOf(rx_PeerOf(to_server->serv)));
+	ntohl(rx_SockAddrOf(rx_PeerOf(from_server->serv))->rxsa_s_addr);
+    afs_int32 to_server_addr = ntohl(rx_SockAddrOf(rx_PeerOf(to_server->serv))->rxsa_s_addr);
     afs_int32 from_partition = fromPartition;
     afs_int32 to_partition = toPartition;
 

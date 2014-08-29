@@ -384,8 +384,8 @@ SRXAFSCB_CallBack(struct rx_call *callp, AFSCBFids *fidsArrayp, AFSCBs *cbsArray
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        host = rx_SockAddrOf(peerp)->rxsa_s_addr;
+        port = rx_SockAddrOf(peerp)->rxsa_in_port;
 
         tsp = cm_FindServerByIP(host, port, CM_SERVER_FILE, FALSE);
         if (tsp) {
@@ -479,20 +479,18 @@ SRXAFSCB_Probe(struct rx_call *callp)
 {
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_Probe from host 0x%x port %d",
-              ntohl(host),
-              ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_Probe from host %s",
+              rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     return 0;
 }
@@ -582,19 +580,18 @@ SRXAFSCB_GetLock(struct rx_call *callp, long index, AFSDBLock *lockp)
     int code;                   /*Return code */
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log3(afsd_logp, "SRXAFSCB_GetLock(%d) from host 0x%x port %d",
-             index, ntohl(host), ntohs(port));
+    osi_Log3(afsd_logp, "SRXAFSCB_GetLock(%d) from host %s",
+             index, rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     nentries = sizeof(ltable) / sizeof(struct _ltable);
     if (index < 0 || index >= nentries) {
@@ -642,19 +639,18 @@ SRXAFSCB_GetCE(struct rx_call *callp, long index, AFSDBCacheEntry *cep)
     int code;
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_GetCE from host 0x%x port %d",
-             ntohl(host), ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_GetCE from host %s",
+             rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     lock_ObtainRead(&cm_scacheLock);
     for (i = 0; i < cm_data.scacheHashTableSize; i++) {
@@ -757,19 +753,18 @@ SRXAFSCB_GetCE64(struct rx_call *callp, long index, AFSDBCacheEntry64 *cep)
     int code;
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_GetCE64 from host 0x%x port %d",
-             ntohl(host), ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_GetCE64 from host %s",
+             rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     lock_ObtainRead(&cm_scacheLock);
     for (i = 0; i < cm_data.scacheHashTableSize; i++) {
@@ -869,19 +864,18 @@ SRXAFSCB_XStatsVersion(struct rx_call *callp, long *vp)
 {
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_XStatsVersion from host 0x%x port %d - not implemented",
-             ntohl(host), ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_XStatsVersion from host %s - not implemented",
+             rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
     *vp = -1;
 
     return RXGEN_OPCODE;
@@ -894,19 +888,18 @@ SRXAFSCB_GetXStats(struct rx_call *callp, long cvn, long coln, long *srvp, long 
 {
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_GetXStats from host 0x%x port %d - not implemented",
-             ntohl(host), ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_GetXStats from host %s - not implemented",
+             rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     return RXGEN_OPCODE;
 }
@@ -930,20 +923,18 @@ SRXAFSCB_WhoAreYou(struct rx_call *callp, struct interfaceAddr* addr)
     long code;
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_WhoAreYou from host 0x%x port %d",
-              ntohl(host),
-              ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_WhoAreYou from host %s",
+              rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     lock_ObtainRead(&cm_syscfgLock);
     if (cm_LanAdapterChangeDetected) {
@@ -995,8 +986,8 @@ SRXAFSCB_InitCallBackState3(struct rx_call *callp, afsUUID* serverUuid)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        host = rx_SockAddrOf(peerp)->rxsa_s_addr;
+        port = rx_SockAddrOf(peerp)->rxsa_in_port;
 
         if (serverUuid) {
             if (UuidToString((UUID *)serverUuid, &p) == RPC_S_OK) {
@@ -1119,27 +1110,25 @@ SRXAFSCB_ProbeUuid(struct rx_call *callp, afsUUID* clientUuid)
 {
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
     char *p,*q;
     int code = 0;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
     if ( !afs_uuid_equal(&cm_data.Uuid, clientUuid) ) {
         UuidToString((UUID *)&cm_data.Uuid, &p);
         UuidToString((UUID *)clientUuid, &q);
-        osi_Log4(afsd_logp, "SRXAFSCB_ProbeUuid %s != %s from host 0x%x port %d",
+        osi_Log4(afsd_logp, "SRXAFSCB_ProbeUuid %s != %s from host %s",
                   osi_LogSaveString(afsd_logp,p),
                   osi_LogSaveString(afsd_logp,q),
-                  ntohl(host),
-                  ntohs(port));
+                  rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
         RpcStringFree(&p);
         RpcStringFree(&q);
 
@@ -1200,20 +1189,19 @@ SRXAFSCB_GetCellByNum(struct rx_call *callp, afs_int32 a_cellnum,
 {
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
     int rc;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log3(afsd_logp, "SRXAFSCB_GetCellByNum(%d) from host 0x%x port %d",
-             a_cellnum, ntohl(host), ntohs(port));
+    osi_Log3(afsd_logp, "SRXAFSCB_GetCellByNum(%d) from host %s",
+             a_cellnum, rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     a_hosts->serverList_val = 0;
     a_hosts->serverList_len = 0;
@@ -1236,20 +1224,18 @@ SRXAFSCB_TellMeAboutYourself( struct rx_call *callp,
     long code;
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_TellMeAboutYourself from host 0x%x port %d",
-              ntohl(host),
-              ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_TellMeAboutYourself from host %s",
+              rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     lock_ObtainRead(&cm_syscfgLock);
     if (cm_LanAdapterChangeDetected) {
@@ -1315,20 +1301,18 @@ int SRXAFSCB_GetServerPrefs(
 {
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_GetServerPrefs from host 0x%x port %d - not implemented",
-              ntohl(host),
-              ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_GetServerPrefs from host %s - not implemented",
+              rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     *a_srvr_addr = 0xffffffff;
     *a_srvr_rank = 0xffffffff;
@@ -1363,20 +1347,19 @@ int SRXAFSCB_GetCellServDB(struct rx_call *callp, afs_int32 index, char **a_name
 {
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
     int rc;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_GetCellServDB from host 0x%x port %d - not implemented",
-             ntohl(host), ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_GetCellServDB from host %s - not implemented",
+             rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
 #ifdef AFS_FREELANCE_CLIENT
     if (cm_freelanceEnabled && index == 0) {
@@ -1414,20 +1397,19 @@ int SRXAFSCB_GetLocalCell(struct rx_call *callp, char **a_name)
     char *t_name;
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
     size_t len;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_GetLocalCell from host 0x%x port %d",
-             ntohl(host), ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_GetLocalCell from host %s",
+             rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     if (cm_data.rootCellp) {
         len = strlen(cm_data.rootCellp->name) + 1;
@@ -1516,19 +1498,18 @@ int SRXAFSCB_GetCacheConfig(struct rx_call *callp,
     extern cm_initparams_v1 cm_initParams;
     struct rx_connection *connp;
     struct rx_peer *peerp;
-    unsigned long host = 0;
-    unsigned short port = 0;
+    struct rx_sockaddr *saddr;
+    rx_addr_str_t hoststr;
 
     if (cm_shutdown)
         return 1;
 
     if ((connp = rx_ConnectionOf(callp)) && (peerp = rx_PeerOf(connp))) {
-        host = rx_HostOf(peerp);
-        port = rx_PortOf(peerp);
+        saddr = rx_SockAddrOf(peerp);
     }
 
-    osi_Log2(afsd_logp, "SRXAFSCB_GetCacheConfig from host 0x%x port %d - version 1 only",
-             ntohl(host), ntohs(port));
+    osi_Log2(afsd_logp, "SRXAFSCB_GetCacheConfig from host %s - version 1 only",
+             rx_print_sockaddr(saddr, hoststr, sizeof(hoststr)));
 
     /*
      * Currently only support version 1

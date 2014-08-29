@@ -215,20 +215,25 @@ ubeacon_ReinitServer(struct ubik_server *ts)
 	struct rx_connection *disk_rxcid;
 	struct rx_connection *vote_rxcid;
 	struct rx_connection *tmp;
+	struct rx_sockaddr saddr;
 	UBIK_ADDR_LOCK;
 	ubeacon_InitSecurityClass();
+	rx_copy_sockaddr(rx_SockAddrOf(rx_PeerOf(ts->disk_rxcid)), &saddr); /* I don't wanna change the service and port of the original one */
+	saddr.service = DISK_SERVICE_ID;
+	rx_set_sockaddr_port(&saddr, ubik_callPortal);
 	disk_rxcid =
-	    rx_NewConnection(rx_HostOf(rx_PeerOf(ts->disk_rxcid)),
-			     ubik_callPortal, DISK_SERVICE_ID,
+	    rx_NewConnection2(&saddr,
 			     addr_globals.ubikSecClass, addr_globals.ubikSecIndex);
 	if (disk_rxcid) {
 	    tmp = ts->disk_rxcid;
 	    ts->disk_rxcid = disk_rxcid;
 	    rx_PutConnection(tmp);
 	}
+	rx_copy_sockaddr(rx_SockAddrOf(rx_PeerOf(ts->vote_rxcid)), &saddr);
+	saddr.service = VOTE_SERVICE_ID;
+	rx_set_sockaddr_port(&saddr, ubik_callPortal);
 	vote_rxcid =
-	    rx_NewConnection(rx_HostOf(rx_PeerOf(ts->vote_rxcid)),
-			     ubik_callPortal, VOTE_SERVICE_ID,
+	    rx_NewConnection2(&saddr,
 			     addr_globals.ubikSecClass, addr_globals.ubikSecIndex);
 	if (vote_rxcid) {
 	    tmp = ts->vote_rxcid;

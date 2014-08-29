@@ -426,7 +426,7 @@ rxi_InitPeerParams(struct rx_peer *pp)
 #else /* AFS_SUN5_ENV */
     afs_int32 mtu;
 
-    mtu = rxi_FindIfMTU(&pp->saddr.rxsa_in_addr);
+    mtu = rxi_FindIfMTU(&pp->saddr.rxsa_s_addr);
 
     if (mtu <= 0) {
 	rx_rto_setPeerTimeoutSecs(pp, 3);

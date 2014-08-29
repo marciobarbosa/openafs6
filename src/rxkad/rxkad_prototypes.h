@@ -143,7 +143,7 @@ extern int tkt_MakeTicket(char *ticket, int *ticketLen,
 			  char *inst, char *cell, afs_uint32 start,
 			  afs_uint32 end,
 			  struct ktc_encryptionKey *sessionKey,
-			  afs_uint32 host, char *sname, char *sinst);
+			  afs_uint32 host, char *sname, char *sinst); /* rxsa_in_addr */
 extern int tkt_CheckTimes(afs_uint32 start, afs_uint32 end, afs_uint32 now);
 extern afs_int32 ktohl(char flags, afs_int32 l);
 extern afs_uint32 life_to_time(afs_uint32 start, unsigned char life);

@@ -300,16 +300,10 @@ ubik_ClientDestroy(struct ubik_client * aclient)
 struct rx_connection *
 ubik_RefreshConn(struct rx_connection *tc)
 {
-    afs_uint32 host;
-    u_short port;
-    u_short service;
     struct rx_securityClass *sc;
     int si;
     struct rx_connection *newTc;
 
-    host = rx_HostOf(rx_PeerOf(tc));
-    port = rx_PortOf(rx_PeerOf(tc));
-    service = rx_ServiceIdOf(tc);
     sc = rx_SecurityObjectOf(tc);
     si = rx_SecurityClassOf(tc);
 
@@ -317,7 +311,7 @@ ubik_RefreshConn(struct rx_connection *tc)
      * destroy old one after creating new one so that refCount on security
      * object cannot reach zero.
      */
-    newTc = rx_NewConnection(host, port, service, sc, si);
+    newTc = rx_NewConnection2(rx_SockAddrOf(rx_PeerOf(tc)), sc, si);
     rx_DestroyConnection(tc);
     return newTc;
 }
@@ -369,6 +363,7 @@ try_GetSyncSite(struct ubik_client *aclient, afs_int32 apos)
     afs_int32 thisHost, newHost;
     struct rx_connection *tc;
     short origLevel;
+    struct rx_sockaddr *saddr;
 
     origLevel = aclient->initializationState;
 
@@ -397,8 +392,8 @@ try_GetSyncSite(struct ubik_client *aclient, afs_int32 apos)
 	 */
 	for (i = 0; i < MAXSERVERS; i++) {
 	    rxp = rx_PeerOf(aclient->conns[i]);
-	    thisHost = rx_HostOf(rxp);
-	    if (!thisHost) {
+	    saddr = rx_SockAddrOf(rxp);
+	    if (!rx_try_sockaddr_to_ipv4(saddr, &thisHost)) {
 		return -1;
 	    } else if (thisHost == newHost) {
 		return i;	/* we were told to use this one */
@@ -567,6 +562,7 @@ ubik_Call(int (*aproc) (), struct ubik_client *aclient,
     struct rx_connection *tc;
     struct rx_peer *rxp;
     short origLevel;
+    struct rx_sockaddr *saddr;
 
     if (aflags & UBIK_CALL_NEW)
 	return ubik_Call_New(aproc, aclient, aflags, p1, p2, p3, p4,
@@ -631,8 +627,8 @@ ubik_Call(int (*aproc) (), struct ubik_client *aclient,
 		     */
 		    for (i = 0; i < MAXSERVERS && aclient->conns[i]; i++) {
 			rxp = rx_PeerOf(aclient->conns[i]);
-			thisHost = rx_HostOf(rxp);
-			if (!thisHost)
+			saddr = rx_SockAddrOf(rxp);
+			if (!rx_try_sockaddr_to_ipv4(saddr, &thisHost))
 			    break;
 			if (thisHost == newHost) {
 			    if (chaseCount++ > 2)
@@ -688,7 +684,7 @@ ubik_Call(int (*aproc) (), struct ubik_client *aclient,
 	}
 	if (!rcode) {		/* Remember the sync site - cmd successful */
 	    rxp = rx_PeerOf(aclient->conns[count]);
-	    aclient->syncSite = rx_HostOf(rxp);
+	    rx_try_sockaddr_to_ipv4(rx_SockAddrOf(rxp), &aclient->syncSite);
 	}
     }
     UNLOCK_UBIK_CLIENT(aclient);

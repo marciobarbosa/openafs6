@@ -122,7 +122,7 @@ void afscp_FreeAllServers(void);
 
 struct afscp_server *afscp_ServerById(struct afscp_cell *, afsUUID *);
 struct afscp_server *afscp_ServerByAddr(struct afscp_cell *, afs_uint32);
-struct afscp_server *afscp_AnyServerByAddr(afs_uint32);
+struct afscp_server *afscp_AnyServerByAddr(afs_uint32); /* rx_in_addr_t */
 struct afscp_server *afscp_ServerByIndex(int);
 struct rx_connection *afscp_ServerConnection(const struct afscp_server *,
 					     int);

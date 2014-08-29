@@ -229,8 +229,8 @@ SPAGCB_GetCreds(struct rx_call *a_call, afs_int32 a_uid,
     RX_AFS_GLOCK();
 
     memset(a_creds, 0, sizeof(struct CredInfos));
-    if ((rx_HostOf(rx_PeerOf(rx_ConnectionOf(a_call))) != afs_nfs_server_addr
-	||  rx_PortOf(rx_PeerOf(rx_ConnectionOf(a_call))) != htons(7001))
+    if ((rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(a_call)))->rxsa_s_addr != afs_nfs_server_addr
+	||  rx_get_sockaddr_port(rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(a_call)))) != htons(7001))
 #if 0 /* for debugging ONLY! */
 	&&  rx_PortOf(rx_PeerOf(rx_ConnectionOf(a_call))) != htons(7901)
 #endif

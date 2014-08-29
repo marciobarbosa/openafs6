@@ -803,7 +803,7 @@ extern int afs_unmount(struct vfs *afsp);
 #endif
 
 /* afs_pag_call.c */
-extern afs_int32 afs_nfs_server_addr;
+extern afs_int32 afs_nfs_server_addr; /* rx_in_addr_t */
 extern void afspag_Init(afs_int32 nfs_server_addr);
 extern void afspag_Shutdown(void);
 
@@ -860,7 +860,7 @@ extern struct srvAddr *afs_srvAddrs[NSERVERS];
 extern struct server *afs_servers[NSERVERS];
 extern int afs_totalServers;
 extern struct server *afs_FindServer(afs_int32 aserver, afs_uint16 aport,
-				     afsUUID * uuidp, afs_int32 locktype);
+				     afsUUID * uuidp, afs_int32 locktype); /* rx_in_addr_t */
 extern struct server *afs_GetServer(afs_uint32 * aserver, afs_int32 nservers,
 				    afs_int32 acell, u_short aport,
 				    afs_int32 locktype, afsUUID * uuidp,

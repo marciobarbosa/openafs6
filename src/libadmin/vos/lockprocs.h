@@ -30,7 +30,7 @@
 extern void Lp_SetRWValue(afs_cell_handle_p cellHandle,
 			  struct nvldbentry *entry, afs_int32 oserver,
 			  afs_int32 opart, afs_int32 nserver,
-			  afs_int32 npart);
+			  afs_int32 npart); /* rx_in_addr_t */
 
 extern void Lp_SetROValue(afs_cell_handle_p cellHandle,
 			  struct nvldbentry *entry, afs_int32 oserver,
@@ -38,10 +38,10 @@ extern void Lp_SetROValue(afs_cell_handle_p cellHandle,
 			  afs_int32 npart);
 
 extern int Lp_Match(afs_cell_handle_p cellHandle, struct nvldbentry *entry,
-		    afs_int32 server, afs_int32 part, afs_status_p st);
+		    afs_int32 server, afs_int32 part, afs_status_p st); /* rx_in_addr_t */
 
 extern int Lp_ROMatch(afs_cell_handle_p cellHandle, struct nvldbentry *entry,
-		      afs_int32 server, afs_int32 part, afs_status_p st);
+		      afs_int32 server, afs_int32 part, afs_status_p st); /* rx_in_addr_t */
 
 extern int Lp_GetRwIndex(afs_cell_handle_p cellHandle,
 			 struct nvldbentry *entry, afs_status_p st);

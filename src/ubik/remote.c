@@ -24,6 +24,7 @@
 #include <lock.h>
 #include <rx/xdr.h>
 #include <rx/rx.h>
+#include <rx/rx_addr.h>
 #include <afs/afsutil.h>
 
 #define UBIK_INTERNALS
@@ -475,7 +476,7 @@ SDISK_SendFile(struct rx_call *rxcall, afs_int32 file,
     offset = uvote_GetSyncSite();
     tconn = rx_ConnectionOf(rxcall);
     tpeer = rx_PeerOf(tconn);
-    otherHost = ubikGetPrimaryInterfaceAddr(rx_HostOf(tpeer));
+    otherHost = ubikGetPrimaryInterfaceAddr(rx_SockAddrOf(tpeer)->rxsa_s_addr);
     if (offset && offset != otherHost) {
 	/* we *know* this is the wrong guy */
 	code = USYNC;

@@ -143,7 +143,7 @@ extern void cm_SetServerNo64Bit(cm_server_t * serverp, int no64bit);
 
 extern void cm_SetServerNoInlineBulk(cm_server_t * serverp, int no);
 
-extern cm_server_t * cm_FindServerByIP(afs_uint32 addr, unsigned short port, int type, int locked);
+extern cm_server_t * cm_FindServerByIP(afs_uint32 addr, unsigned short port, int type, int locked); /* rx_in_addr_t */
 
 extern cm_server_t * cm_FindServerByUuid(afsUUID* uuid, int type, int locked);
 

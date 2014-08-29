@@ -159,7 +159,7 @@ UV_CreateVolume(afs_cell_handle_p cellHandle, struct rx_connection *server,
     /* set up the vldb entry for this volume */
     strncpy(entry.name, volumeName, VOLSER_OLDMAXVOLNAME);
     entry.nServers = 1;
-    entry.serverNumber[0] = ntohl(rx_HostOf(rx_PeerOf(server)));
+    entry.serverNumber[0] = ntohl(rx_SockAddrOf(rx_PeerOf(server))->rxsa_s_addr);
     entry.serverPartition[0] = partition;
     entry.flags = RW_EXISTS;
     entry.serverFlags[0] = ITSRWVOL;
@@ -205,7 +205,7 @@ UV_DeleteVolume(afs_cell_handle_p cellHandle, struct rx_connection *server,
     int rc = 0;
     afs_status_t tst = 0;
     afs_status_t temp = 0;
-    int serverAddr = ntohl(rx_HostOf(rx_PeerOf(server)));
+    int serverAddr = ntohl(rx_SockAddrOf(rx_PeerOf(server))->rxsa_s_addr);
 
     afs_int32 ttid = 0;
     afs_int32 rcode;
@@ -2970,7 +2970,7 @@ ProcessEntries(afs_cell_handle_p cellHandle, struct qHead *myQueue,
     int noError = 1, error, same;
     int totalC, totalU, totalCE, totalUE, totalG;
     int counter;
-    int aserver = ntohl(rx_HostOf(rx_PeerOf(server)));
+    int aserver = ntohl(rx_SockAddrOf(rx_PeerOf(server))->rxsa_s_addr);
     afs_status_t tst;
 
     totalC = totalU = totalCE = totalUE = totalG = 0;
@@ -3606,7 +3606,7 @@ UV_SyncServer(afs_cell_handle_p cellHandle, struct rx_connection *server,
     arrayEntries.nbulkentries_val = 0;
 
     /* Set up attributes to search VLDB  */
-    attributes.server = ntohl(rx_HostOf(rx_PeerOf(server)));
+    attributes.server = ntohl(rx_SockAddrOf(rx_PeerOf(server))->rxsa_s_addr);
     attributes.Mask = VLLIST_SERVER;
     if (flags) {
 	attributes.partition = apart;

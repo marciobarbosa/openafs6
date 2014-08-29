@@ -1010,6 +1010,7 @@ ubik_Call_SingleServer(int (*aproc) (), struct ubik_client *aclient,
     int pass;
     struct rx_connection *tc;
     struct rx_peer *rxp;
+    struct rx_sockaddr *saddr;
 
     if ((aflags & (UF_SINGLESERVER | UF_END_SINGLESERVER)) != 0) {
 	if (((aflags & UF_SINGLESERVER) != 0)
@@ -1079,7 +1080,8 @@ ubik_Call_SingleServer(int (*aproc) (), struct ubik_client *aclient,
 		 */
 		for (i = 0; i < MAXSERVERS; i++) {	/*f */
 		    rxp = rx_PeerOf(aclient->conns[i]);
-		    if (!(thisHost = rx_HostOf(rxp))) {
+                    saddr = rx_SockAddrOf(rxp);
+		    if (!rx_try_sockaddr_to_ipv4(saddr, &thisHost)) {
 			count++;	/* host not found, try the next dude */
 			break;
 		    }

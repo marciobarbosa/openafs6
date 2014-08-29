@@ -320,23 +320,21 @@ CheckLength(struct Volume *vp, struct Vnode *vnp, afs_sfsize_t alen)
 static void
 LogClientError(const char *message, struct rx_connection *tcon, afs_int32 viceid, struct AFSFid *Fid)
 {
-    char hoststr[16];
+    rx_addr_str_t hoststr;
     if (Fid) {
-	ViceLog(0, ("%s while handling request from host %s:%d viceid %d "
+	ViceLog(0, ("%s while handling request from host %s viceid %d "
 	            "fid %" AFS_VOLID_FMT ".%lu.%lu, failing request\n",
 	            message,
-	            afs_inet_ntoa_r(rx_HostOf(rx_PeerOf(tcon)), hoststr),
-	            (int)ntohs(rx_PortOf(rx_PeerOf(tcon))),
+	            rx_print_sockaddr(rx_SockAddrOf(rx_PeerOf(tcon)), hoststr, sizeof(hoststr)),
 	            viceid,
 	            afs_printable_VolumeId_lu(Fid->Volume),
 	            afs_printable_uint32_lu(Fid->Vnode),
 	            afs_printable_uint32_lu(Fid->Unique)));
     } else {
-	ViceLog(0, ("%s while handling request from host %s:%d viceid %d "
+	ViceLog(0, ("%s while handling request from host %s viceid %d "
 	            "fid (none), failing request\n",
 	            message,
-	            afs_inet_ntoa_r(rx_HostOf(rx_PeerOf(tcon)), hoststr),
-	            (int)ntohs(rx_PortOf(rx_PeerOf(tcon))),
+	            rx_print_sockaddr(rx_SockAddrOf(rx_PeerOf(tcon)), hoststr, sizeof(hoststr)),
 	            viceid));
     }
 }
@@ -5555,6 +5553,7 @@ common_GiveUpCallBacks(struct rx_call *acall, struct AFSCBFids *FidArray,
     struct rx_connection *tcon;
     struct host *thost;
     struct fsstats fsstats;
+    rx_addr_str_t hoststr;
 
     fsstats_StartOp(&fsstats, FS_STATS_RPCIDX_GIVEUPCALLBACKS);
 
@@ -5571,8 +5570,8 @@ common_GiveUpCallBacks(struct rx_call *acall, struct AFSCBFids *FidArray,
 
     if (!FidArray && !CallBackArray) {
 	ViceLog(1,
-		("SAFS_GiveUpAllCallBacks: host=%x\n",
-		 (rx_PeerOf(tcon) ? rx_HostOf(rx_PeerOf(tcon)) : 0)));
+		("SAFS_GiveUpAllCallBacks: host=%s\n",
+		 (rx_PeerOf(tcon) ? rx_print_sockaddr(rx_SockAddrOf(rx_PeerOf(tcon)), hoststr, sizeof(hoststr)) : "0")));
 	errorCode = GetClient(tcon, &client);
 	if (!errorCode) {
 	    H_LOCK;
@@ -5583,9 +5582,9 @@ common_GiveUpCallBacks(struct rx_call *acall, struct AFSCBFids *FidArray,
     } else {
 	if (FidArray->AFSCBFids_len < CallBackArray->AFSCBs_len) {
 	    ViceLog(0,
-		    ("GiveUpCallBacks: #Fids %d < #CallBacks %d, host=%x\n",
+		    ("GiveUpCallBacks: #Fids %d < #CallBacks %d, host=%s\n",
 		     FidArray->AFSCBFids_len, CallBackArray->AFSCBs_len,
-		     (rx_PeerOf(tcon) ? rx_HostOf(rx_PeerOf(tcon)) : 0)));
+		     (rx_PeerOf(tcon) ? rx_print_sockaddr(rx_SockAddrOf(rx_PeerOf(tcon)), hoststr, sizeof(hoststr)) : "0")));
 	    errorCode = EINVAL;
 	    goto Bad_GiveUpCallBacks;
 	}

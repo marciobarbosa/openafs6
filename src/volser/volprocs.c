@@ -130,8 +130,8 @@ static afs_int32 VolSetDate(struct rx_call *, afs_int32, afs_int32);
 static_inline char *
 callerAddress(struct rx_call *acid, char *buffer)
 {
-    afs_uint32 ip = rx_HostOf(rx_PeerOf(rx_ConnectionOf(acid)));
-    return afs_inet_ntoa_r(ip, buffer);
+    struct rx_sockaddr *ip = rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(acid)));
+    return rx_print_sockaddr(ip, buffer, sizeof(struct rx_sockaddr));
 }
 
 /* this call unlocks all of the partition locks we've set */
@@ -490,7 +490,7 @@ VolNukeVolume(struct rx_call *acid, afs_int32 apartID, afs_uint32 avolID)
     if (!afsconf_SuperUser(tdir, acid, caller))
 	return VOLSERBAD_ACCESS;
     if (DoLogging) {
-	char buffer[16];
+	rx_addr_str_t buffer;
 	Log("%s on %s is executing VolNukeVolume %u\n", caller,
 	    callerAddress(acid, buffer), avolID);
     }
@@ -548,7 +548,7 @@ VolCreateVolume(struct rx_call *acid, afs_int32 apart, char *aname,
     if (!afsconf_SuperUser(tdir, acid, caller))
 	return VOLSERBAD_ACCESS;
     if (DoLogging) {
-	char buffer[16];
+	rx_addr_str_t buffer;
 	Log("%s on %s is executing CreateVolume '%s'\n", caller,
 	    callerAddress(acid, buffer), aname);
     }
@@ -654,7 +654,7 @@ VolDeleteVolume(struct rx_call *acid, afs_int32 atrans)
 	return ENOENT;
     }
     if (DoLogging) {
-	char buffer[16];
+	rx_addr_str_t buffer;
 	Log("%s on %s is executing Delete Volume %" AFS_VOLID_FMT "\n", caller,
 	    callerAddress(acid, buffer), afs_printable_VolumeId_lu(tt->volid));
     }
@@ -717,7 +717,7 @@ VolClone(struct rx_call *acid, afs_int32 atrans, VolumeId purgeId,
     if (!afsconf_SuperUser(tdir, acid, caller))
 	return VOLSERBAD_ACCESS;	/*not a super user */
     if (DoLogging) {
-	char buffer[16];
+	rx_addr_str_t buffer;
 	Log("%s on %s is executing Clone Volume new name=%s\n", caller,
 	    callerAddress(acid, buffer), newName);
     }
@@ -902,7 +902,7 @@ VolReClone(struct rx_call *acid, afs_int32 atrans, VolumeId cloneId)
     if (!afsconf_SuperUser(tdir, acid, caller))
 	return VOLSERBAD_ACCESS;
     if (DoLogging) {
-	char buffer[16];
+	rx_addr_str_t buffer;
 	Log("%s on %s is executing Reclone Volume %" AFS_VOLID_FMT "\n", caller,
 	    callerAddress(acid, buffer), afs_printable_VolumeId_lu(cloneId));
     }
@@ -1556,7 +1556,7 @@ VolRestore(struct rx_call *acid, afs_int32 atrans, afs_int32 aflags,
 	return ENOENT;
     }
     if (DoLogging) {
-	char buffer[16];
+	rx_addr_str_t buffer;
 	Log("%s on %s is executing Restore %" AFS_VOLID_FMT "\n", caller,
 	    callerAddress(acid, buffer), afs_printable_VolumeId_lu(tt->volid));
     }

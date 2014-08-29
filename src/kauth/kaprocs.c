@@ -649,7 +649,7 @@ kamCreateUser(struct rx_call *call, char *aname, char *ainstance,
     }
     code = ubik_EndTrans(tt);
     KALOG(aname, ainstance, NULL, NULL, NULL,
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_CRUSER);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, LOG_CRUSER);
     return code;
 }
 
@@ -925,7 +925,7 @@ kamSetPassword(struct rx_call *call, char *aname, char *ainstance,
 
     code = ubik_EndTrans(tt);
     KALOG(aname, ainstance, NULL, NULL, NULL,
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_CHPASSWD);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, LOG_CHPASSWD);
     return code;
 
   abort:
@@ -1180,7 +1180,7 @@ Authenticate(int version, struct rx_call *call, char *aname, char *ainstance,
     code =
 	tkt_MakeTicket(ticket, &ticketLen, &tgskey, aname, ainstance, "",
 		       start, end, &sessionKey,
-		       rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), sname,
+		       rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, sname,
 		       sinst);
     if (code)
 	goto abort;
@@ -1248,14 +1248,14 @@ Authenticate(int version, struct rx_call *call, char *aname, char *ainstance,
 		     &user_schedule, ktc_to_cblockptr(&tentry.key), ENCRYPT);
     code = ubik_EndTrans(tt);
     KALOG(aname, ainstance, sname, sinst, NULL,
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_AUTHENTICATE);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, LOG_AUTHENTICATE);
     return code;
 
   abort:
     COUNT_ABO;
     ubik_AbortTrans(tt);
     KALOG(aname, ainstance, sname, sinst, NULL,
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_AUTHFAILED);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, LOG_AUTHFAILED);
     return code;
 }
 
@@ -1457,7 +1457,7 @@ kamSetFields(struct rx_call *call,
 
     code = ubik_EndTrans(tt);
     KALOG(aname, ainstance, NULL, NULL, NULL,
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_SETFIELDS);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, LOG_SETFIELDS);
     return code;
 
   abort:
@@ -1530,7 +1530,7 @@ kamDeleteUser(struct rx_call *call, char *aname, char *ainstance)
 
     code = ubik_EndTrans(tt);
     KALOG(aname, ainstance, NULL, NULL, NULL,
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_DELUSER);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, LOG_DELUSER);
     return code;
 }
 
@@ -1876,7 +1876,7 @@ GetTicket(int version,
 	tkt_MakeTicket(ticket, &ticketLen, &server.key, caller.userID.name,
 		       caller.userID.instance, cell, times.start, end,
 		       &sessionKey,
-		       rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))),
+		       rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr,
 		       server.userID.name, server.userID.instance);
     if (code)
 	goto abort;
@@ -1937,7 +1937,7 @@ GetTicket(int version,
 		     &schedule, ktc_to_cblockptr(&authSessionKey), ENCRYPT);
     code = ubik_EndTrans(tt);
     KALOG(name, instance, sname, sinstance, (import ? authDomain : NULL),
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_GETTICKET);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_s_addr, LOG_GETTICKET);
     return code;
 
   abort:
@@ -2098,8 +2098,7 @@ kamGetPassword(struct rx_call *call, char *name, EncryptionKey *password)
 	if (!name_instance_legal(name, ""))
 	    return KABADNAME;
 	/* only requests from this host work */
-	if (rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))) !=
-	    htonl(INADDR_LOOPBACK))
+	if (!rx_is_loopback_sockaddr(rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call))))) /* Is it right? */
 	    return KANOAUTH;
 	if (code = InitAuthServ(&tt, LOCKREAD, this_op))
 	    return code;
@@ -2264,7 +2263,7 @@ SKAM_Unlock(struct rx_call *call,
 
     code = ubik_EndTrans(tt);
     KALOG(aname, ainstance, NULL, NULL, NULL,
-	  rx_HostOf(rx_PeerOf(rx_ConnectionOf(call))), LOG_UNLOCK);
+	  rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(call)))->rxsa_in_family, LOG_UNLOCK);
     goto exit;
 
   abort:

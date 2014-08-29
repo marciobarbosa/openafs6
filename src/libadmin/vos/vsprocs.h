@@ -62,7 +62,7 @@ extern int UV_DeleteVolume(afs_cell_handle_p cellHandle,
 extern int UV_MoveVolume(afs_cell_handle_p cellHandle, afs_uint32 afromvol,
 			 afs_int32 afromserver, afs_int32 afrompart,
 			 afs_int32 atoserver, afs_int32 atopart,
-			 afs_status_p st);
+			 afs_status_p st); /* rx_in_addr_t */
 
 extern int UV_BackupVolume(afs_cell_handle_p cellHandle, afs_int32 aserver,
 			   afs_int32 apart, afs_uint32 avolid,
@@ -75,12 +75,12 @@ extern int UV_ReleaseVolume(afs_cell_handle_p cellHandle, afs_uint32 afromvol,
 extern int UV_DumpVolume(afs_cell_handle_p cellHandle, afs_uint32 afromvol,
 			 afs_int32 afromserver, afs_int32 afrompart,
 			 afs_int32 fromdate, const char *filename,
-			 afs_status_p st);
+			 afs_status_p st); /* rx_in_addr_t */
 
 extern int UV_RestoreVolume(afs_cell_handle_p cellHandle, afs_int32 toserver,
 			    afs_int32 topart, afs_uint32 tovolid,
 			    char *tovolname, int flags,
-			    const char *dumpFile, afs_status_p st);
+			    const char *dumpFile, afs_status_p st); /* rx_in_addr_t */
 
 extern int UV_AddSite(afs_cell_handle_p cellHandle, afs_int32 server,
 		      afs_int32 part, afs_uint32 volid, afs_status_p st);

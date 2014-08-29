@@ -131,7 +131,7 @@ static_inline char *
 callerAddress(struct rx_call *acid, char *buffer)
 {
     struct rx_sockaddr *ip = rx_SockAddrOf(rx_PeerOf(rx_ConnectionOf(acid)));
-    return rx_print_sockaddr(ip, buffer, sizeof(struct rx_sockaddr));
+    return rx_print_sockaddr(ip, buffer, sizeof(struct rx_addr_str_t));
 }
 
 /* this call unlocks all of the partition locks we've set */

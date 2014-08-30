@@ -127,34 +127,35 @@ rx_set_sockaddr_port(struct rx_sockaddr * sa, rx_port_t port)
 #endif
 }
 
-/* rx_sockaddr */
 #ifndef KERNEL
 int rx_addrinfo_to_sockaddr(struct addrinfo *a, rx_service_t service,
 			    struct rx_sockaddr *sa);
 #endif
-char *rx_print_sockaddr(struct rx_sockaddr *a, char *dst, size_t size);
-int rx_hash_sockaddr(struct rx_sockaddr *a, int hashsize);
+char *rx_print_sockaddr(struct rx_sockaddr *sa, char *dst, size_t size);
+int rx_hash_sockaddr(struct rx_sockaddr *sa, int hashsize);
 int rx_compare_sockaddr(struct rx_sockaddr *a, struct rx_sockaddr *b,
 			int mask);
-int rx_is_loopback_sockaddr(struct rx_sockaddr *a);
+int rx_is_loopback_sockaddr(struct rx_sockaddr *sa);
 int rx_copy_sockaddr(struct rx_sockaddr *src, struct rx_sockaddr *dst);
 
-/* For compability with IPv4-only interfaces. */
-void rx_ipv4_to_sockaddr(rx_in_addr_t ipv4, rx_port_t port,
-			 rx_service_t service, struct rx_sockaddr *sa);
-rx_bool_t rx_try_sockaddr_to_ipv4(struct rx_sockaddr *a, rx_in_addr_t * ipv4);
-
-/* rx_address */
 char *rx_print_address(struct rx_address *a, char *dst, size_t size);
 int rx_compare_address(struct rx_address *a, struct rx_address *b);
 int rx_is_loopback_address(struct rx_address *a);
 int rx_copy_address(struct rx_address *src, struct rx_address *dst);
+int rx_serialize_address(struct rx_address *src, unsigned char *dst, size_t size);
+int rx_deserialize_address(unsigned char *src, struct rx_address *dst);
+
 int rx_address_to_sockaddr(struct rx_address *a, rx_port_t port,
 			   rx_service_t service, struct rx_sockaddr *sa);
 int rx_sockaddr_to_address(struct rx_sockaddr *sa, struct rx_address *a);
 
-/* For compability with IPv4-only interfaces. */
-int rx_ipv4_to_address(rx_in_addr_t ipv4, struct rx_address *a);
+
+/* For compatibility with legacy RPCs which put IPv4 addresses on the wire. */
+rx_bool_t rx_try_sockaddr_to_ipv4(struct rx_sockaddr *a, rx_in_addr_t * ipv4);
 rx_bool_t rx_try_address_to_ipv4(struct rx_address *a, rx_in_addr_t * ipv4);
+
+void rx_ipv4_to_sockaddr(rx_in_addr_t ipv4, rx_port_t port,
+			 rx_service_t service, struct rx_sockaddr *sa);
+void rx_ipv4_to_address(rx_in_addr_t ipv4, struct rx_address *a);
 
 #endif /* OPENAFS_RX_ADDR_H */

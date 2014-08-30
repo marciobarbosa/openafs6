@@ -366,6 +366,46 @@ test_sockaddr_compare(void)
     }
 }
 
+struct address_serialize_test_case {
+    const char *addr;
+    unsigned char bin_addr[16];
+} address_serialize_test_cases[] = {
+    {"0.0.0.0", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0, 0}},
+    {"1.2.3.4", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 1, 2, 3, 4}},
+    {"1:2:3:4:5:6:7:8", {0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8}},
+    {NULL}
+};
+
+void
+test_address_serialize(void)
+{
+    struct address_serialize_test_case *tc;
+    struct rx_address a;
+    unsigned char got_addr[16];
+
+    for (tc = address_serialize_test_cases; tc->addr; tc++) {
+	make_address(tc->addr, &a);
+	rx_serialize_address(&a, got_addr, sizeof(got_addr));
+	ok(memcmp(got_addr, tc->bin_addr, 16) == 0,
+	    "serialize address: %s", tc->addr);
+    }
+}
+
+void
+test_address_deserialize(void)
+{
+    struct address_serialize_test_case *tc;
+    struct rx_address expect;
+    struct rx_address got_a;
+
+    for (tc = address_serialize_test_cases; tc->addr; tc++) {
+	make_address(tc->addr, &expect);
+	rx_deserialize_address(tc->bin_addr, &got_a);
+	ok(rx_compare_address(&got_a, &expect) != 0,
+	    "deserialize sockaddr: %s", tc->addr);
+    }
+}
+
 struct address_compare_test_case {
     const char *a;
     const char *b;
@@ -436,7 +476,7 @@ test_address_to_sockaddr(void)
 int
 main(void)
 {
-    plan(70);
+    plan(76);
 
     test_sockaddr_print();
     test_sockaddr_port();
@@ -449,6 +489,8 @@ main(void)
     test_address_to_ipv4();
     test_address_loopback();
     test_address_compare();
+    test_address_serialize();
+    test_address_deserialize();
 
     test_sockaddr_to_address();
     test_address_to_sockaddr();

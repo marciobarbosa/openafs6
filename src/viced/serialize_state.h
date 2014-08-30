@@ -21,7 +21,7 @@
 #define FS_STATE_VERSION 2
 
 #define HOST_STATE_MAGIC 0x7B8C9DAE
-#define HOST_STATE_VERSION 2
+#define HOST_STATE_VERSION 3
 
 #define HOST_STATE_ENTRY_MAGIC 0xA8B9CADB
 
@@ -92,11 +92,10 @@ struct host_state_entry_header {
     afs_uint32 reserved[4];
 };
 
-/* 36 byte host entry structure */
-struct hostDiskEntry { /* Can I change it? */
-    afs_uint32 host;		/* IP address of host interface that is
-				 * currently being used, in network
-				 * byte order */
+/* host entry structure */
+struct hostDiskEntry {
+    unsigned char host[16];	/* IPv4 or IPv6 address in use, in network byte order.
+				   Embedded IPv4 addresses are IPv4-mapped; see RFC4291. */
     afs_uint16 port;	        /* port address of host */
     afs_uint16 hostFlags;       /*  bit map */
     byte Console;		/* XXXX This host is a console */
@@ -111,6 +110,7 @@ struct hostDiskEntry { /* Can I change it? */
     afs_uint32 cblist;		/* Call back list for this host */
     afs_uint32 index;           /* index for correlating w/ callback dumps */
 };
+
 
 /*
  * callback package serialization

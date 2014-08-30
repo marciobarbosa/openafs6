@@ -581,12 +581,11 @@ rx_try_sockaddr_to_ipv4(struct rx_sockaddr *a, rx_in_addr_t * ipv4)
  * @param[in] ipv4  IPv4 address in network byte order
  * @param[out] a  address populated
  */
-int
+void
 rx_ipv4_to_address(rx_in_addr_t ipv4, struct rx_address *a)
 {
     a->addrtype = AF_INET;
     a->rxa_s_addr = ipv4;
-    return 0;
 }
 
 /**
@@ -733,3 +732,48 @@ rx_copy_address(struct rx_address *src, struct rx_address *dst)
     }
     return 0;
 }
+
+int
+rx_serialize_address(struct rx_address *src, unsigned char *dst, size_t size)
+{
+    if (size < 16) {
+	return ENOSPC;
+    }
+    switch (src->addrtype) {
+    case AF_INET: {
+	    afs_uint32 *a = (afs_uint32 *)dst;
+	    a[0] = 0;
+	    a[1] = 0;
+	    a[2] = htonl(0xffff);
+	    a[3] = (afs_uint32)src->rxa_s_addr;
+	}
+	break;
+#ifdef HAVE_IPV6
+    case AF_INET6:
+	memcpy(dst, &src->rxa_in6_addr, sizeof(src->rxa_in6_addr));
+	break;
+#endif
+    default:
+	return EAFNOSUPPORT;
+    }
+    return 0;
+}
+
+int
+rx_deserialize_address(unsigned char *src, struct rx_address *dst)
+{
+    afs_uint32 *a = (afs_uint32 *)src;
+
+    if ((a[0] == 0) && (a[1] == 0) && (a[2] == htonl(0xffff))) {
+	rx_ipv4_to_address(a[3], dst);
+    } else {
+#ifdef HAVE_IPV6
+	dst->addrtype = AF_INET6;
+	memcpy(&dst->rxa_in6_addr, src, sizeof(dst->rxa_in6_addr));
+#else
+	return EAFNOSUPPORT;
+#endif
+    }
+    return 0;
+}
+

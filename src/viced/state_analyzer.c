@@ -1240,9 +1240,15 @@ dump_he_hdr(void)
 static void
 dump_he_entry(void)
 {
-    char hoststr[16];
+    struct rx_address a;
+    rx_addr_str_t buf;
+
     DPFSO0("hostDiskEntry");
-    DPFS1("host", afs_inet_ntoa_r(he_cursor.he.host, hoststr));
+    if (!rx_deserialize_address(he_cursor.he.host, &a)) {
+	DPFS1("host", rx_print_address(&a, buf, sizeof(buf)));
+    } else {
+	DPFS1("host", "<error>");
+    }
     DPFV1("port", "u", he_cursor.he.port);
     DPFX1("hostFlags", he_cursor.he.hostFlags);
     DPFV1("Console", "u", he_cursor.he.Console);

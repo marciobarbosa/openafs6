@@ -3119,8 +3119,8 @@ static int h_stateVerifyHost(struct host * h, void *rock);
 static int h_stateVerifyAddrHash(struct fs_dump_state * state, struct host * h,
                                  struct rx_sockaddr *saddr, int valid);
 static int h_stateVerifyUuidHash(struct fs_dump_state * state, struct host * h);
-static void h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out);
-static void h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out);
+static int h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out);
+static int h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out);
 
 /**
  * Is this host busy?
@@ -3460,6 +3460,7 @@ h_stateAllocMap(struct fs_dump_state * state)
 static int
 h_stateSaveHost(struct host * host, void* rock)
 {
+    int code;
     struct fs_dump_state *state = (struct fs_dump_state *) rock;
     int if_len=0, hcps_len=0;
     struct hostDiskEntry hdsk;
@@ -3479,13 +3480,20 @@ h_stateSaveHost(struct host * host, void* rock)
 	return 0;
     }
 
+    code = h_hostToDiskEntry_r(host, &hdsk);
+    if (code) {
+	ViceLog(0,
+		("h_stateSaveHost: failed to serialize host %d; code=%d",
+		 host->index, code));
+	return 0;
+    }
+
     memset(&hdr, 0, sizeof(hdr));
 
     if (state->h_hdr->index_max < host->index) {
 	state->h_hdr->index_max = host->index;
     }
 
-    h_hostToDiskEntry_r(host, &hdsk);
     if (host->interface) {
 	if_len = sizeof(struct Interface) +
 	    ((host->interface->numberOfInterfaces-1) * sizeof(struct AddrPort));
@@ -3543,6 +3551,7 @@ h_stateSaveHost(struct host * host, void* rock)
 static int
 h_stateRestoreHost(struct fs_dump_state * state)
 {
+    int code;
     int ifp_len=0, hcps_len=0, bail=0;
     struct host_state_entry_header hdr;
     struct hostDiskEntry hdsk;
@@ -3606,10 +3615,8 @@ h_stateRestoreHost(struct fs_dump_state * state)
     }
 
     if ((hdsk.hostFlags & HWHO_INPROGRESS) || !(hdsk.hostFlags & ALTADDR)) {
-	char hoststr[16];
-	ViceLog(0, ("h_stateRestoreHost: skipping host %s:%d due to invalid flags 0x%x\n",
-	            afs_inet_ntoa_r(hdsk.host, hoststr), (int)ntohs(hdsk.port),
-	            (unsigned)hdsk.hostFlags));
+	ViceLog(0, ("h_stateRestoreHost: skipping host at index %u due to invalid flags 0x%x\n",
+	            hdsk.index, (unsigned)hdsk.hostFlags));
 	bail = 0;
 	state->h_map.entries[hdsk.index].valid = FS_STATE_IDX_SKIPPED;
 	goto done;
@@ -3627,7 +3634,15 @@ h_stateRestoreHost(struct fs_dump_state * state)
 	host->hcps.prlist_len = hdr.hcps;
     }
 
-    h_diskEntryToHost_r(&hdsk, host);
+    code = h_diskEntryToHost_r(&hdsk, host);
+    if (code) {
+	ViceLog(0,
+		("h_stateRestoreHost: failed to deserialize host entry at index %u, code=%d\n",
+		 hdsk.index, code));
+	bail = 1;
+	goto done;
+    }
+
     h_SetupCallbackConn_r(host);
 
     h_AddHostToAddrHashTable_r(&host->saddr, host);
@@ -3660,11 +3675,17 @@ h_stateRestoreHost(struct fs_dump_state * state)
 }
 
 /* serialize a host structure to disk */
-static void
+static int
 h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
 {
-/* !!?? */
-    out->host = in->saddr.rxsa_s_addr;
+    int code;
+    struct rx_address addr;
+
+    rx_sockaddr_to_address(&in->saddr, &addr);
+    code = rx_serialize_address(&addr, out->host, sizeof(out->host));
+    if (code) {
+	return code;
+    }
     out->port = rx_get_sockaddr_port(&in->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
@@ -3679,13 +3700,21 @@ h_hostToDiskEntry_r(struct host * in, struct hostDiskEntry * out)
     out->index = in->index;
     out->hcps_len = in->hcps.prlist_len;
     out->hcps_valid = (in->hcps.prlist_val == NULL) ? 0 : 1;
+    return 0;
 }
 
 /* restore a host structure from disk */
-static void
+static int
 h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out)
 {
-    rx_ipv4_to_sockaddr(in->host, in->port, 0, &out->saddr);
+    int code;
+    struct rx_address addr;
+
+    code = rx_deserialize_address(in->host, &addr);
+    if (code) {
+	return code;
+    }
+    rx_address_to_sockaddr(&addr, in->port, 1, &out->saddr);
     out->hostFlags = in->hostFlags;
     out->Console = in->Console;
     out->hcpsfailed = in->hcpsfailed;
@@ -3694,6 +3723,7 @@ h_diskEntryToHost_r(struct hostDiskEntry * in, struct host * out)
     out->cpsCall = in->cpsCall;
     out->cblist = in->cblist;
     out->InSameNetwork = in->InSameNetwork;
+    return 0;
 }
 
 /* index translation routines */

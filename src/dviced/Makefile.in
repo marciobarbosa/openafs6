@@ -35,6 +35,7 @@ objects= ${VICEDOBJS} ${DIROBJS} ${VOLOBJS} ${FSINTOBJS}
 
 SDBGOBJS = state_analyzer.o \
 	   $(top_builddir)/src/util/liboafs_util.la \
+	   $(top_builddir)/src/rx/liboafs_rx.la \
 	   $(top_builddir)/src/opr/liboafs_opr.la
 
 LIBS= \

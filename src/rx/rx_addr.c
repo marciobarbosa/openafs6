@@ -173,7 +173,7 @@ inet_ntop_v6(const void *src, char *dst, size_t size)
 static_inline int
 is_loopback_v4(rx_in_addr_t addr)
 {
-    return ((addr & 0xffff0000) == 0x7f000000);
+    return ((ntohl(addr) & 0xffff0000) == 0x7f000000);
 }
 
 
@@ -350,7 +350,7 @@ rx_is_loopback_sockaddr(struct rx_sockaddr *sa)
 {
     switch (sa->rxsa_family) {
     case AF_INET:
-	return is_loopback_v4(ntohl(sa->rxsa_s_addr));
+	return is_loopback_v4(sa->rxsa_s_addr);
 #ifdef HAVE_IPV6
     case AF_INET6:
 	return is_loopback_v6(&sa->rxsa_in6_addr);
@@ -470,7 +470,7 @@ rx_address_to_sockaddr(struct rx_address *a, rx_port_t port,
 	sa->rxsa_in_len = sizeof(struct sockaddr_in);
 #endif
 	sa->rxsa_in_family = AF_INET;
-	sa->rxsa_s_addr = htonl(a->rxa_s_addr);
+	sa->rxsa_s_addr = a->rxa_s_addr; /* network byte order */
 	sa->rxsa_in_port = port;	/* network byte order */
 	break;
 #ifdef HAVE_IPV6
@@ -482,7 +482,7 @@ rx_address_to_sockaddr(struct rx_address *a, rx_port_t port,
 	sa->rxsa_in6_len = sizeof(struct sockaddr_in6);
 #endif
 	sa->rxsa_in6_family = AF_INET6;
-	sa->rxsa_in6_addr = a->rxa_in6_addr;
+	sa->rxsa_in6_addr = a->rxa_in6_addr; /* network byte order */
 	sa->rxsa_in6_port = port;	/* network byte order */
 	break;
 #endif
@@ -504,12 +504,12 @@ rx_sockaddr_to_address(struct rx_sockaddr *sa, struct rx_address *a)
     switch (sa->rxsa_family) {
     case AF_INET:
 	a->addrtype = AF_INET;
-	a->rxa_s_addr = ntohl(sa->rxsa_s_addr);
+	a->rxa_s_addr = sa->rxsa_s_addr; /* network byte order */
 	break;
 #ifdef HAVE_IPV6
     case AF_INET6:
 	a->addrtype = AF_INET6;
-	a->rxa_in6_addr = sa->rxsa_in6_addr;
+	a->rxa_in6_addr = sa->rxsa_in6_addr; /* network byte order */
 	break;
 #endif
     default:
@@ -585,7 +585,7 @@ int
 rx_ipv4_to_address(rx_in_addr_t ipv4, struct rx_address *a)
 {
     a->addrtype = AF_INET;
-    a->rxa_s_addr = ntohl(ipv4);
+    a->rxa_s_addr = ipv4;
     return 0;
 }
 
@@ -603,11 +603,11 @@ rx_ipv4_to_address(rx_in_addr_t ipv4, struct rx_address *a)
  * @param[out] ipv4  set if a contains an IPv4 address
  */
 rx_bool_t
-rx_try_address_to_ipv4(struct rx_address * a, rx_in_addr_t * ipv4)
+rx_try_address_to_ipv4(struct rx_address *a, rx_in_addr_t *ipv4)
 {
     switch (a->addrtype) {
     case AF_INET:
-	*ipv4 = htonl(a->rxa_s_addr);  /* XXX: rxa_s_addr should be NBO */
+	*ipv4 = a->rxa_s_addr;  /* network byte order */
 	return 1;
 #ifdef HAVE_IPV6
     case AF_INET6:
@@ -635,9 +635,7 @@ rx_print_address(struct rx_address *a, char *dst, size_t size)
 {
     switch (a->addrtype) {
     case AF_INET: {
-	struct in_addr addr;
-	addr.s_addr = htonl(a->rxa_s_addr);
-	inet_ntop_v4(&addr, dst, size);
+	inet_ntop_v4(&a->rxa_in_addr, dst, size);
 	break;
     }
 #ifdef HAVE_IPV6
@@ -662,7 +660,7 @@ rx_print_address(struct rx_address *a, char *dst, size_t size)
  * @param[in] b  address to compare
  */
 rx_bool_t
-rx_compare_address(struct rx_address * a, struct rx_address * b)
+rx_compare_address(struct rx_address *a, struct rx_address *b)
 {
     if (a->addrtype == AF_INET && b->addrtype == AF_INET) {
 	return a->rxa_s_addr == b->rxa_s_addr;
@@ -674,7 +672,7 @@ rx_compare_address(struct rx_address * a, struct rx_address * b)
     if (a->addrtype == AF_INET6 && b->addrtype == AF_INET) {
 	rx_in_addr_t ipv4;
 	if (rx_try_address_to_ipv4(a, &ipv4)) {
-	    return ipv4 == htonl(b->rxa_s_addr); /* xxx: should be nbo */
+	    return ipv4 == b->rxa_s_addr;
 	} else {
 	    return 0;
 	}
@@ -682,7 +680,7 @@ rx_compare_address(struct rx_address * a, struct rx_address * b)
     if (a->addrtype == AF_INET && b->addrtype == AF_INET6) {
 	rx_in_addr_t ipv4;
 	if (rx_try_address_to_ipv4(b, &ipv4)) {
-	    return htonl(a->rxa_s_addr) == ipv4;  /* xxx: should be nbo */
+	    return a->rxa_s_addr == ipv4;
 	} else {
 	    return 0;
 	}

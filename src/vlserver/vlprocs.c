@@ -3522,3 +3522,24 @@ SVL_ProbeServer(struct rx_call *rxcall)
 {
     return 0;
 }
+
+afs_int32
+SVL_RegisterServer(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces)
+{
+    int i;
+
+    VLog(0, ("SVL_RegisterServer: interfaces->afs_addrs_len=%d\n", interfaces->afs_addrs_len));
+
+    for (i = 0; i < interfaces->afs_addrs_len; i++) {
+        afs_addr_ptr p = interfaces->afs_addrs_val[i];
+        switch (p->addr_type) {
+        case AFS_ADDR_IN:
+            VLog(0, ("%d: got ipv4, 0x%0x\n", i, p->afs_addr_u.addr_in));
+            break;
+        case AFS_ADDR_IN6:
+            VLog(0, ("%d: got ipv6: first byte: 0x%0x\n", i, p->afs_addr_u.addr_in6[0]));
+            break;
+        }
+    }
+    return 0;
+}

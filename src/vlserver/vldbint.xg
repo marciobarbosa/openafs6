@@ -433,4 +433,36 @@ ListAttributesN2(
   OUT afs_int32 *nextstartindex
 ) = VLLISTATTRIBUTESN2;
 
+
+
+/*
+ * Example XDR for IPv4 and IPv6 addresses.
+ */
+
+typedef afs_uint32 afs_addr_in;        /* IPv4 address */
+typedef opaque     afs_addr_in6[16];   /* IPv6 address */
+
+enum afs_addr_type {
+    AFS_ADDR_IN = 1,
+    AFS_ADDR_IN6 = 2
+};
+
+union afs_addr switch (afs_addr_type addr_type) {
+    case AFS_ADDR_IN:
+        afs_addr_in addr_in;
+    case AFS_ADDR_IN6:
+        afs_addr_in6 addr_in6;
+};
+
+typedef afs_addr *afs_addr_ptr;
+typedef afs_addr_ptr afs_addrs<>;
+
+RegisterServer(
+  IN afsUUID *uuid,
+  IN afs_addrs *interfaces
+) = 100002;  /* experimental private use only */
+
+
+
+
 %#endif /* !defined(KERNEL) */

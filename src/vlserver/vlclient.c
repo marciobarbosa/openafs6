@@ -971,6 +971,42 @@ handleit(struct cmd_syndesc *as, void *arock)
 		    printf("VL_RegisterAddrs returned code = %d\n", code);
 		    continue;
 		}
+	    } else if (!strcmp(oper, "rs")) {
+                afsUUID uuid;
+                afs_addrs interfaces;
+                afs_addr_ptr p;
+                unsigned char addr6[16] = {
+                  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+
+                memset(&uuid, 0xff, sizeof(uuid));
+
+                interfaces.afs_addrs_len = 4;
+                interfaces.afs_addrs_val = malloc(4 * sizeof(afs_addr_ptr));
+
+                p = malloc(sizeof(afs_addr));
+                p->addr_type = AFS_ADDR_IN;
+                p->afs_addr_u.addr_in = 0x11223344;
+                interfaces.afs_addrs_val[0] = p;
+
+                p = malloc(sizeof(afs_addr));
+                p->addr_type = AFS_ADDR_IN;
+                p->afs_addr_u.addr_in = 0x55667788;
+                interfaces.afs_addrs_val[1] = p;
+
+                p = malloc(sizeof(afs_addr));
+                p->addr_type = AFS_ADDR_IN6;
+                memcpy(p->afs_addr_u.addr_in6, addr6, sizeof(addr6));
+                interfaces.afs_addrs_val[2] = p;
+
+                p = malloc(sizeof(afs_addr));
+                p->addr_type = AFS_ADDR_IN;
+                p->afs_addr_u.addr_in = 0xaabbccdd;
+                interfaces.afs_addrs_val[3] = p;
+
+                code = ubik_VL_RegisterServer(cstruct, 0, &uuid, &interfaces);
+                printf("VL_RegisterServer returned code = %d\n", code);
+
 	    } else if (!strcmp(oper, "ca")) {
 		struct hostent *h1, *h2;
 		afs_uint32 a1, a2;

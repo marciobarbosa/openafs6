@@ -127,6 +127,7 @@ struct extentaddr {
 #define	ex_addrs	_ex_un._ex_addrentry.addrs
 #define	ex_uniquifier	_ex_un._ex_addrentry.uniquifier
 #define ex_srvflags	_ex_un._ex_addrentry.flags
+#define ex_srvspares    _ex_un._ex_addrentry.spares
 
 #define VLog(level, str)   ViceLog(level, str)
 

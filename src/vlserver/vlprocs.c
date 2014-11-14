@@ -3566,6 +3566,26 @@ compare_afs_addr(afs_addr *addr1, afs_addr *addr2)
 }
 
 static_inline void
+afs_ntohstr(char *str, int size)
+{
+    int *strp = (int *)str;
+    int i;
+
+    for (i = 0; i < size; i++)
+        strp[i] = ntohl(strp[i]);
+}
+
+static_inline void
+afs_htonstr(char *str, int size)
+{
+    int *strp = (int *)str;
+    int i;
+
+    for (i = 0; i < size; i++)
+        strp[i] = htonl(strp[i]);
+}
+
+static_inline void
 set_afs_addr(afs_addr *dst, afs_addr *src)
 {
     switch (src->addr_type) {
@@ -3576,6 +3596,7 @@ set_afs_addr(afs_addr *dst, afs_addr *src)
         case AFS_ADDR_IN6:
             dst->addr_type = AFS_ADDR_IN6;
             memcpy(dst->afs_addr_u.addr_in6, src->afs_addr_u.addr_in6, 16);
+            afs_htonstr(&dst->afs_addr_u.addr_in6, 4);
             break;
     }
 }
@@ -3609,7 +3630,6 @@ append_addr2(char *buffer, afs_addr *addr, size_t buffer_size)
     }
 }
 
-//addrsp, ex_addrs
 afs_int32
 SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces)
 {
@@ -3620,7 +3640,7 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
     struct extentaddr *exp = 0, *tex;
     char addrbuf[640];
     afsUUID tuuid;
-    struct afs_addr addrs[VL_MAXIPADDRS_PERMH];
+    struct afs_addr addrs[VL_MAXIPADDRS_PERMH + 2];
     int base;
     int count, willChangeEntry, foundUuidEntry, willReplaceCnt;
     int WillReplaceEntry, WillChange[MAXSERVERID + 1];
@@ -3697,10 +3717,10 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
                         WillReplaceEntry = 0;
                 }
                 for (mhidx = 0; mhidx < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); mhidx++) {
-                    /* verify the byte order! */
                     memset(&aux, 0, sizeof(afs_addr));
                     aux.addr_type = AFS_ADDR_IN6;
                     memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+                    afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
 
                     for (k = 0; k < cnt; k++) {
                         if (addrs[k].addr_type != AFS_ADDR_IN6)
@@ -3767,6 +3787,7 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
                     memset(&aux, 0, sizeof(afs_addr));
                     aux.addr_type = AFS_ADDR_IN6;
                     memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+                    afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
 
                     if (mhidx > 0)
                         strlcat(addrbuf, " ", sizeof(addrbuf));
@@ -3802,6 +3823,7 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
                     memset(&aux, 0, sizeof(afs_addr));
                     aux.addr_type = AFS_ADDR_IN6;
                     memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+                    afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
 
                     if (mhidx > 0)
                         strlcat(addrbuf, " ", sizeof(addrbuf));
@@ -3839,24 +3861,30 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
             goto abort;
 
         /* Determine if the entry has changed */
-        for (k = 0; ((k < cnt) && !change); k++) {
-            if (addrs[k].addr_type == AFS_ADDR_IN && ntohl(exp->ex_addrs[k]) != addrs[k].afs_addr_u.addr_in) {
+        for (k = 0, h = 0; ((k < cnt) && !change); k++) {
+            if (addrs[k].addr_type == AFS_ADDR_IN6)
+                continue;
+            if (ntohl(exp->ex_addrs[h]) != addrs[k].afs_addr_u.addr_in) {
                 change = 1;
-            } else if (addrs[k].addr_type == AFS_ADDR_IN6) {
-                for (mhidx = 0; mhidx < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); mhidx++) {
-                    /* verify the byte order! */
-                    memset(&aux, 0, sizeof(afs_addr));
-                    aux.addr_type = AFS_ADDR_IN6;
-                    memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
-
-                    if (compare_afs_addr(&addrs[k], &aux))
-                        change = 1;
-                }
             }
+            h++;
         }
         for (; ((k < VL_MAXIPADDRS_PERMH) && !change); k++) {
             if (exp->ex_addrs[k] != 0)
                 change = 1;
+        }
+        for (k = 0; ((k < cnt) && !change); k++) {
+            if (addrs[k].addr_type == AFS_ADDR_IN)
+                continue;
+            for (h = 0; h < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS) && !change; h++) {
+                memset(&aux, 0, sizeof(afs_addr));
+                aux.addr_type = AFS_ADDR_IN6;
+                memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[h * 4], 16);
+                afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
+
+                if (!compare_afs_addr(&addrs[k], &aux))
+                    change &= 1;
+            }
         }
         if (!change) {
             return (ubik_EndTrans(ctx.trans));
@@ -3886,6 +3914,7 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
             memset(&aux, 0, sizeof(afs_addr));
             aux.addr_type = AFS_ADDR_IN6;
             memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+            afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
 
             if (mhidx > 0)
                 strlcat(addrbuf, " ", sizeof(addrbuf));
@@ -3921,6 +3950,7 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
                 memset(&aux, 0, sizeof(afs_addr));
                 aux.addr_type = AFS_ADDR_IN6;
                 memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+                afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
 
                 if (mhidx > 0)
                     strlcat(addrbuf, " ", sizeof(addrbuf));
@@ -4037,12 +4067,14 @@ SVL_RegisterServer2(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interface
             memset(&aux, 0, sizeof(afs_addr));
             aux.addr_type = AFS_ADDR_IN6;
             memcpy(&aux.afs_addr_u.addr_in6, &tex->ex_srvspares[j * 4], 16);
+            afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
 
             if (j > 0)
                 strlcat(addrbuf, " ", sizeof(addrbuf));
             append_addr2(addrbuf, &aux, sizeof(addrbuf));
 
             if (!compare_afs_addr(&aux, &addrs[k])) {
+                afs_htonstr(&aux.afs_addr_u.addr_in6, 4);
                 memcpy(&tex->ex_srvspares[4 * h], &aux, 16);
                 h++;
             }

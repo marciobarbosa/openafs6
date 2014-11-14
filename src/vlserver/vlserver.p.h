@@ -101,6 +101,7 @@ typedef struct nvlentry nvlentry;
 #define	VL_MAXIPADDRS_PERMH	15
 #define VL_MAX_ADDREXTBLKS	4
 #define	VL_ADDREXTBLK_SIZE	8192
+#define EX_IPV6_ADDRS           0x03
 struct extentaddr {
     union ex_un {
 	struct {

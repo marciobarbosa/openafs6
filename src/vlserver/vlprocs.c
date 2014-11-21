@@ -3523,23 +3523,561 @@ SVL_ProbeServer(struct rx_call *rxcall)
     return 0;
 }
 
+static_inline int
+compare_afs_addr(afs_addr *addr1, afs_addr *addr2)
+{
+    int result = 0;
+
+    if (addr1->addr_type == addr2->addr_type) {
+        switch (addr1->addr_type) {
+            case AFS_ADDR_IN:
+                if (addr1->afs_addr_u.addr_in == addr2->afs_addr_u.addr_in)
+                    result = 1;
+                break;
+            case AFS_ADDR_IN6:
+                if (!memcmp(addr1->afs_addr_u.addr_in6, addr2->afs_addr_u.addr_in6, 16))
+                    result = 1;
+                break;
+        }
+    }
+
+    return result;
+}
+
+static_inline void
+afs_ntohstr(char *str, int size)
+{
+    int *strp = (int *)str;
+    int i;
+
+    for (i = 0; i < size; i++)
+        strp[i] = ntohl(strp[i]);
+}
+
+static_inline void
+afs_htonstr(char *str, int size)
+{
+    int *strp = (int *)str;
+    int i;
+
+    for (i = 0; i < size; i++)
+        strp[i] = htonl(strp[i]);
+}
+
+static_inline void
+set_afs_addr(afs_addr *dst, afs_addr *src)
+{
+    switch (src->addr_type) {
+        case AFS_ADDR_IN:
+            dst->addr_type = AFS_ADDR_IN;
+            dst->afs_addr_u.addr_in = src->afs_addr_u.addr_in;
+            break;
+        case AFS_ADDR_IN6:
+            dst->addr_type = AFS_ADDR_IN6;
+            memcpy(dst->afs_addr_u.addr_in6, src->afs_addr_u.addr_in6, 16);
+            break;
+    }
+}
+
+static_inline char*
+print_afs_addr(afs_addr *addr, char *str, int size)
+{
+    if (size < INET6_ADDRSTRLEN)
+        return NULL;
+
+    switch (addr->addr_type) {
+        case AFS_ADDR_IN:
+            inet_ntop(AF_INET, &addr->afs_addr_u.addr_in, str, size);
+            break;
+        case AFS_ADDR_IN6:
+            inet_ntop(AF_INET6, addr->afs_addr_u.addr_in6, str, size);
+            break;
+    }
+
+    return str;
+}
+
+static_inline void
+append_addr2(char *buffer, afs_addr *addr, size_t buffer_size)
+{
+    int n = strlen(buffer);
+    char str[INET6_ADDRSTRLEN];
+
+    if (buffer_size > n) {
+        snprintf(buffer + n, buffer_size - n, "%s", print_afs_addr(addr, str, INET6_ADDRSTRLEN));
+    }
+}
+
 afs_int32
 SVL_RegisterServer(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces)
 {
-    int i;
+    int this_op = VLREGADDR;
+    afs_int32 code;
+    struct vl_ctx ctx;
+    int cnt, h, i, j, k, m;
+    struct extentaddr *exp = 0, *tex;
+    char addrbuf[640];
+    afsUUID tuuid;
+    struct afs_addr addrs[VL_MAXIPADDRS_PERMH + 2];
+    int base;
+    int count, willChangeEntry, foundUuidEntry, willReplaceCnt;
+    int WillReplaceEntry, WillChange[MAXSERVERID + 1];
+    int FoundUuid = 0;
+    int ReplaceEntry = 0;
+    int srvidx, mhidx;
+    afs_addr aux;
+    afs_addr_ptr p;
+    char str[INET6_ADDRSTRLEN];
 
-    VLog(0, ("SVL_RegisterServer: interfaces->afs_addrs_len=%d\n", interfaces->afs_addrs_len));
+    countRequest(this_op);
+    //if (!afsconf_SuperUser(vldb_confdir, rxcall, NULL))
+    //    return (VL_PERM);
+    if ((code = Init_VLdbase(&ctx, LOCKWRITE, this_op)))
+        return code;
 
-    for (i = 0; i < interfaces->afs_addrs_len; i++) {
-        afs_addr_ptr p = interfaces->afs_addrs_val[i];
-        switch (p->addr_type) {
-        case AFS_ADDR_IN:
-            VLog(0, ("%d: got ipv4, 0x%0x\n", i, p->afs_addr_u.addr_in));
-            break;
-        case AFS_ADDR_IN6:
-            VLog(0, ("%d: got ipv6: first byte: 0x%0x\n", i, p->afs_addr_u.addr_in6[0]));
-            break;
+    /* Eliminate duplicates from IP address list */
+    for (k = 0, cnt = 0; k < interfaces->afs_addrs_len; k++) {
+        p = interfaces->afs_addrs_val[k];
+        if (p->addr_type != AFS_ADDR_IN && p->addr_type != AFS_ADDR_IN6)
+            continue;
+        for (m = 0; m < cnt; m++) {
+            if (compare_afs_addr(&addrs[m], interfaces->afs_addrs_val[k]))
+                break;
+        }
+        if (m == cnt) {
+            if (m == VL_MAXIPADDRS_PERMH) {
+                VLog(0,
+                     ("Number of addresses exceeds %d. Cannot register IP addr %s in VLDB\n",
+                      VL_MAXIPADDRS_PERMH, print_afs_addr(interfaces->afs_addrs_val[k], str, INET6_ADDRSTRLEN)));
+            } else {
+                set_afs_addr(&addrs[m], interfaces->afs_addrs_val[k]);
+                cnt++;
+            }
         }
     }
-    return 0;
+    if (cnt <= 0) {
+        code = VL_INDEXERANGE;
+        goto abort;
+    }
+
+    count = 0;
+    willReplaceCnt = 0;
+    foundUuidEntry = 0;
+    /* For each server registered within the VLDB */
+    for (srvidx = 0; srvidx <= MAXSERVERID; srvidx++) {
+        willChangeEntry = 0;
+        WillReplaceEntry = 1;
+        code = multiHomedExtent(&ctx, srvidx, &exp);
+        if (code)
+             continue;
+
+        if (exp) {
+            /* See if the addresses to register will change this server entry */
+            tuuid = exp->ex_hostuuid;
+            afs_ntohuuid(&tuuid);
+            if (afs_uuid_equal(uuidp, &tuuid)) {
+                foundUuidEntry = 1;
+                FoundUuid = srvidx;
+            } else {
+                for (mhidx = 0; mhidx < VL_MAXIPADDRS_PERMH; mhidx++) {
+                    if (!exp->ex_addrs[mhidx])
+                        continue;
+                    for (k = 0; k < cnt; k++) {
+                        if (addrs[k].addr_type != AFS_ADDR_IN)
+                            continue;
+                        if (ntohl(exp->ex_addrs[mhidx]) == addrs[k].afs_addr_u.addr_in) {
+                            willChangeEntry = 1;
+                            WillChange[count] = srvidx;
+                            break;
+                        }
+                    }
+                    if (k >= cnt)
+                        WillReplaceEntry = 0;
+                }
+                for (mhidx = 0; mhidx < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); mhidx++) {
+                    memset(&aux, 0, sizeof(afs_addr));
+                    aux.addr_type = AFS_ADDR_IN6;
+                    memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+
+                    for (k = 0; k < cnt; k++) {
+                        if (addrs[k].addr_type != AFS_ADDR_IN6)
+                            continue;
+                        if (compare_afs_addr(&aux, &addrs[k])) {
+                            willChangeEntry = 1;
+                            WillChange[count] = srvidx;
+                            break;
+                        }
+                    }
+                    if (k < cnt)
+                        WillReplaceEntry = 1;
+                }
+            }
+        } else {
+            /* The server is not registered as a multihomed.
+             * See if the addresses to register will replace this server entry.
+             */
+            for (k = 0; k < cnt; k++) {
+                if (addrs[k].addr_type != AFS_ADDR_IN)
+                    continue;
+                if (ctx.hostaddress[srvidx] == addrs[k].afs_addr_u.addr_in) {
+                    willChangeEntry = 1;
+                    WillChange[count] = srvidx;
+                    WillReplaceEntry = 1;
+                    break;
+                }
+            }
+        }
+        if (willChangeEntry) {
+            if (WillReplaceEntry) {
+                willReplaceCnt++;
+                ReplaceEntry = srvidx;
+            }
+            count++;
+        }
+    }
+
+    if ((foundUuidEntry && (willReplaceCnt > 0))
+        || (!foundUuidEntry && (count > 1))) {
+        VLog(0,
+             ("The following fileserver is being registered in the VLDB:\n"));
+        for (addrbuf[0] = '\0', k = 0; k < cnt; k++) {
+            if (k > 0)
+                strlcat(addrbuf, " ", sizeof(addrbuf));
+            append_addr2(addrbuf, &addrs[k], sizeof(addrbuf));
+        }
+        VLog(0, ("      [%s]\n", addrbuf));
+
+        if (foundUuidEntry) {
+            code = multiHomedExtent(&ctx, FoundUuid, &exp);
+            if (code == 0) {
+                VLog(0, ("   It would have replaced the existing VLDB server "
+                         "entry:\n"));
+                for (addrbuf[0] = '\0', mhidx = 0; mhidx < VL_MAXIPADDRS_PERMH; mhidx++) {
+                    if (!exp->ex_addrs[mhidx])
+                        continue;
+                    if (mhidx > 0)
+                        strlcat(addrbuf, " ", sizeof(addrbuf));
+                    append_addr(addrbuf, ntohl(exp->ex_addrs[mhidx]), sizeof(addrbuf));
+                }
+                for (mhidx = 0; mhidx < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); mhidx++) {
+                    /* verify the byte order! */
+                    memset(&aux, 0, sizeof(afs_addr));
+                    aux.addr_type = AFS_ADDR_IN6;
+                    memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+                    afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
+
+                    if (mhidx > 0)
+                        strlcat(addrbuf, " ", sizeof(addrbuf));
+                    append_addr2(addrbuf, &aux, sizeof(addrbuf));
+                }
+                VLog(0, ("      entry %d: [%s]\n", FoundUuid, addrbuf));
+            }
+        }
+
+        if (count == 1)
+            VLog(0, ("   Yet another VLDB server entry exists:\n"));
+        else
+            VLog(0, ("   Yet other VLDB server entries exist:\n"));
+        for (j = 0; j < count; j++) {
+            srvidx = WillChange[j];
+            VLog(0, ("      entry %d: ", srvidx));
+
+            code = multiHomedExtent(&ctx, srvidx, &exp);
+            if (code)
+                goto abort;
+
+            addrbuf[0] = '\0';
+            if (exp) {
+                for (mhidx = 0; mhidx < VL_MAXIPADDRS_PERMH; mhidx++) {
+                    if (!exp->ex_addrs[mhidx])
+                        continue;
+                    if (mhidx > 0)
+                        strlcat(addrbuf, " ", sizeof(addrbuf));
+                    append_addr(addrbuf, ntohl(exp->ex_addrs[mhidx]), sizeof(addrbuf));
+                }
+                for (mhidx = 0; mhidx < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); mhidx++) {
+                    /* verify the byte order! */
+                    memset(&aux, 0, sizeof(afs_addr));
+                    aux.addr_type = AFS_ADDR_IN6;
+                    memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+                    afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
+
+                    if (mhidx > 0)
+                        strlcat(addrbuf, " ", sizeof(addrbuf));
+                    append_addr2(addrbuf, &aux, sizeof(addrbuf));
+                }
+            } else {
+                append_addr(addrbuf, ctx.hostaddress[srvidx], sizeof(addrbuf));
+            }
+            VLog(0, ("      entry %d: [%s]\n", srvidx, addrbuf));
+        }
+        printf("3\n");
+        if (count == 1)
+            VLog(0, ("   You must 'vos changeaddr' this other server entry\n"));
+        else
+            VLog(0,
+                ("   You must 'vos changeaddr' these other server entries\n"));
+        if (foundUuidEntry)
+            VLog(0,
+                ("   and/or remove the sysid file from the registering fileserver\n"));
+        VLog(0, ("   before the fileserver can be registered in the VLDB.\n"));
+
+        code = VL_MULTIPADDR;
+        goto abort;
+    }
+
+    /* Passed the checks. Now find and update the existing mh entry, or create
+     * a new mh entry.
+     */
+    if (foundUuidEntry) {
+        /* Found the entry with same uuid. See if we need to change it */
+        int change = 0;
+
+        code = multiHomedExtentBase(&ctx, FoundUuid, &exp, &base);
+        if (code)
+            goto abort;
+
+        /* Determine if the entry has changed */
+        for (k = 0, h = 0; ((k < cnt) && !change); k++) {
+            if (addrs[k].addr_type == AFS_ADDR_IN6)
+                continue;
+            if (ntohl(exp->ex_addrs[h]) != addrs[k].afs_addr_u.addr_in) {
+                change = 1;
+            }
+            h++;
+        }
+        for (; ((k < VL_MAXIPADDRS_PERMH) && !change); k++) {
+            if (exp->ex_addrs[k] != 0)
+                change = 1;
+        }
+        for (k = 0; ((k < cnt) && !change); k++) {
+            if (addrs[k].addr_type == AFS_ADDR_IN)
+                continue;
+            for (h = 0; h < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS) && !change; h++) {
+                memset(&aux, 0, sizeof(afs_addr));
+                aux.addr_type = AFS_ADDR_IN6;
+                memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[h * 4], 16);
+                afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
+
+                if (!compare_afs_addr(&addrs[k], &aux))
+                    change &= 1;
+            }
+        }
+        if (!change) {
+            return (ubik_EndTrans(ctx.trans));
+        }
+    }
+
+    VLog(0, ("The following fileserver is being registered in the VLDB:\n"));
+    for (addrbuf[0] = '\0', k = 0; k < cnt; k++) {
+        if (k > 0)
+            strlcat(addrbuf, " ", sizeof(addrbuf));
+        append_addr2(addrbuf, &addrs[k], sizeof(addrbuf));
+    }
+    VLog(0, ("      [%s]\n", addrbuf));
+
+    if (foundUuidEntry) {
+        VLog(0,
+            ("   It will replace the following existing entry in the VLDB (same uuid):\n"));
+        for (addrbuf[0] = '\0', k = 0; k < VL_MAXIPADDRS_PERMH; k++) {
+            if (exp->ex_addrs[k] == 0)
+                continue;
+            if (k > 0)
+                strlcat(addrbuf, " ", sizeof(addrbuf));
+            append_addr(addrbuf, ntohl(exp->ex_addrs[k]), sizeof(addrbuf));
+        }
+        for (mhidx = 0; mhidx < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); mhidx++) {
+            /* verify the byte order! */
+            memset(&aux, 0, sizeof(afs_addr));
+            aux.addr_type = AFS_ADDR_IN6;
+            memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+            afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
+
+            if (mhidx > 0)
+                strlcat(addrbuf, " ", sizeof(addrbuf));
+            append_addr2(addrbuf, &aux, sizeof(addrbuf));
+        }
+        VLog(0, ("      entry %d: [%s]\n", FoundUuid, addrbuf));
+    } else if (willReplaceCnt || (count == 1)) {
+        /* If we are not replacing an entry and there is only one entry to change,
+         * then we will replace that entry.
+         */
+        if (!willReplaceCnt) {
+            ReplaceEntry = WillChange[0];
+            willReplaceCnt++;
+        }
+
+        /* Have an entry that needs to be replaced */
+        code = multiHomedExtentBase(&ctx, ReplaceEntry, &exp, &base);
+        if (code)
+            goto abort;
+
+        if (exp) {
+            VLog(0,
+                ("   It will replace the following existing entry in the VLDB (new uuid):\n"));
+            for (addrbuf[0] = '\0', k = 0; k < VL_MAXIPADDRS_PERMH; k++) {
+                if (exp->ex_addrs[k] == 0)
+                    continue;
+                if (k > 0)
+                    strlcat(addrbuf, " ", sizeof(addrbuf));
+                append_addr(addrbuf, ntohl(exp->ex_addrs[k]), sizeof(addrbuf));
+            }
+            for (mhidx = 0; mhidx < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); mhidx++) {
+                /* verify the byte order! */
+                memset(&aux, 0, sizeof(afs_addr));
+                aux.addr_type = AFS_ADDR_IN6;
+                memcpy(&aux.afs_addr_u.addr_in6, &exp->ex_srvspares[mhidx * 4], 16);
+                afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
+
+                if (mhidx > 0)
+                    strlcat(addrbuf, " ", sizeof(addrbuf));
+                append_addr2(addrbuf, &aux, sizeof(addrbuf));
+            }
+            VLog(0, ("      entry %d: [%s]\n", ReplaceEntry, addrbuf));
+        } else {
+            /* Not a mh entry. So we have to create a new mh entry and
+             * put it on the ReplaceEntry slot of the ctx.hostaddress array.
+             */
+            addrbuf[0] = '\0';
+            append_addr(addrbuf, ctx.hostaddress[ReplaceEntry], sizeof(addrbuf));
+            VLog(0, ("   It will replace existing entry %d, %s,"
+                     " in the VLDB (new uuid):\n", ReplaceEntry, addrbuf));
+            code =
+                FindExtentBlock(&ctx, uuidp, 1, ReplaceEntry, &exp, &base);
+            if (code || !exp) {
+                if (!code)
+                    code = VL_IO;
+                goto abort;
+            }
+        }
+    } else {
+        /* There is no entry for this server, must create a new mh entry as
+         * well as use a new slot of the ctx.hostaddress array.
+         */
+        VLog(0, ("   It will create a new entry in the VLDB.\n"));
+        code = FindExtentBlock(&ctx, uuidp, 1, -1, &exp, &base);
+        if (code || !exp) {
+            if (!code)
+                code = VL_IO;
+            goto abort;
+        }
+    }
+    /* Now we have a mh entry to fill in. Update the uuid, bump the
+     * uniquifier, and fill in its IP addresses.
+     */
+    tuuid = *uuidp;
+    afs_htonuuid(&tuuid);
+    exp->ex_hostuuid = tuuid;
+    exp->ex_uniquifier = htonl(ntohl(exp->ex_uniquifier) + 1);
+    for (k = 0; k < cnt; k++) {
+        switch (addrs[k].addr_type) {
+            case AFS_ADDR_IN:
+                exp->ex_addrs[k] = htonl(addrs[k].afs_addr_u.addr_in);
+                break;
+            case AFS_ADDR_IN6:
+                switch (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS) {
+                    case 0:
+                        memcpy(&exp->ex_srvspares[0], &addrs[k].afs_addr_u.addr_in6, 16);
+                        afs_htonstr(&exp->ex_srvspares[0], 4);
+                        exp->ex_srvflags &= 0xFFFFFFFC;
+                        exp->ex_srvflags |= 0x01;
+                        exp->ex_srvflags = htonl(exp->ex_srvflags);
+                        break;
+                    case 1:
+                        memcpy(&exp->ex_srvspares[4], &addrs[k].afs_addr_u.addr_in6, 16);
+                        afs_htonstr(&exp->ex_srvspares[4], 4);
+                        exp->ex_srvflags &= 0xFFFFFFFC;
+                        exp->ex_srvflags |= 0x02;
+                        exp->ex_srvflags = htonl(exp->ex_srvflags);
+                        break;
+                }
+                break;
+        }
+    }
+    for (; k < VL_MAXIPADDRS_PERMH; k++) {
+        exp->ex_addrs[k] = 0;
+    }
+
+    /* Write the new mh entry out */
+    if (vlwrite
+        (ctx.trans,
+         DOFFSET(ntohl(ctx.ex_addr[0]->ex_contaddrs[base]),
+                 (char *)ctx.ex_addr[base], (char *)exp), (char *)exp,
+         sizeof(*exp))) {
+        code = VL_IO;
+        goto abort;
+    }
+
+    m = 0;
+    for (i = 0; i < count; i++) {
+        afs_int32 doff;
+
+        /* Skip the entry we replaced */
+        if (willReplaceCnt && (WillChange[i] == ReplaceEntry))
+            continue;
+
+        code = multiHomedExtentBase(&ctx, WillChange[i], &tex, &base);
+        if (code)
+            goto abort;
+
+        if (++m == 1)
+            VLog(0,
+                ("   The following existing entries in the VLDB will be updated:\n"));
+
+        for (addrbuf[0] = '\0', h = j = 0; j < VL_MAXIPADDRS_PERMH; j++) {
+            if (tex->ex_addrs[j]) {
+                if (j > 0)
+                    strlcat(addrbuf, " ", sizeof(addrbuf));
+                append_addr(addrbuf, ntohl(tex->ex_addrs[j]), sizeof(addrbuf));
+            }
+
+            for (k = 0; k < cnt; k++) {
+                if (addrs[k].addr_type == AFS_ADDR_IN && ntohl(tex->ex_addrs[j]) == addrs[k].afs_addr_u.addr_in)
+                    break;
+            }
+            if (k >= cnt) {
+                /* Not found, so we keep it */
+                tex->ex_addrs[h] = tex->ex_addrs[j];
+                h++;
+            }
+        }
+        for (j = h; j < VL_MAXIPADDRS_PERMH; j++) {
+            tex->ex_addrs[j] = 0;       /* zero rest of mh entry */
+        }
+        for (j = h = 0; j < (ntohl(tex->ex_srvflags) & EX_IPV6_ADDRS); j++) {
+            /* verify the byte order! */
+            memset(&aux, 0, sizeof(afs_addr));
+            aux.addr_type = AFS_ADDR_IN6;
+            memcpy(&aux.afs_addr_u.addr_in6, &tex->ex_srvspares[j * 4], 16);
+            afs_ntohstr(&aux.afs_addr_u.addr_in6, 4);
+
+            if (j > 0)
+                strlcat(addrbuf, " ", sizeof(addrbuf));
+            append_addr2(addrbuf, &aux, sizeof(addrbuf));
+
+            if (!compare_afs_addr(&aux, &addrs[k])) {
+                afs_htonstr(&aux.afs_addr_u.addr_in6, 4);
+                memcpy(&tex->ex_srvspares[4 * h], &aux, 16);
+                h++;
+            }
+        }
+        VLog(0, ("      entry %d: [%s]\n", WillChange[i], addrbuf));
+
+        /* Write out the modified mh entry */
+        tex->ex_uniquifier = htonl(ntohl(tex->ex_uniquifier) + 1);
+        doff =
+            DOFFSET(ntohl(ctx.ex_addr[0]->ex_contaddrs[base]),
+                    (char *)ctx.ex_addr[base], (char *)tex);
+        if (vlwrite(ctx.trans, doff, (char *)tex, sizeof(*tex))) {
+            code = VL_IO;
+            goto abort;
+        }
+    }
+
+    return (ubik_EndTrans(ctx.trans));
+
+abort:
+    countAbort(this_op);
+    ubik_AbortTrans(ctx.trans);
+    return code;
 }

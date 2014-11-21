@@ -975,23 +975,28 @@ handleit(struct cmd_syndesc *as, void *arock)
                 afsUUID uuid;
                 afs_addrs interfaces;
                 afs_addr_ptr p;
-                unsigned char addr6[16] = {
-                  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+                unsigned char addr6[16];
+                int addr4_1, addr4_2, addr4_3;
 
                 memset(&uuid, 0xff, sizeof(uuid));
+                memset(addr6, 0, 16);
+
+                inet_pton(AF_INET6, "2001:0db8:0000:0000:0000:ff00:0042:8329", addr6);
+                inet_pton(AF_INET, "192.168.25.21", &addr4_1);
+                inet_pton(AF_INET, "192.168.25.25", &addr4_2);
+                inet_pton(AF_INET, "192.168.25.30", &addr4_3);
 
                 interfaces.afs_addrs_len = 4;
                 interfaces.afs_addrs_val = malloc(4 * sizeof(afs_addr_ptr));
 
                 p = malloc(sizeof(afs_addr));
                 p->addr_type = AFS_ADDR_IN;
-                p->afs_addr_u.addr_in = 0x11223344;
+                p->afs_addr_u.addr_in = addr4_1;
                 interfaces.afs_addrs_val[0] = p;
 
                 p = malloc(sizeof(afs_addr));
                 p->addr_type = AFS_ADDR_IN;
-                p->afs_addr_u.addr_in = 0x55667788;
+                p->afs_addr_u.addr_in = addr4_2;
                 interfaces.afs_addrs_val[1] = p;
 
                 p = malloc(sizeof(afs_addr));
@@ -1001,7 +1006,7 @@ handleit(struct cmd_syndesc *as, void *arock)
 
                 p = malloc(sizeof(afs_addr));
                 p->addr_type = AFS_ADDR_IN;
-                p->afs_addr_u.addr_in = 0xaabbccdd;
+                p->afs_addr_u.addr_in = addr4_3;
                 interfaces.afs_addrs_val[3] = p;
 
                 code = ubik_VL_RegisterServer(cstruct, 0, &uuid, &interfaces);

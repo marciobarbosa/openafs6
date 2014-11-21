@@ -832,6 +832,17 @@ FollowFreeChain(struct vlheader *header)
     return;
 }
 
+static_inline void
+vldb_ntohstr(char *dst, char *src, int size)
+{
+    int *strp_src = (int *)src;
+    int *strp_dst = (int *)dst;
+    int i;
+
+    for (i = 0; i < size; i++)
+        strp_dst[i] = ntohl(strp_src[i]);
+}
+
 /*
  * Read each multihomed block and mark it as found in the record.
  * Read each entry in each multihomed block and mark the serveraddrs
@@ -859,6 +870,8 @@ CheckIpAddrs(struct vlheader *header)
     struct extentaddr *e;
     int ipindex, ipaddrs;
     afsUUID nulluuid;
+    char ipv6[INET6_ADDRSTRLEN];
+    int aux4, aux6[4];
 
     memset(&nulluuid, 0, sizeof(nulluuid));
 
@@ -956,6 +969,7 @@ CheckIpAddrs(struct vlheader *header)
 		    if (e->ex_addrs[m])
 			ipaddrs++;
 		}
+		ipaddrs += ntohl(e->ex_srvflags) & EX_IPV6_ADDRS;
 
 		/* If we found any good ip addresses, mark it in the serveraddrs record */
 		if (ipaddrs) {
@@ -975,11 +989,19 @@ CheckIpAddrs(struct vlheader *header)
 		    for (m = 0; m < VL_MAXIPADDRS_PERMH; m++) {
 			if (!e->ex_addrs[m])
 			    continue;
+			aux4 = ntohl(e->ex_addrs[m]);
 			quiet_println(" %d.%d.%d.%d",
-			       (e->ex_addrs[m] & 0xff000000) >> 24,
-			       (e->ex_addrs[m] & 0x00ff0000) >> 16,
-			       (e->ex_addrs[m] & 0x0000ff00) >> 8,
-			       (e->ex_addrs[m] & 0x000000ff));
+			       (aux4 & 0xff000000) >> 24,
+			       (aux4 & 0x00ff0000) >> 16,
+			       (aux4 & 0x0000ff00) >> 8,
+			       (aux4 & 0x000000ff));
+		    }
+		    quiet_println("\n");
+		    for (m = 0; m < (ntohl(e->ex_srvflags) & EX_IPV6_ADDRS); m++) {
+		    	memset(ipv6, 0, INET6_ADDRSTRLEN);
+		    	vldb_ntohstr((char *)&aux6, (char *)&e->ex_srvspares[4 * m], 4);
+		    	inet_ntop(AF_INET6, &aux6, ipv6, INET6_ADDRSTRLEN);
+		    	quiet_println(" %s\n", ipv6);
 		    }
 		    quiet_println("\n");
 		}

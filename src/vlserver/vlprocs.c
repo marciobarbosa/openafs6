@@ -3618,7 +3618,7 @@ SVL_RegisterServer(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces
     struct extentaddr *exp = 0, *tex;
     char addrbuf[640];
     afsUUID tuuid;
-    struct afs_addr addrs[VL_MAXIPADDRS_PERMH + 2];
+    struct afs_addr addrs[VL_MAXIPADDRS_PERMH + 2]; /* plus 2 ipv6 addresses */
     int base;
     int count, willChangeEntry, foundUuidEntry, willReplaceCnt;
     int WillReplaceEntry, WillChange[MAXSERVERID + 1];
@@ -3641,16 +3641,16 @@ SVL_RegisterServer(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces
         if (p->addr_type != AFS_ADDR_IN && p->addr_type != AFS_ADDR_IN6)
             continue;
         for (m = 0; m < cnt; m++) {
-            if (compare_afs_addr(&addrs[m], interfaces->afs_addrs_val[k]))
+            if (compare_afs_addr(&addrs[m], p))
                 break;
         }
         if (m == cnt) {
             if (m == VL_MAXIPADDRS_PERMH) {
                 VLog(0,
                      ("Number of addresses exceeds %d. Cannot register IP addr %s in VLDB\n",
-                      VL_MAXIPADDRS_PERMH, print_afs_addr(interfaces->afs_addrs_val[k], str, INET6_ADDRSTRLEN)));
+                      VL_MAXIPADDRS_PERMH, print_afs_addr(p, str, INET6_ADDRSTRLEN)));
             } else {
-                set_afs_addr(&addrs[m], interfaces->afs_addrs_val[k]);
+                set_afs_addr(&addrs[m], p);
                 cnt++;
             }
         }
@@ -3978,14 +3978,14 @@ SVL_RegisterServer(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces
                 switch (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS) {
                     case 0:
                         memcpy(&exp->ex_srvspares[0], &addrs[k].afs_addr_u.addr_in6, 16);
-                        afs_htonstr(&exp->ex_srvspares[0], 4);
+                        afs_htonstr((char *)&exp->ex_srvspares[0], 4);
                         exp->ex_srvflags &= 0xFFFFFFFC;
                         exp->ex_srvflags |= 0x01;
                         exp->ex_srvflags = htonl(exp->ex_srvflags);
                         break;
                     case 1:
                         memcpy(&exp->ex_srvspares[4], &addrs[k].afs_addr_u.addr_in6, 16);
-                        afs_htonstr(&exp->ex_srvspares[4], 4);
+                        afs_htonstr((char *)&exp->ex_srvspares[4], 4);
                         exp->ex_srvflags &= 0xFFFFFFFC;
                         exp->ex_srvflags |= 0x02;
                         exp->ex_srvflags = htonl(exp->ex_srvflags);

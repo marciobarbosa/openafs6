@@ -871,7 +871,7 @@ CheckIpAddrs(struct vlheader *header)
     int ipindex, ipaddrs;
     afsUUID nulluuid;
     char ipv6[INET6_ADDRSTRLEN];
-    int aux4, aux6[4];
+    int aux6[4];
 
     memset(&nulluuid, 0, sizeof(nulluuid));
 
@@ -989,12 +989,11 @@ CheckIpAddrs(struct vlheader *header)
 		    for (m = 0; m < VL_MAXIPADDRS_PERMH; m++) {
 			if (!e->ex_addrs[m])
 			    continue;
-			aux4 = ntohl(e->ex_addrs[m]);
 			quiet_println(" %d.%d.%d.%d",
-			       (aux4 & 0xff000000) >> 24,
-			       (aux4 & 0x00ff0000) >> 16,
-			       (aux4 & 0x0000ff00) >> 8,
-			       (aux4 & 0x000000ff));
+			       (e->ex_addrs[m] & 0xff000000) >> 24,
+			       (e->ex_addrs[m] & 0x00ff0000) >> 16,
+			       (e->ex_addrs[m] & 0x0000ff00) >> 8,
+			       (e->ex_addrs[m] & 0x000000ff));
 		    }
 		    quiet_println("\n");
 		    for (m = 0; m < (ntohl(e->ex_srvflags) & EX_IPV6_ADDRS); m++) {

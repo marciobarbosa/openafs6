@@ -462,7 +462,12 @@ RegisterServer(
   IN afs_addrs *interfaces
 ) = 100002;  /* experimental private use only */
 
-
-
+GetAddrsU6(
+  IN ListAddrByAttributes *inaddr,
+  OUT afsUUID *uuidp1,
+  OUT afs_int32 *uniquifier,
+  OUT afs_int32 *nentries,
+  OUT afs_addrs *blkaddrs
+) = 100003; /* experimental private use only */
 
 %#endif /* !defined(KERNEL) */

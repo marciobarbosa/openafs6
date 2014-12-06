@@ -838,6 +838,82 @@ handleit(struct cmd_syndesc *as, void *arock)
 		    }
 		}
 		free(addrs.bulkaddrs_val);
+	    } else if (!strcmp(oper, "gau6")) {
+		int nentries, i, j;
+		afs_uint32 *addrp;
+		bulkaddrs addrs;
+		struct VLCallBack vlcb;
+
+		addrs.bulkaddrs_val = 0;
+		addrs.bulkaddrs_len = 0;
+		code = ubik_VL_GetAddrs(cstruct, 0, 0 /*Handle */ ,
+				 0 /*spare2 */ , &vlcb,
+				 &nentries, &addrs);
+		if (code) {
+		    printf("VL_GetAddrs returned code = %d\n", code);
+		    continue;
+		}
+		addrp = addrs.bulkaddrs_val;
+		for (i = 0; i < nentries; i++, addrp++) {
+		    if ((*addrp & 0xff000000) == 0xff000000) {
+			int mhnentries, unique;
+			afs_addr_ptr mhaddrp;
+			afs_addrs mhaddrs;
+			ListAddrByAttributes attrs;
+			afsUUID uuid;
+			struct sockaddr_in addr4;
+			struct sockaddr_in6 addr6;
+			char str[INET6_ADDRSTRLEN];
+
+			memset(&addr4, 0, sizeof(struct sockaddr_in));
+			memset(&addr6, 0, sizeof(struct sockaddr_in6));
+			memset(str, 0, INET6_ADDRSTRLEN);
+
+			printf("[0x%x %u] (special multi-homed entry)\n",
+			       *addrp, *addrp);
+			attrs.Mask = VLADDR_INDEX;
+			mhaddrs.afs_addrs_val = 0;
+			mhaddrs.afs_addrs_len = 0;
+			attrs.index = *addrp & 0x00ffffff;
+
+			code =
+			    ubik_VL_GetAddrsU6(cstruct, 0, &attrs, &uuid,
+				      &unique, &mhnentries, &mhaddrs);
+			if (code) {
+			    printf("VL_GetAddrsU6 returned code = %d\n", code);
+			    continue;
+			}
+			printf
+			    ("   [%d]: uuid[%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x]\n   addrunique=%d, ip address(es):\n",
+			     attrs.index, uuid.time_low, uuid.time_mid,
+			     uuid.time_hi_and_version,
+			     uuid.clock_seq_hi_and_reserved,
+			     uuid.clock_seq_low, uuid.node[0], uuid.node[1],
+			     uuid.node[2], uuid.node[3], uuid.node[4],
+			     uuid.node[5], unique);
+			for (j = 0; j < mhnentries; j++) {
+			    mhaddrp = mhaddrs.afs_addrs_val[j];
+
+			    if (mhaddrp->addr_type == AFS_ADDR_IN) {
+			    	addr4.sin_family = AF_INET;
+			    	addr4.sin_addr.s_addr = ntohl(mhaddrp->afs_addr_u.addr_in);
+			    	inet_ntop(AF_INET, &addr4.sin_addr, str, INET6_ADDRSTRLEN);
+			    	printf("\t%s\n", str);
+			    } else if (mhaddrp->addr_type == AFS_ADDR_IN6) {
+			    	addr6.sin6_family = AF_INET6;
+			    	memcpy(&addr6.sin6_addr.s6_addr, mhaddrp->afs_addr_u.addr_in6, 16);
+			    	inet_ntop(AF_INET6, &addr6.sin6_addr, str, INET6_ADDRSTRLEN);
+			    	printf("\t%s\n", str);
+			    }
+			}
+			if (mhaddrs.afs_addrs_val)
+			    free(mhaddrs.afs_addrs_val);
+		    } else {
+			printf("[0x%x %u] %s\n", *addrp, *addrp,
+			       hostutil_GetNameByINet(ntohl(*addrp)));
+		    }
+		}
+		free(addrs.bulkaddrs_val);
 	    } else if (!strcmp(oper, "mhc")) {
 		afs_uint32 serveraddrs[MAXSERVERID + 1][VL_MAXIPADDRS_PERMH];
 		afs_int32 serveraddrtype[MAXSERVERID + 1];

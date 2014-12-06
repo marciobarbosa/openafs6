@@ -4085,3 +4085,146 @@ abort:
     ubik_AbortTrans(ctx.trans);
     return code;
 }
+
+afs_int32
+SVL_GetAddrsU6(struct rx_call *rxcall,
+              struct ListAddrByAttributes *attributes,
+              afsUUID *uuidpo,
+              afs_int32 *uniquifier,
+              afs_int32 *nentries,
+              afs_addrs *addrsp)
+{
+    int this_op = VLGETADDRSU;
+    afs_int32 code, index;
+    struct vl_ctx ctx;
+    int nservers, i, j, base = 0;
+    struct extentaddr *exp = 0;
+    afsUUID tuuid;
+    afs_addr_ptr p;
+    afs_int32 taddr;
+    char rxstr[AFS_RXINFO_LEN];
+
+    countRequest(this_op);
+    addrsp->afs_addrs_len = *nentries = 0;
+    addrsp->afs_addrs_val = 0;
+    VLog(5, ("GetAddrsU6 %s\n", rxinfo(rxstr, rxcall)));
+    if ((code = Init_VLdbase(&ctx, LOCKREAD, this_op)))
+        return code;
+
+    if (attributes->Mask & VLADDR_IPADDR) {
+        if (attributes->Mask & (VLADDR_INDEX | VLADDR_UUID)) {
+            code = VL_BADMASK;
+            goto abort;
+        }
+        /* Search for a server registered with the VLDB with this ip address. */
+        for (index = 0; index <= MAXSERVERID; index++) {
+            code = multiHomedExtent(&ctx, index, &exp);
+            if (code)
+                continue;
+
+            if (exp) {
+                for (j = 0; j < VL_MAXIPADDRS_PERMH; j++) {
+                    if (exp->ex_addrs[j]
+                        && (ntohl(exp->ex_addrs[j]) == attributes->ipaddr)) {
+                        break;
+                    }
+                }
+                if (j < VL_MAXIPADDRS_PERMH)
+                    break;
+            }
+        }
+        if (index > MAXSERVERID) {
+            code = VL_NOENT;
+            goto abort;
+        }
+    } else if (attributes->Mask & VLADDR_INDEX) {
+        if (attributes->Mask & (VLADDR_IPADDR | VLADDR_UUID)) {
+            code = VL_BADMASK;
+            goto abort;
+        }
+        /* VLADDR_INDEX index is one based */
+        if (attributes->index < 1 || attributes->index > MAXSERVERID) {
+            code = VL_INDEXERANGE;
+            goto abort;
+        }
+        index = attributes->index - 1;
+        code = multiHomedExtent(&ctx, index, &exp);
+        if (code) {
+            code = VL_NOENT;
+            goto abort;
+        }
+    } else if (attributes->Mask & VLADDR_UUID) {
+        if (attributes->Mask & (VLADDR_IPADDR | VLADDR_INDEX)) {
+            code = VL_BADMASK;
+            goto abort;
+        }
+        if (!ctx.ex_addr[0]) {  /* mh servers probably aren't setup on this vldb */
+            code = VL_NOENT;
+            goto abort;
+        }
+        code = FindExtentBlock(&ctx, &attributes->uuid, 0, -1, &exp, &base);
+        if (code)
+            goto abort;
+    } else {
+        code = VL_BADMASK;
+        goto abort;
+    }
+
+    if (exp == NULL) {
+        code = VL_NOENT;
+        goto abort;
+    }
+
+    addrsp->afs_addrs_val =
+        malloc(sizeof(afs_addr_ptr) * (MAXSERVERID + 1));
+    nservers = *nentries = addrsp->afs_addrs_len = 0;
+    if (!addrsp->afs_addrs_val) {
+        code = VL_NOMEM;
+        goto abort;
+    }
+    tuuid = exp->ex_hostuuid;
+    afs_ntohuuid(&tuuid);
+    if (afs_uuid_is_nil(&tuuid)) {
+        code = VL_NOENT;
+        goto abort;
+    }
+    if (uuidpo)
+        *uuidpo = tuuid;
+    if (uniquifier)
+        *uniquifier = ntohl(exp->ex_uniquifier);
+    for (i = 0; i < VL_MAXIPADDRS_PERMH; i++) {
+        if (exp->ex_addrs[i]) {
+            taddr = ntohl(exp->ex_addrs[i]);
+            /* Weed out duplicates */
+            for (j = 0; j < nservers; j++) {
+                p = addrsp->afs_addrs_val[j];
+                if (p->afs_addr_u.addr_in == taddr)
+                    break;
+            }
+            if ((j == nservers) && (j <= MAXSERVERID)) {
+                p = malloc(sizeof(afs_addr));
+                p->addr_type = AFS_ADDR_IN;
+                p->afs_addr_u.addr_in = taddr;
+                addrsp->afs_addrs_val[nservers] = p;
+                nservers++;
+            }
+        }
+    }
+
+    for (i = 0; i < (ntohl(exp->ex_srvflags) & EX_IPV6_ADDRS); i++) {
+        p = malloc(sizeof(afs_addr));
+        p->addr_type = AFS_ADDR_IN6;
+        memcpy(&p->afs_addr_u.addr_in6, &exp->ex_srvspares[i * 4], 16);
+        afs_ntohstr((char *)&p->afs_addr_u.addr_in6, 4);
+        addrsp->afs_addrs_val[nservers] = p;
+        nservers++;
+    }
+
+    addrsp->afs_addrs_len = *nentries = nservers;
+    return (ubik_EndTrans(ctx.trans));
+
+abort:
+    countAbort(this_op);
+    ubik_AbortTrans(ctx.trans);
+    return code;
+}

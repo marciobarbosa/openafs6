@@ -3609,7 +3609,7 @@ append_addr2(char *buffer, afs_addr *addr, size_t buffer_size)
 }
 
 afs_int32
-SVL_RegisterServer(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces)
+SVL_RegisterAddrsIPv6(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfaces)
 {
     int this_op = VLREGADDR;
     afs_int32 code;
@@ -4087,7 +4087,7 @@ abort:
 }
 
 afs_int32
-SVL_GetAddrsU6(struct rx_call *rxcall,
+SVL_GetAddrsIPv6(struct rx_call *rxcall,
               struct ListAddrByAttributes *attributes,
               afsUUID *uuidpo,
               afs_int32 *uniquifier,
@@ -4107,7 +4107,7 @@ SVL_GetAddrsU6(struct rx_call *rxcall,
     countRequest(this_op);
     addrsp->afs_addrs_len = *nentries = 0;
     addrsp->afs_addrs_val = 0;
-    VLog(5, ("GetAddrsU6 %s\n", rxinfo(rxstr, rxcall)));
+    VLog(5, ("GetAddrsIPv6 %s\n", rxinfo(rxstr, rxcall)));
     if ((code = Init_VLdbase(&ctx, LOCKREAD, this_op)))
         return code;
 

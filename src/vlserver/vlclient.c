@@ -877,10 +877,10 @@ handleit(struct cmd_syndesc *as, void *arock)
 			attrs.index = *addrp & 0x00ffffff;
 
 			code =
-			    ubik_VL_GetAddrsU6(cstruct, 0, &attrs, &uuid,
+			    ubik_VL_GetAddrsIPv6(cstruct, 0, &attrs, &uuid,
 				      &unique, &mhnentries, &mhaddrs);
 			if (code) {
-			    printf("VL_GetAddrsU6 returned code = %d\n", code);
+			    printf("GetAddrsIPv6 returned code = %d\n", code);
 			    continue;
 			}
 			printf
@@ -1047,20 +1047,20 @@ handleit(struct cmd_syndesc *as, void *arock)
 		    printf("VL_RegisterAddrs returned code = %d\n", code);
 		    continue;
 		}
-	    } else if (!strcmp(oper, "rs")) {
+	    } else if (!strcmp(oper, "regaddr6")) {
                 afsUUID uuid;
                 afs_addrs interfaces;
                 afs_addr_ptr p;
                 unsigned char addr6[16];
                 int addr4_1, addr4_2, addr4_3;
 
-                memset(&uuid, 0xff, sizeof(uuid));
+                memset(&uuid, 0xaa, sizeof(uuid));
                 memset(addr6, 0, 16);
 
-                inet_pton(AF_INET6, "2001:0db8:0000:0000:0000:ff00:0042:8329", addr6);
-                inet_pton(AF_INET, "192.168.25.21", &addr4_1);
-                inet_pton(AF_INET, "192.168.25.25", &addr4_2);
-                inet_pton(AF_INET, "192.168.25.30", &addr4_3);
+                inet_pton(AF_INET6, "FE80:0000:0000:0000:0202:B3FF:FE1E:9090", addr6);
+                inet_pton(AF_INET, "192.168.25.90", &addr4_1);
+                inet_pton(AF_INET, "192.168.25.91", &addr4_2);
+                inet_pton(AF_INET, "192.168.25.92", &addr4_3);
 
                 interfaces.afs_addrs_len = 4;
                 interfaces.afs_addrs_val = malloc(4 * sizeof(afs_addr_ptr));
@@ -1085,8 +1085,8 @@ handleit(struct cmd_syndesc *as, void *arock)
                 p->afs_addr_u.addr_in = addr4_3;
                 interfaces.afs_addrs_val[3] = p;
 
-                code = ubik_VL_RegisterServer(cstruct, 0, &uuid, &interfaces);
-                printf("VL_RegisterServer returned code = %d\n", code);
+                code = ubik_VL_RegisterAddrsIPv6(cstruct, 0, &uuid, &interfaces);
+                printf("VL_RegisterAddrsIPv6 returned code = %d\n", code);
 
 	    } else if (!strcmp(oper, "ca")) {
 		struct hostent *h1, *h2;

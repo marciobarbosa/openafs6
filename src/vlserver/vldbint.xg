@@ -457,12 +457,12 @@ union afs_addr switch (afs_addr_type addr_type) {
 typedef afs_addr *afs_addr_ptr;
 typedef afs_addr_ptr afs_addrs<>;
 
-RegisterServer(
+RegisterAddrsIPv6(
   IN afsUUID *uuid,
   IN afs_addrs *interfaces
 ) = 100002;  /* experimental private use only */
 
-GetAddrsU6(
+GetAddrsIPv6(
   IN ListAddrByAttributes *inaddr,
   OUT afsUUID *uuidp1,
   OUT afs_int32 *uniquifier,

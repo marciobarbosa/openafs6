@@ -5325,6 +5325,51 @@ print_addrs(const bulkaddrs * addrs, afsUUID * m_uuid, int nentries,
     return;
 }
 
+static void
+print_addrs_v2(const afs_addrs * addrs, afsUUID * m_uuid, int nentries,
+	    int print)
+{
+    int i;
+    afs_addr_ptr addrp;
+    char buf[1024];
+    char str[INET6_ADDRSTRLEN];
+    struct sockaddr_in saddr4;
+    struct sockaddr_in6 saddr6;
+
+    if (print) {
+	afsUUID_to_string(m_uuid, buf, sizeof(buf));
+	printf("UUID: %s\n", buf);
+    }
+
+    /* print out the list of all the server */
+    for (i = 0; i < nentries; i++) {
+	addrp = addrs->afs_addrs_val[i];
+	memset(str, 0, INET6_ADDRSTRLEN);
+	memset(&saddr4, 0, sizeof(struct sockaddr_in));
+	memset(&saddr6, 0, sizeof(struct sockaddr_in6));
+
+	switch (addrp->addr_type) {
+	    case AFS_ADDR_IN:
+	    	saddr4.sin_family = AF_INET;
+	    	saddr4.sin_addr.s_addr = ntohl(addrp->afs_addr_u.addr_in);
+	    	inet_ntop(AF_INET, &saddr4.sin_addr, str, INET6_ADDRSTRLEN);
+	    	printf("%s\n", str);
+	    	break;
+	    case AFS_ADDR_IN6:
+	    	saddr6.sin6_family = AF_INET6;
+	    	memcpy(&saddr6.sin6_addr.s6_addr, addrp->afs_addr_u.addr_in6, 16);
+	    	inet_ntop(AF_INET6, &saddr6.sin6_addr, str, INET6_ADDRSTRLEN);
+	    	printf("%s\n", str);
+	    	break;
+	}
+    }
+
+    if (print) {
+	printf("\n");
+    }
+    return;
+}
+
 static int
 ListAddrs(struct cmd_syndesc *as, void *arock)
 {
@@ -5333,6 +5378,7 @@ ListAddrs(struct cmd_syndesc *as, void *arock)
     struct VLCallBack vlcb;
     afs_int32 nentries;
     bulkaddrs m_addrs;
+    afs_addrs m_addrs6;
     ListAddrByAttributes m_attrs;
     afsUUID m_uuid, askuuid;
     afs_int32 m_nentries;
@@ -5389,14 +5435,17 @@ ListAddrs(struct cmd_syndesc *as, void *arock)
 
     for (i = 1, m_nentries = 0; nentries; i++) {
         m_attrs.index = i;
+        memset(&m_addrs6, 0, sizeof(afs_addrs));
 
         xdr_free((xdrproc_t)xdr_bulkaddrs, &m_addrs); /* reset addr list */
+
         vcode =
-            ubik_VL_GetAddrsU(cstruct, UBIK_CALL_NEW, &m_attrs, &m_uuid,
-                              &m_uniq, &m_nentries, &m_addrs);
+            ubik_VL_GetAddrsIPv6(cstruct, UBIK_CALL_NEW, &m_attrs, &m_uuid,
+                              &m_uniq, &m_nentries, &m_addrs6);
+
         switch (vcode) {
         case 0: /* success */
-            print_addrs(&m_addrs, &m_uuid, m_nentries, printuuid);
+            print_addrs_v2(&m_addrs6, &m_uuid, m_nentries, printuuid);
             nentries--;
             break;
 

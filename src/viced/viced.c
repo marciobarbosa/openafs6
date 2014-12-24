@@ -1701,6 +1701,21 @@ WriteSysIdFile(void)
     return 0;
 }
 
+static void
+address_to_addr(afs_addr_ptr dst, struct rx_address *src)
+{
+    switch (src->addrtype) {
+        case AF_INET:
+            dst->addr_type = AFS_ADDR_IN;
+            dst->afs_addr_u.addr_in = src->rxa_s_addr;
+            break;
+        case AF_INET6:
+            dst->addr_type = AFS_ADDR_IN6;
+            memcpy(dst->afs_addr_u.addr_in6, src->rxa_in6_addr.s6_addr, 16);
+            break;
+    }
+}
+
 /*
  * defect 10966
  * This routine sets up the buffers for the VL_RegisterAddrs RPC. All addresses
@@ -1712,21 +1727,22 @@ static afs_int32
 Do_VLRegisterRPC(void)
 {
     int code;
-    bulkaddrs addrs;
-    afs_uint32 FS_HostAddrs_HBO[ADDRSPERSITE]; /* ipv4 only: host byte order */
+    afs_addrs addrs;
+    afs_addr_ptr p;
     int i = 0;
     int j = 0;
 
+    addrs.afs_addrs_val = malloc(ADDRSPERSITE * sizeof(afs_addr_ptr));
+
     for (i = 0; i < FS_HostAddr_cnt && j < ADDRSPERSITE; i++) {
-	rx_in_addr_t addr;
-	if (rx_try_address_to_ipv4(&FS_HostAddrs[i], &addr)) {
-	    FS_HostAddrs_HBO[j++] = ntohl(addr);  /* vl-register-addrs expects host byte order */
-	}
+	p = malloc(sizeof(afs_addr));
+        address_to_addr(p, &FS_HostAddrs[i]);
+        addrs.afs_addrs_val[j] = p;
+        j++;
     }
 
-    addrs.bulkaddrs_len = j;
-    addrs.bulkaddrs_val = FS_HostAddrs_HBO;
-    code = ubik_VL_RegisterAddrs(cstruct, 0, &FS_HostUUID, 0, &addrs);
+    addrs.afs_addrs_len = j;
+    code = ubik_VL_RegisterAddrsIPv6(cstruct, 0, &FS_HostUUID, &addrs);
     if (code) {
 	if (code == VL_MULTIPADDR) {
 	    ViceLog(0,

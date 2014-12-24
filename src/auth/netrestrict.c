@@ -250,7 +250,7 @@ ParseNetInfoFile_int(struct rx_address * final, struct rx_address * mask, afs_ui
 
     /* get all network interfaces from the kernel */
     existNu =
-	rx_getAllAddrMaskMtu2(existingAddr, existingMask, existingMtu,
+	rx_getAllAddrMaskMtuLinux(existingAddr, existingMask, existingMtu,
 			      MAXIPADDRS);
     if (existNu < 0)
 	return existNu;

@@ -287,6 +287,10 @@ extern int rx_getAllAddrMaskMtu2(struct rx_address *addrBuffer,
 				 struct rx_address *maskBuffer,
 				 afs_uint32 mtuBuffer[],
 				 int maxSize);
+extern int rx_getAllAddrMaskMtuLinux(struct rx_address *addrBuffer,
+				 struct rx_address *maskBuffer,
+				 afs_uint32 mtuBuffer[],
+				 int maxSize);
 
 /* rx_globals.c */
 extern int rx_GetMaxReceiveWindow(void);

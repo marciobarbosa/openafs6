@@ -47,6 +47,16 @@
 
 #include "rx_addr.h"
 
+#ifndef KERNEL
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <ifaddrs.h>
+#include <unistd.h>
+#include <linux/if_link.h>
+#include <net/if.h>
+#endif
+
 #ifdef KERNEL
 /* only used for generating random noise */
 
@@ -883,6 +893,50 @@ rx_getAllAddrMaskMtu(afs_uint32 addrBuffer[], afs_uint32 maskBuffer[],
     close(s);
     return count;
 #endif /* AFS_USERSPACE_IP_ADDR */
+}
+
+int
+rx_getAllAddrMaskMtuLinux(struct rx_address addrBuffer[], struct rx_address maskBuffer[],
+                     afs_uint32 mtuBuffer[], int maxSize) /* linux only */
+{
+    int n = 0;
+
+#ifndef KERNEL
+    struct ifaddrs *ifaddr, *ifa;
+    struct sockaddr_in *saddr4;
+    struct sockaddr_in6 *saddr6;
+
+    if (getifaddrs(&ifaddr) == -1) {
+    	exit(0);
+    }
+
+    for (ifa = ifaddr, n = 0; ifa != NULL && n <= maxSize; ifa = ifa->ifa_next, n++) {
+    	if (ifa->ifa_addr == NULL || (ifa->ifa_flags & IFF_LOOPBACK)
+    	    || (ifa->ifa_addr->sa_family != AF_INET && ifa->ifa_addr->sa_family != AF_INET6)) {
+    	    n--;
+    	    continue;
+    	}
+
+    	if (ifa->ifa_addr->sa_family == AF_INET) {
+    	    saddr4 = (struct sockaddr_in *)ifa->ifa_addr;
+    	    addrBuffer[n].addrtype = AF_INET;
+    	    memcpy(&addrBuffer[n].rxa_in_addr, &saddr4->sin_addr, 4);
+    	    saddr4 = (struct sockaddr_in *)ifa->ifa_netmask;
+    	    maskBuffer[n].addrtype = AF_INET;
+    	    memcpy(&maskBuffer[n].rxa_in_addr, &saddr4->sin_addr, 4);
+	} else if (ifa->ifa_addr->sa_family == AF_INET6) {
+	    saddr6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+	    addrBuffer[n].addrtype = AF_INET6;
+	    memcpy(&addrBuffer[n].rxa_in6_addr, &saddr6->sin6_addr, 16);
+	    saddr6 = (struct sockaddr_in6 *)ifa->ifa_netmask;
+	    maskBuffer[n].addrtype = AF_INET6;
+	    memcpy(&maskBuffer[n].rxa_in6_addr, &saddr6->sin6_addr, 16);
+	}
+	mtuBuffer[n] = htonl(1500);
+    }
+#endif
+
+    return n;
 }
 
 int

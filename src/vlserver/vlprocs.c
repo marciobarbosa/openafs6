@@ -3533,7 +3533,7 @@ compare_afs_addr(afs_addr *addr1, afs_addr *addr2)
     if (addr1->addr_type == addr2->addr_type) {
         switch (addr1->addr_type) {
             case AFS_ADDR_IN:
-                if (addr1->afs_addr_u.addr_in == addr2->afs_addr_u.addr_in)
+                if (ntohl(addr1->afs_addr_u.addr_in) == addr2->afs_addr_u.addr_in)
                     result = 1;
                 break;
             case AFS_ADDR_IN6:
@@ -3630,6 +3630,7 @@ SVL_RegisterAddrsIPv6(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfa
     afs_addr aux;
     afs_addr_ptr p;
     char str[INET6_ADDRSTRLEN];
+    int ipv4_cnt = 0, ipv6_cnt = 0;
 
     countRequest(this_op);
     //if (!afsconf_SuperUser(vldb_confdir, rxcall, NULL))
@@ -3647,13 +3648,25 @@ SVL_RegisterAddrsIPv6(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfa
                 break;
         }
         if (m == cnt) {
-            if (m == VL_MAXIPADDRS_PERMH) {
+            if (ipv4_cnt == VL_MAXIPADDRS_PERMH) {
                 VLog(0,
-                     ("Number of addresses exceeds %d. Cannot register IP addr %s in VLDB\n",
+                     ("Number of ipv4 addresses exceeds %d. Cannot register IP addr %s in VLDB\n",
                       VL_MAXIPADDRS_PERMH, print_afs_addr(p, str, INET6_ADDRSTRLEN)));
-            } else {
+            } else if (ipv6_cnt == 2) {
+                VLog(0,
+                     ("Number of ipv6 addresses exceeds %d. Cannot register IP addr %s in VLDB\n",
+                      VL_MAXIPADDRS_PERMH, print_afs_addr(p, str, INET6_ADDRSTRLEN)));
+            } 
+
+            if ((ipv4_cnt < VL_MAXIPADDRS_PERMH && p->addr_type == AFS_ADDR_IN) ||
+                    (ipv6_cnt < 2 && p->addr_type == AFS_ADDR_IN6)) {
                 set_afs_addr(&addrs[m], p);
                 cnt++;
+
+                if (p->addr_type == AFS_ADDR_IN)
+                    ipv4_cnt++;
+                else
+                    ipv6_cnt++;
             }
         }
     }
@@ -3864,7 +3877,7 @@ SVL_RegisterAddrsIPv6(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfa
                 afs_ntohstr((char *)&aux.afs_addr_u.addr_in6, 4);
 
                 if (!compare_afs_addr(&addrs[k], &aux))
-                    change &= 1;
+                    change = 1;
             }
         }
         if (!change) {
@@ -3975,6 +3988,7 @@ SVL_RegisterAddrsIPv6(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfa
     afs_htonuuid(&tuuid);
     exp->ex_hostuuid = tuuid;
     exp->ex_uniquifier = htonl(ntohl(exp->ex_uniquifier) + 1);
+    exp->ex_srvflags = 0;
     for (k = 0, h = 0; k < cnt; k++) {
         switch (addrs[k].addr_type) {
             case AFS_ADDR_IN:
@@ -4061,7 +4075,7 @@ SVL_RegisterAddrsIPv6(struct rx_call *rxcall, afsUUID *uuidp, afs_addrs *interfa
                 strlcat(addrbuf, " ", sizeof(addrbuf));
             append_addr2(addrbuf, &aux, sizeof(addrbuf));
 
-            if (!compare_afs_addr(&aux, &addrs[k])) {
+            if (!compare_afs_addr(&aux, &addrs[k])) { /* k? wrong */
                 afs_htonstr(&aux.afs_addr_u.addr_in6, 4);
                 memcpy(&tex->ex_srvspares[4 * h], &aux, 16);
                 h++;

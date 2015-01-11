@@ -1051,43 +1051,106 @@ handleit(struct cmd_syndesc *as, void *arock)
                 afsUUID uuid;
                 afs_addrs interfaces;
                 afs_addr_ptr p;
+                int opt = 3, i;
+                int naddrs4, naddrs6;
                 unsigned char addr6[16];
-                int addr4_1, addr4_2, addr4_3;
+                unsigned char buffer[3];
+                unsigned char str[INET6_ADDRSTRLEN];
 
-                memset(&uuid, 0xaa, sizeof(uuid));
-                memset(addr6, 0, 16);
+                switch (opt) {
+                    case 1:
+                        naddrs4 = 20;
+                        memset(&uuid, 0xaa, sizeof(uuid));
+                        interfaces.afs_addrs_len = naddrs4;
+                    interfaces.afs_addrs_val = malloc(naddrs4 * sizeof(afs_addr_ptr));
 
-                inet_pton(AF_INET6, "FE80:0000:0000:0000:0202:B3FF:FE1E:9090", addr6);
-                inet_pton(AF_INET, "192.168.25.90", &addr4_1);
-                inet_pton(AF_INET, "192.168.25.91", &addr4_2);
-                inet_pton(AF_INET, "192.168.25.92", &addr4_3);
+                    for (i = 0; i < naddrs4; i++) {
+                        p = malloc(sizeof(afs_addr));
+                        p->addr_type = AFS_ADDR_IN;
 
-                interfaces.afs_addrs_len = 4;
-                interfaces.afs_addrs_val = malloc(4 * sizeof(afs_addr_ptr));
+                        memset(str, 0, INET6_ADDRSTRLEN);
+                        memset(buffer, 0, 3);
+                        strcpy(str, "192.168.25.");
+                        sprintf(buffer, "%d", i + 1);
+                        strcat(str, buffer);
+                        inet_pton(AF_INET, str, &p->afs_addr_u.addr_in);
+                        interfaces.afs_addrs_val[i] = p;
+                    }
 
-                p = malloc(sizeof(afs_addr));
-                p->addr_type = AFS_ADDR_IN;
-                p->afs_addr_u.addr_in = addr4_1;
-                interfaces.afs_addrs_val[0] = p;
+                    code = ubik_VL_RegisterAddrsIPv6(cstruct, 0, &uuid, &interfaces);
+                    printf("VL_RegisterAddrsIPv6 returned code = %d\n", code);
 
-                p = malloc(sizeof(afs_addr));
-                p->addr_type = AFS_ADDR_IN;
-                p->afs_addr_u.addr_in = addr4_2;
-                interfaces.afs_addrs_val[1] = p;
+                    for (i = 0; i < naddrs4; i++)
+                        free(interfaces.afs_addrs_val[i]);
+                    free(interfaces.afs_addrs_val);
+                        break;
+                    case 2:
+                        naddrs6 = 1;
+                        memset(&uuid, 0xbb, sizeof(uuid));
+                        interfaces.afs_addrs_len = naddrs6;
+                    interfaces.afs_addrs_val = malloc(naddrs6 * sizeof(afs_addr_ptr));
 
-                p = malloc(sizeof(afs_addr));
-                p->addr_type = AFS_ADDR_IN6;
-                memcpy(p->afs_addr_u.addr_in6, addr6, sizeof(addr6));
-                interfaces.afs_addrs_val[2] = p;
+                    for (i = 0; i < naddrs6; i++) {
+                        p = malloc(sizeof(afs_addr));
+                        p->addr_type = AFS_ADDR_IN6;
 
-                p = malloc(sizeof(afs_addr));
-                p->addr_type = AFS_ADDR_IN;
-                p->afs_addr_u.addr_in = addr4_3;
-                interfaces.afs_addrs_val[3] = p;
+                        memset(str, 0, INET6_ADDRSTRLEN);
+                        memset(buffer, 0, 3);
+                        strcpy(str, "FE80:0000:0000:0000:0202:B3FF:FE1E:");
+                        sprintf(buffer, "%d", i + 70);
+                        strcat(str, buffer);
+                        inet_pton(AF_INET6, str, p->afs_addr_u.addr_in6);
+                        interfaces.afs_addrs_val[i] = p;
+                    }
 
-                code = ubik_VL_RegisterAddrsIPv6(cstruct, 0, &uuid, &interfaces);
-                printf("VL_RegisterAddrsIPv6 returned code = %d\n", code);
+                    code = ubik_VL_RegisterAddrsIPv6(cstruct, 0, &uuid, &interfaces);
+                    printf("VL_RegisterAddrsIPv6 returned code = %d\n", code);
 
+                    for (i = 0; i < naddrs6; i++)
+                        free(interfaces.afs_addrs_val[i]);
+                    free(interfaces.afs_addrs_val);
+                        break;
+                    case 3:
+                        naddrs4 = 2;
+                        naddrs6 = 2;
+                        memset(&uuid, 0xdd, sizeof(uuid));
+                        interfaces.afs_addrs_len = naddrs4 + naddrs6;
+                        interfaces.afs_addrs_val = malloc((naddrs4 + naddrs6) * sizeof(afs_addr_ptr));
+
+                        for (i = 0; i < naddrs4; i++) {
+                        p = malloc(sizeof(afs_addr));
+                        p->addr_type = AFS_ADDR_IN;
+
+                        memset(str, 0, INET6_ADDRSTRLEN);
+                        memset(buffer, 0, 3);
+                        strcpy(str, "192.168.25.");
+                        sprintf(buffer, "%d", i + 30);
+                        strcat(str, buffer);
+                        inet_pton(AF_INET, str, &p->afs_addr_u.addr_in);
+                        interfaces.afs_addrs_val[i] = p;
+                    }
+
+                    for (; i < naddrs4 + naddrs6; i++) {
+                        p = malloc(sizeof(afs_addr));
+                        p->addr_type = AFS_ADDR_IN6;
+
+                        memset(str, 0, INET6_ADDRSTRLEN);
+                        memset(buffer, 0, 3);
+                        strcpy(str, "FE80:0000:0000:0000:0202:B3FF:FE1E:");
+                        sprintf(buffer, "%d", i + 30);
+                        strcat(str, buffer);
+                        inet_pton(AF_INET6, str, p->afs_addr_u.addr_in6);
+                        interfaces.afs_addrs_val[i] = p;
+                    }
+
+                    code = ubik_VL_RegisterAddrsIPv6(cstruct, 0, &uuid, &interfaces);
+                    printf("VL_RegisterAddrsIPv6 returned code = %d\n", code);
+
+                    for (i = 0; i < naddrs4 + naddrs6; i++)
+                        free(interfaces.afs_addrs_val[i]);
+                    free(interfaces.afs_addrs_val);
+                        break;
+                }
 	    } else if (!strcmp(oper, "ca")) {
 		struct hostent *h1, *h2;
 		afs_uint32 a1, a2;
